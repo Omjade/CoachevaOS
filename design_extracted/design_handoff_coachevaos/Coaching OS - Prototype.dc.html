@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/classical-ec0631a4-4411-4dac-bfe0-449648538a5b/styles.css">
+  <script src="_ds/classical-ec0631a4-4411-4dac-bfe0-449648538a5b/_ds_bundle.js"></script>
+  <script src="./image-slot.js"></script>
+  <style>
+    :root{
+      --radius-sm:8px; --radius-md:12px; --radius-lg:20px;
+      --color-divider:color-mix(in srgb, #201f1d 9%, transparent);
+      --shadow-sm:0 1px 2px rgba(32,31,29,0.05),0 1px 1px rgba(32,31,29,0.04);
+      --shadow-md:0 8px 24px rgba(32,31,29,0.08),0 2px 6px rgba(32,31,29,0.05);
+      --shadow-lg:0 24px 56px rgba(32,31,29,0.16),0 6px 16px rgba(32,31,29,0.08);
+      --color-accent: oklch(66% 0.15 60);
+      --color-accent-100: oklch(96% 0.025 68);
+      --color-accent-200: oklch(91% 0.05 66);
+      --color-accent-300: oklch(84% 0.09 64);
+      --color-accent-400: oklch(75% 0.13 62);
+      --color-accent-500: oklch(66% 0.15 60);
+      --color-accent-600: oklch(57% 0.15 56);
+      --color-accent-700: oklch(47% 0.13 52);
+      --color-accent-800: oklch(37% 0.10 48);
+      --color-accent-900: oklch(27% 0.07 46);
+      --sidebar-ink:#f2efe9; --sidebar-ink-soft:#c9c6c2; --sidebar-ink-mute:#9d9a97;
+    }
+    :root.dark{
+      --color-bg:#18161b; --color-surface:#1e1c22; --color-text:#eeebe5;
+      --color-divider:rgba(255,255,255,0.11);
+      --color-neutral-100:#211f26; --color-neutral-200:#2a2830; --color-neutral-300:#38353e;
+      --color-neutral-400:#4d4a54; --color-neutral-500:#6d6a75; --color-neutral-600:#8e8b95;
+      --color-neutral-700:#b0adb6; --color-neutral-800:#d3d0d6; --color-neutral-900:#0e0d10;
+      --color-accent-100: oklch(25% 0.045 62); --color-accent-200: oklch(31% 0.06 60);
+    }
+    :root.dark .sidebar.sidebar-light{background:var(--color-neutral-100)}
+    :root.dark .briefing-card{background:linear-gradient(135deg,var(--color-accent-100) 0%,var(--color-surface) 65%)}
+    :root.dark .card, :root.dark .ledger, :root.dark .file-bubble{background:var(--color-surface)}
+    :root.dark a{color:var(--color-accent-400)}
+    :root.dark a:hover{color:var(--color-accent-300)}
+    :root.dark .kicker-accent, :root.dark .trend-up, :root.dark .masthead-eyebrow{color:var(--color-accent-400)}
+    :root.dark .tag-live{background:color-mix(in srgb, var(--color-accent-500) 20%, var(--color-surface));color:var(--color-accent-300)}
+    :root.dark .tag-risk{background:color-mix(in srgb, var(--color-accent-500) 30%, var(--color-surface));color:var(--color-accent-200)}
+    :root.dark .tag-accent{background:color-mix(in srgb, var(--color-accent-500) 20%, var(--color-surface));color:var(--color-accent-300)}
+    :root.dark .tag-outline{border-color:var(--color-accent-400);color:var(--color-accent-400)}
+    :root.dark .tag-neutral{background:var(--color-neutral-200);color:var(--color-neutral-800)}
+    :root.dark .btn-primary{color:var(--color-accent-400);border-color:var(--color-accent-400)}
+    :root.dark .btn-primary:hover{background:color-mix(in srgb, var(--color-accent-400) 16%, transparent)}
+    :root.dark .integration-icon svg{stroke:var(--color-accent-400) !important}
+    :root.dark .dialog-backdrop{background:rgba(0,0,0,0.6)}
+    .theme-toggle{width:38px;height:38px;border-radius:50%;border:1px solid var(--color-divider);background:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--color-neutral-700);flex-shrink:0}
+    .theme-toggle:hover{border-color:var(--color-accent-500);color:var(--color-accent-700)}
+    body{margin:0;background:var(--color-bg)}
+    a{color:var(--color-accent-700)}
+    a:hover{color:var(--color-accent-900)}
+    .app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+    .sidebar{background:var(--color-neutral-900);color:var(--color-neutral-300);display:flex;flex-direction:column;padding:22px 14px}
+    .sb-brand{font-family:var(--font-heading);font-weight:600;font-size:19px;color:var(--sidebar-ink);padding:2px 10px 24px}
+    .sb-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:var(--radius-md);font-family:var(--font-body);font-size:14px;color:var(--sidebar-ink-mute);cursor:pointer;margin-bottom:2px}
+    .sb-item:hover{color:var(--sidebar-ink);background:rgba(255,255,255,0.05)}
+    .sb-item.active{color:var(--sidebar-ink);background:var(--color-accent-700)}
+    .sb-item svg{flex-shrink:0}
+    .sb-foot{margin-top:auto;padding-top:18px;margin-top:16px;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px}
+    .sb-avatar{width:32px;height:32px;border-radius:50%;background:var(--color-accent-600);color:var(--sidebar-ink);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-size:13px;flex-shrink:0}
+    .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 36px;min-height:76px;border-bottom:1px solid var(--color-divider);background:var(--color-bg);box-sizing:border-box}
+    .page-title{font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:24px;color:var(--color-text)}
+    .search{display:flex;align-items:center;gap:8px;border:1px solid var(--color-divider);border-radius:999px;padding:9px 16px;background:var(--color-neutral-100);width:280px}
+    .search input{border:none;background:none;outline:none;font-family:var(--font-body);font-size:13.5px;color:var(--color-text);width:100%}
+    .main{padding:36px;max-width:1280px;margin:0 auto;width:100%;box-sizing:border-box}
+    .muted{color:var(--color-neutral-700)}
+    .dot{width:6px;height:6px;border-radius:50%;background:var(--color-accent-500);display:inline-block;margin-right:8px;flex-shrink:0;margin-top:8px}
+    .progress-track{height:6px;background:var(--color-neutral-200);border-radius:99px;overflow:hidden}
+    .progress-fill{height:100%;background:var(--color-accent-500);border-radius:99px}
+    .chat-bubble{max-width:68%;padding:11px 16px;border-radius:16px;font-family:var(--font-body);font-size:14px;line-height:1.5}
+    .clickable{cursor:pointer;transition:border-color .15s ease}
+    .clickable:hover{border-color:var(--color-accent-500)}
+    .stat-num{font-family:var(--font-heading);font-weight:400;font-size:34px;color:var(--color-text);line-height:1;font-variant-numeric:tabular-nums}
+    .avatar-sm{width:38px;height:38px;border-radius:50%;background:var(--color-accent-100);color:var(--color-accent-700);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-weight:600;font-size:13px;flex-shrink:0}
+    .card{border-radius:var(--radius-lg);border:1px solid var(--color-divider);background:var(--color-bg);box-shadow:var(--shadow-sm);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+    .card.clickable:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--color-divider)}
+    .trend-up{color:var(--color-accent-700);font-family:var(--font-body);font-size:12.5px;display:inline-flex;align-items:center;gap:3px}
+    .ghost-num{display:none}
+    .hero-plate-wrap{position:relative}
+    .btn-primary, .btn-secondary, .clickable{transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease}
+    .btn-primary:hover, .btn-secondary:hover{transform:translateY(-1px)}
+    .btn-primary{box-shadow:var(--shadow-sm)}
+    .sb-item{transition:background .15s ease,color .15s ease}
+    .sidebar.sidebar-light{background:var(--color-bg);border-right:1px solid var(--color-divider)}
+    .sidebar.sidebar-light .sb-brand{color:var(--color-text)}
+    .sidebar.sidebar-light .sb-item{color:var(--color-neutral-700)}
+    .sidebar.sidebar-light .sb-item:hover{color:var(--color-text);background:var(--color-neutral-100)}
+    .sidebar.sidebar-light .sb-item.active{color:var(--color-neutral-100);background:var(--color-accent-600)}
+    .sidebar.sidebar-light .sb-foot{border-top-color:var(--color-divider)}
+    .sb-name{font-family:var(--font-body);font-size:13px;color:var(--sidebar-ink)}
+    .sb-role{font-family:var(--font-body);font-size:11.5px;color:var(--sidebar-ink-mute)}
+    .sidebar.sidebar-light .sb-name{color:var(--color-text)}
+    .sidebar.sidebar-light .sb-role{color:var(--color-neutral-600)}
+    .briefing-narrative{font-family:var(--font-body);font-size:15px;line-height:1.75;color:var(--color-text);margin:14px 0 0}
+    .icon-btn{width:38px;height:38px;border-radius:var(--radius-md);border:1px solid var(--color-divider);background:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--color-neutral-700);flex-shrink:0}
+    .icon-btn:hover{border-color:var(--color-accent-500);color:var(--color-accent-700);background:var(--color-accent-100)}
+    .attach-menu{display:flex;gap:8px;padding:0 26px 12px}
+    .attach-opt{display:flex;align-items:center;gap:6px;padding:7px 13px;border:1px solid var(--color-divider);border-radius:999px;font-family:var(--font-body);font-size:12.5px;color:var(--color-neutral-700);background:none;cursor:pointer}
+    .attach-opt:hover{border-color:var(--color-accent-500);color:var(--color-accent-700);background:var(--color-accent-100)}
+    .file-bubble{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:14px;border:1px solid var(--color-divider);background:var(--color-bg);font-family:var(--font-body);font-size:13.5px;max-width:280px}
+    .integration-row{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid var(--color-divider)}
+    .integration-icon{width:38px;height:38px;border-radius:var(--radius-md);background:var(--color-accent-100);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .ledger{display:grid;border-radius:var(--radius-lg);overflow:hidden;background:var(--color-bg);border:1px solid var(--color-divider);box-shadow:var(--shadow-sm)}
+    .ledger-cell{padding:26px 24px;position:relative;border-left:1px solid var(--color-divider)}
+    .ledger-cell:first-child{border-left:none}
+    .masthead-eyebrow{font-family:var(--font-body);text-transform:uppercase;letter-spacing:.1em;font-size:11px;color:var(--color-neutral-600)}
+    .lead-card{transition:transform .15s ease,box-shadow .15s ease}
+    .lead-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+    .kanban-head{font-family:var(--font-heading);font-weight:600;font-size:13.5px;color:var(--color-neutral-700);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid var(--color-divider)}
+    .avatar-ring{box-shadow:0 0 0 3px var(--color-bg),0 0 0 4px var(--color-accent-200)}
+    .client-card{position:relative;overflow:hidden}
+    .table tbody tr{transition:background .12s ease}
+    .table tbody tr:hover{background:var(--color-accent-100)}
+    .chat-list-item{border-left:3px solid transparent}
+    .chat-list-item.is-active{border-left-color:var(--color-accent-500);background:var(--color-accent-100)}
+    .dialog{position:relative;overflow:hidden;border-radius:var(--radius-lg)}
+    .section-divider{border:none;border-top:1px solid var(--color-divider);margin:0 0 24px}
+    .kicker-accent{font-family:var(--font-body);text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--color-accent-700);font-weight:600}
+    .btn-primary:hover{box-shadow:0 6px 18px rgba(182,130,53,0.22)}
+    .tag-risk{border:none;color:var(--color-accent-900);background:var(--color-accent-200);font-weight:600}
+    .tag-live{border:none;color:var(--color-accent-700);background:var(--color-accent-100)}
+    .section-alt{background:var(--color-neutral-100)}
+    .briefing-card{background:linear-gradient(135deg,var(--color-accent-100) 0%,var(--color-bg) 65%);border-color:var(--color-accent-200)}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .anim-in{animation:fadeUp .5s cubic-bezier(.16,1,.3,1) both}
+    .stagger>*{opacity:0;animation:fadeUp .5s cubic-bezier(.16,1,.3,1) both}
+    .stagger>*:nth-child(1){animation-delay:.02s}
+    .stagger>*:nth-child(2){animation-delay:.06s}
+    .stagger>*:nth-child(3){animation-delay:.1s}
+    .stagger>*:nth-child(4){animation-delay:.14s}
+    .stagger>*:nth-child(5){animation-delay:.18s}
+    .stagger>*:nth-child(6){animation-delay:.22s}
+    .stagger>*:nth-child(n+7){animation-delay:.26s}
+    .theme-toggle svg{transition:transform .3s ease}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+    .rec-dot{animation:pulse 1s infinite}
+  </style>
+</helmet>
+
+<sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+<div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:76px;border-bottom:1px solid var(--color-divider)">
+    <span style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--color-text)">CoachevaOS</span>
+    <div style="display:flex;gap:24px;align-items:center;font-family:var(--font-body);font-size:14px">
+      <a href="#" style="color:var(--color-text);text-decoration:none">Product</a>
+      <a href="#" style="color:var(--color-text);text-decoration:none">Pricing</a>
+      <button class="theme-toggle" onClick="{{ toggleTheme }}" title="Toggle dark mode">
+        <sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"></path></svg>
+        </sc-if>
+        <sc-if value="{{ isLightMode }}" hint-placeholder-val="{{ true }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+        </sc-if>
+      </button>
+      <button class="btn btn-secondary" onClick="{{ goDashboard }}">Sign in</button>
+      <button class="btn btn-primary" onClick="{{ goDashboard }}">Open the app</button>
+    </div>
+  </div>
+
+  <section style="max-width:1180px;margin:0 auto;padding:96px 32px 0;display:grid;grid-template-columns:1.1fr 0.9fr;gap:56px;align-items:center">
+    <div>
+      <div style="font-family:var(--font-body);text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:var(--color-accent-700);margin-bottom:22px">For coaches, consultants &amp; mentors</div>
+      <h1 style="font-family:var(--font-heading);font-weight:400;font-size:66px;line-height:1.04;color:var(--color-text);margin:0 0 26px">One dashboard.<br>Not eight apps.</h1>
+      <p style="font-family:var(--font-body);font-size:18px;color:var(--color-neutral-700);max-width:480px;margin:0 0 36px;line-height:1.65">Replace Excel, WhatsApp, Drive, Calendly and Gmail with a single operating system for your coaching business — and an AI assistant that already knows what needs your attention today.</p>
+      <div style="display:flex;gap:16px;margin-bottom:44px">
+        <button class="btn btn-primary" onClick="{{ goDashboard }}">Start free trial</button>
+        <button class="btn btn-secondary" onClick="{{ goDashboard }}">See a live demo</button>
+      </div>
+      <div style="display:flex;gap:40px;border-top:1px solid var(--color-divider);padding-top:28px">
+        <div><div style="font-family:var(--font-heading);font-size:30px;color:var(--color-text);font-variant-numeric:tabular-nums">8→1</div><div class="muted" style="font-family:var(--font-body);font-size:12.5px;margin-top:4px">apps replaced</div></div>
+        <div><div style="font-family:var(--font-heading);font-size:30px;color:var(--color-text);font-variant-numeric:tabular-nums">6hrs</div><div class="muted" style="font-family:var(--font-body);font-size:12.5px;margin-top:4px">saved weekly per coach</div></div>
+        <div><div style="font-family:var(--font-heading);font-size:30px;color:var(--color-text);font-variant-numeric:tabular-nums">24/7</div><div class="muted" style="font-family:var(--font-body);font-size:12.5px;margin-top:4px">AI briefing, always on</div></div>
+      </div>
+    </div>
+    <div class="hero-plate-wrap">
+      <div style="position:relative;overflow:hidden;border-radius:var(--radius-md)">
+        <div class="ghost-num" style="font-size:220px;top:10px;right:-30px;z-index:0">01</div>
+        <div class="plate" style="position:relative;z-index:1">
+          <image-slot id="hero-photo" shape="rect" style="width:100%;height:420px" placeholder="Coach with client, working session photo"></image-slot>
+        </div>
+      </div>
+      <div class="card elev-lg" style="position:absolute;left:-40px;bottom:-28px;width:270px;padding:22px;background:var(--color-bg);z-index:2">
+        <div class="card-kicker">AI Daily Briefing</div>
+        <p style="font-family:var(--font-heading);font-size:17px;color:var(--color-text);margin:8px 0 12px">Good morning, {{ niche.coachFirstName }}.</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex"><span class="dot"></span><span class="muted" style="font-family:var(--font-body);font-size:13px">4 meetings, 2 clients gone quiet</span></div>
+          <div style="display:flex"><span class="dot"></span><span class="muted" style="font-family:var(--font-body);font-size:13px">1 renewal due tomorrow</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-alt" style="max-width:100%;margin:0 auto;padding:120px 32px 100px">
+    <div style="max-width:1080px;margin:0 auto">
+    <div style="text-align:center;margin:0 0 48px">
+      <div class="kicker-accent" style="margin-bottom:10px">Why switch</div>
+      <span style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:32px;color:var(--color-text)">Everything you juggle today, in one place</span>
+    </div>
+    <div class="stagger" style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px">
+      <div class="card" style="padding:26px">
+        <div style="width:42px;height:42px;border-radius:12px;background:var(--color-accent-100);color:var(--color-accent-700);display:flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="4"></circle><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11c2 0 4 1.5 4 4"></path></svg></div>
+        <div class="card-title">Clients &amp; Leads</div><div class="card-body" style="margin-top:6px">Track every lead and client from first contact to renewal.</div>
+      </div>
+      <div class="card" style="padding:26px">
+        <div style="width:42px;height:42px;border-radius:12px;background:var(--color-accent-100);color:var(--color-accent-700);display:flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.4A8.5 8.5 0 1 1 21 11.5z"></path></svg></div>
+        <div class="card-title">Chat &amp; Files</div><div class="card-body" style="margin-top:6px">Message, share plans and documents, no WhatsApp needed.</div>
+      </div>
+      <div class="card" style="padding:26px">
+        <div style="width:42px;height:42px;border-radius:12px;background:var(--color-accent-100);color:var(--color-accent-700);display:flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></div>
+        <div class="card-title">Calendar</div><div class="card-body" style="margin-top:6px">Cal.com booking built into your dashboard.</div>
+      </div>
+      <div class="card" style="padding:26px">
+        <div style="width:42px;height:42px;border-radius:12px;background:var(--color-accent-100);color:var(--color-accent-700);display:flex;align-items:center;justify-content:center;margin-bottom:16px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 3 7l9 5 9-5-9-5zM3 12l9 5 9-5M3 17l9 5 9-5"></path></svg></div>
+        <div class="card-title">AI Assistant</div><div class="card-body" style="margin-top:6px">Risk flags, follow-up nudges and renewal reminders, daily.</div>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <section style="max-width:760px;margin:0 auto;padding:0 32px 100px;text-align:center">
+    <div style="font-family:var(--font-heading);font-style:italic;font-size:26px;line-height:1.5;color:var(--color-text)">"{{ niche.testimonialQuote }}"</div>
+    <div class="muted" style="font-family:var(--font-body);font-size:13.5px;margin-top:18px">— {{ niche.testimonialAttribution }}</div>
+  </section>
+
+  <section style="position:relative;background:var(--color-neutral-900);padding:100px 32px;text-align:center;overflow:hidden">
+    <div class="ghost-num" style="font-size:320px;top:-60px;left:50%;transform:translateX(-50%);color:rgba(182,130,53,0.10)">OS</div>
+    <div style="position:relative;z-index:1">
+      <div style="font-family:var(--font-body);text-transform:uppercase;letter-spacing:.12em;font-size:12px;color:var(--color-accent-400);margin-bottom:18px">CoachevaOS — the AI operating system for coaches and businesses</div>
+      <span style="font-family:var(--font-heading);font-weight:400;font-size:36px;color:var(--color-neutral-100)">Bring your practice into one system.</span>
+      <div style="margin-top:30px"><button class="btn btn-primary" onClick="{{ goDashboard }}">Get started — it's free</button></div>
+    </div>
+  </section>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+<div class="app">
+  <div class="{{ sidebarClass }}">
+    <div class="sb-brand">CoachevaOS</div>
+    <div style="font-family:var(--font-body);text-transform:uppercase;letter-spacing:.1em;font-size:10.5px;color:var(--color-neutral-500);padding:0 12px 10px">Menu</div>
+    <div class="sb-item {{ navClass.dashboard }}" onClick="{{ goDashboard }}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9.5 12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"></path></svg>
+      Dashboard
+    </div>
+    <div class="sb-item {{ navClass.leads }}" onClick="{{ goLeads }}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      Leads
+    </div>
+    <div class="sb-item {{ navClass.clients }}" onClick="{{ goClients }}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"></path></svg>
+      Clients
+    </div>
+    <div class="sb-item {{ navClass.chat }}" onClick="{{ goChat }}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.4A8.5 8.5 0 1 1 21 11.5z"></path></svg>
+      Chat
+    </div>
+    <div class="sb-item {{ navClass.calendar }}" onClick="{{ goCalendar }}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>
+      Calendar
+    </div>
+    <div class="sb-item {{ navClass.documents }}" onClick="{{ goDocuments }}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+      Documents
+    </div>
+    <div class="sb-item {{ navClass.portal }}" onClick="{{ goPortal }}">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>
+      Client Portal
+    </div>
+    <div class="sb-foot">
+      <div class="sb-avatar">{{ niche.avatarInitials }}</div>
+      <div>
+        <div class="sb-name">{{ niche.coachName }}</div>
+        <div class="sb-role">{{ niche.coachTitle }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="topbar">
+      <div>
+        <div class="masthead-eyebrow">{{ niche.coachTitle }} · No. 214</div>
+        <span class="page-title">{{ pageTitle }}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:20px">
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <input placeholder="Search clients, leads, messages…">
+        </div>
+        <button class="theme-toggle" onClick="{{ toggleTheme }}" title="Toggle dark mode">
+          <sc-if value="{{ isDark }}" hint-placeholder-val="{{ false }}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"></path></svg>
+          </sc-if>
+          <sc-if value="{{ isLightMode }}" hint-placeholder-val="{{ true }}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+          </sc-if>
+        </button>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-700)" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>
+        <div class="avatar-sm">{{ niche.avatarInitials }}</div>
+      </div>
+    </div>
+
+    <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ false }}">
+    <div class="main anim-in">
+      <p class="muted" style="font-family:var(--font-body);margin:-8px 0 28px">Tuesday, July 29 · Here's what's happening today</p>
+
+      <div class="card elev-md briefing-card" style="padding:30px;margin-bottom:28px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="card-kicker">AI Daily Briefing</div>
+          <span class="tag tag-outline">Updated 6:02 AM</span>
+        </div>
+        <sc-if value="{{ isBriefingList }}" hint-placeholder-val="{{ true }}">
+        <ul style="list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:11px">
+          <li style="display:flex"><span class="dot"></span><span style="font-family:var(--font-body);color:var(--color-text)">4 client meetings today</span></li>
+          <li style="display:flex"><span class="dot"></span><span style="font-family:var(--font-body);color:var(--color-text)">2 clients haven't replied for 5 days — <a href="#" onClick="{{ goChat }}">nudge them</a></span></li>
+          <li style="display:flex"><span class="dot"></span><span style="font-family:var(--font-body);color:var(--color-text)">1 client's subscription expires tomorrow — <a href="#" onClick="{{ goClients }}">send renewal</a></span></li>
+          <li style="display:flex"><span class="dot"></span><span style="font-family:var(--font-body);color:var(--color-text)">3 leads are waiting for follow-up — <a href="#" onClick="{{ goLeads }}">review leads</a></span></li>
+          <li style="display:flex"><span class="dot"></span><span style="font-family:var(--font-body);color:var(--color-text)">{{ niche.milestoneClientName }} completed all tasks — <a href="#" onClick="{{ goJohn }}">recommend next milestone</a></span></li>
+        </ul>
+        </sc-if>
+        <sc-if value="{{ isBriefingNarrative }}" hint-placeholder-val="{{ false }}">
+        <p class="briefing-narrative">Good morning, {{ niche.coachFirstName }} — you have 4 client meetings today. Two clients haven't replied in five days, so a quick <a href="#" onClick="{{ goChat }}">nudge</a> would help before it becomes a bigger gap. One subscription expires tomorrow — worth sending a <a href="#" onClick="{{ goClients }}">renewal</a> now. Three <a href="#" onClick="{{ goLeads }}">leads</a> are still waiting on a first follow-up. On a brighter note, {{ niche.milestoneClientName }} has completed every task this cycle — <a href="#" onClick="{{ goJohn }}">recommend their next milestone</a> while momentum is high.</p>
+        </sc-if>
+      </div>
+
+      <div class="ledger stagger" style="grid-template-columns:repeat(4,1fr);margin-bottom:28px">
+        <div class="ledger-cell clickable" style="padding-bottom:44px" onClick="{{ goCalendar }}"><div class="ghost-num" style="font-size:60px;bottom:-14px;right:12px">4</div><div class="card-kicker">Today</div><div class="stat-num">4</div><div class="card-body">Meetings</div></div>
+        <div class="ledger-cell clickable" style="padding-bottom:44px" onClick="{{ goChat }}"><div class="ghost-num" style="font-size:60px;bottom:-14px;right:12px">2</div><div class="card-kicker">Needs reply</div><div class="stat-num">2</div><div class="card-body">Pending follow-ups</div></div>
+        <div class="ledger-cell clickable" style="padding-bottom:44px" onClick="{{ goClients }}"><div class="ghost-num" style="font-size:60px;bottom:-14px;right:12px">3</div><div class="card-kicker">Watch</div><div class="stat-num">3</div><div class="card-body">Clients at risk</div></div>
+        <div class="ledger-cell">
+          <div class="card-kicker">This month</div>
+          <div style="display:flex;align-items:baseline;gap:10px">
+            <div class="stat-num">$4,820</div>
+            <span class="trend-up">▲ 12%</span>
+          </div>
+          <div class="card-body" style="margin-bottom:10px">Revenue</div>
+          <svg width="100%" height="34" viewBox="0 0 140 34" preserveAspectRatio="none">
+            <polyline points="0,28 20,24 40,26 60,18 80,20 100,10 120,12 140,4" fill="none" stroke="var(--color-accent-500)" stroke-width="2"></polyline>
+          </svg>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:20px">
+        <div class="card" style="padding:24px">
+          <div class="card-title" style="margin-bottom:14px">Today's meetings</div>
+          <sc-for list="{{ meetings }}" as="m" hint-placeholder-count="4">
+            <div class="clickable" style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--color-divider)" onClick="{{ m.onClick }}">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar-sm">{{ m.initials }}</div>
+                <span style="font-family:var(--font-body)">{{ m.name }} — {{ m.type }}</span>
+              </div>
+              <span class="muted" style="font-family:var(--font-body)">{{ m.time }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="card" style="padding:24px">
+          <div class="card-title" style="margin-bottom:14px">Recent messages</div>
+          <sc-for list="{{ messagesPreview }}" as="msg" hint-placeholder-count="3">
+            <div class="clickable" style="padding:11px 0;border-top:1px solid var(--color-divider)" onClick="{{ goChat }}">
+              <div style="font-family:var(--font-body);font-weight:600;font-size:14px">{{ msg.name }}</div>
+              <div class="muted" style="font-family:var(--font-body);font-size:13px">{{ msg.preview }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px">
+        <div class="card" style="padding:24px">
+          <div class="card-title" style="margin-bottom:14px">Today's tasks</div>
+          <sc-for list="{{ tasksList }}" as="task" hint-placeholder-count="3">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--color-divider)">
+              <span style="font-family:var(--font-body)">{{ task.title }}</span>
+              <span class="tag {{ task.tagClass }}">{{ task.priority }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div class="card" style="padding:24px">
+          <div class="card-title" style="margin-bottom:14px">Recent activity</div>
+          <sc-for list="{{ activity }}" as="a" hint-placeholder-count="3">
+            <div style="padding:11px 0;border-top:1px solid var(--color-divider);font-family:var(--font-body);font-size:13.5px" class="muted">{{ a }}</div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isLeads }}" hint-placeholder-val="{{ false }}">
+    <div class="main anim-in">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <div>
+          <div class="kicker-accent" style="margin-bottom:4px">Pipeline</div>
+          <p class="muted" style="font-family:var(--font-body);margin:0">9 leads · 3 awaiting follow-up</p>
+        </div>
+        <button class="btn btn-primary" onClick="{{ openAddLead }}">+ Add lead</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px">
+        <sc-for list="{{ leadColumns }}" as="col" hint-placeholder-count="6">
+          <div>
+            <div class="kanban-head">
+              <span>{{ col.name }}</span><span class="muted">{{ col.count }}</span>
+            </div>
+            <div class="stagger" style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ col.leads }}" as="lead" hint-placeholder-count="2">
+                <div class="card clickable lead-card" style="padding:14px">
+                  <div style="font-family:var(--font-body);font-weight:600;font-size:13.5px">{{ lead.name }}</div>
+                  <div class="muted" style="font-family:var(--font-body);font-size:12.5px;margin-top:4px">{{ lead.interest }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isClients }}" hint-placeholder-val="{{ false }}">
+    <div class="main anim-in">
+      <div class="card" style="padding:18px 24px;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center;background:var(--color-accent-100);border-color:var(--color-accent-500)">
+        <div>
+          <div class="card-kicker">Your client invite link</div>
+          <div style="font-family:var(--font-body);font-size:14.5px;margin-top:4px;color:var(--color-text)">coachapp.com/{{ niche.portalSlug }}</div>
+        </div>
+        <button class="btn btn-secondary" onClick="{{ copyInviteLink }}">{{ inviteCopyLabel }}</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <p class="muted" style="font-family:var(--font-body);margin:0">{{ clients.length }} active clients</p>
+        <button class="btn btn-primary" onClick="{{ openAddClient }}">+ Add client</button>
+      </div>
+      <div class="stagger" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+        <sc-for list="{{ clients }}" as="c" hint-placeholder-count="6">
+          <div class="card clickable client-card" style="padding:22px" onClick="{{ c.onClick }}">
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px">
+              <div class="avatar-sm avatar-ring" style="width:44px;height:44px;font-size:15px">{{ c.initials }}</div>
+              <div>
+                <div style="font-family:var(--font-body);font-weight:600;font-size:15px">{{ c.name }}</div>
+                <div class="muted" style="font-family:var(--font-body);font-size:12.5px">{{ c.program }}</div>
+              </div>
+            </div>
+            <div class="progress-track" style="margin-bottom:10px"><div class="progress-fill" style="width:{{ c.progress }}%"></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="tag {{ c.statusClass }}">{{ c.status }}</span>
+              <span class="muted" style="font-family:var(--font-body);font-size:12.5px">{{ c.progress }}% progress</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isClientProfile }}" hint-placeholder-val="{{ false }}">
+    <div class="main anim-in" style="max-width:1040px">
+      <button class="btn btn-ghost" onClick="{{ goClients }}" style="margin-bottom:20px">&larr; Back to clients</button>
+      <div style="display:grid;grid-template-columns:280px 1fr;gap:32px">
+        <div>
+          <image-slot id="client-avatar" shape="circle" style="width:140px;height:140px" placeholder="Client photo"></image-slot>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;margin-top:16px">{{ selectedClient.name }}</div>
+          <div class="muted" style="font-family:var(--font-body);font-size:13.5px;margin-top:2px">Joined {{ selectedClient.joined }}</div>
+          <div style="margin-top:10px"><span class="tag {{ selectedClient.statusClass }}">{{ selectedClient.status }}</span></div>
+          <div style="margin-top:20px">
+            <div class="card-kicker">Program</div>
+            <div style="font-family:var(--font-body);margin-top:4px">{{ selectedClient.program }}</div>
+          </div>
+          <div style="margin-top:16px">
+            <div class="card-kicker">Tags</div>
+            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+              <span class="tag tag-outline">{{ selectedClient.tag1 }}</span><span class="tag tag-outline">{{ selectedClient.tag2 }}</span>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-block" style="margin-top:22px" onClick="{{ goChat }}">Message client</button>
+        </div>
+        <div>
+          <div class="card" style="padding:22px;margin-bottom:20px">
+            <div class="card-title" style="margin-bottom:4px">Intake responses</div>
+            <p class="muted" style="font-family:var(--font-body);font-size:11.5px;margin:0 0 12px">Feeds directly into the AI briefing and this profile.</p>
+            <sc-if value="{{ hasIntake }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:8px;font-family:var(--font-body);font-size:13.5px">
+              <div><strong>Goal:</strong> {{ intakeView.goals }}</div>
+              <div><strong>Experience:</strong> {{ intakeView.experience }}</div>
+              <div><strong>Availability:</strong> {{ intakeView.availability }}</div>
+              <div><strong>Notes:</strong> {{ intakeView.notes }}</div>
+            </div>
+            </sc-if>
+            <sc-if value="{{ hasNoIntake }}" hint-placeholder-val="{{ true }}">
+            <p class="muted" style="font-family:var(--font-body);font-size:13px;margin:0">Not submitted yet — sent with the client's invite link.</p>
+            </sc-if>
+          </div>
+          <div class="card" style="padding:22px;margin-bottom:20px">
+            <div class="card-title" style="margin-bottom:8px">Goal</div>
+            <p style="font-family:var(--font-body);margin:0">{{ selectedClient.goal }}</p>
+          </div>
+          <div class="card" style="padding:22px;margin-bottom:20px">
+            <div class="card-title" style="margin-bottom:10px">Progress</div>
+            <div style="display:flex;justify-content:space-between;font-family:var(--font-body);font-size:13px;margin-bottom:6px"><span>{{ selectedClient.progressLabel }}</span><span>{{ selectedClient.progress }}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width:{{ selectedClient.progress }}%"></div></div>
+            <div style="display:flex;align-items:flex-start;margin-top:18px">
+              <sc-for list="{{ milestones }}" as="m" hint-placeholder-count="6">
+                <div style="flex:1;text-align:center;position:relative">
+                  <div style="height:2px;background:var(--color-divider);position:absolute;top:7px;left:0;right:0;z-index:0"></div>
+                  <div style="width:14px;height:14px;border-radius:50%;background:{{ m.dotBg }};border:2px solid {{ m.dotBorder }};margin:0 auto;position:relative;z-index:1"></div>
+                  <div class="muted" style="font-family:var(--font-body);font-size:10.5px;margin-top:8px;padding:0 3px;line-height:1.3">{{ m.label }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="card" style="padding:22px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div class="card-title" style="margin-bottom:4px">Billing</div>
+              <span class="tag {{ billingStatusClass }}">{{ billingStatusLabel }}</span>
+            </div>
+            <div class="field" style="margin:10px 0 16px"><label>Subscription valid until</label><input class="input" type="date" value="{{ billingValidUntil }}" onChange="{{ setValidUntil }}"></div>
+            <div class="card-kicker" style="margin-bottom:8px">Invoices</div>
+            <sc-for list="{{ invoicesView }}" as="inv" hint-placeholder-count="2">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--color-divider)">
+                <span style="font-family:var(--font-body);font-size:13.5px">${{ inv.amount }} · due {{ inv.due }}</span>
+                <button class="tag {{ inv.tagClass }}" style="border:none;cursor:pointer" onClick="{{ inv.toggle }}">{{ inv.statusLabel }}</button>
+              </div>
+            </sc-for>
+            <div style="display:flex;gap:8px;margin-top:14px">
+              <input class="input" placeholder="Amount" style="width:100px" value="{{ invoiceAmount }}" onChange="{{ setInvoiceAmount }}">
+              <input class="input" type="date" style="width:150px" value="{{ invoiceDue }}" onChange="{{ setInvoiceDue }}">
+              <button class="btn btn-secondary" onClick="{{ addInvoice }}">+ Add invoice</button>
+            </div>
+          </div>
+          <div class="card" style="padding:22px;margin-bottom:20px">
+            <div class="card-title" style="margin-bottom:10px">Tasks</div>
+            <sc-for list="{{ coachTasksView }}" as="t" hint-placeholder-count="4">
+              <div style="padding:10px 0;border-top:1px solid var(--color-divider)">
+                <sc-if value="{{ t.isEditing }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;gap:8px;align-items:center">
+                  <input class="input" style="flex:1" value="{{ editTaskTitle }}" onChange="{{ setEditTaskTitle }}">
+                  <input class="input" type="date" style="width:150px" value="{{ editTaskDue }}" onChange="{{ setEditTaskDue }}">
+                  <button class="btn btn-primary" onClick="{{ t.saveEdit }}">Save</button>
+                </div>
+                </sc-if>
+                <sc-if value="{{ t.isNotEditing }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div style="display:flex;gap:10px;align-items:flex-start">
+                    <input type="checkbox" checked="{{ t.done }}" onChange="{{ t.toggle }}" style="margin-top:3px;width:16px;height:16px;accent-color:var(--color-accent-600)">
+                    <div>
+                      <div style="font-family:var(--font-body);font-size:13.5px;{{ t.doneStyle }}">{{ t.title }}</div>
+                      <div class="muted" style="font-family:var(--font-body);font-size:12px;margin-top:2px">Due {{ t.due }} · {{ t.addedByLabel }}</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <span class="tag {{ t.tagClass }}">{{ t.statusLabel }}</span>
+                    <button class="icon-btn" onClick="{{ t.startEdit }}" title="Edit">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+                    </button>
+                  </div>
+                </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div style="display:flex;gap:8px;margin-top:14px;border-top:1px solid var(--color-divider);padding-top:14px">
+              <input class="input" placeholder="Add a task for this client…" style="flex:1" value="{{ taskTitle }}" onChange="{{ setTaskTitle }}">
+              <input class="input" type="date" style="width:150px" value="{{ taskDue }}" onChange="{{ setTaskDue }}">
+              <button class="btn btn-primary" onClick="{{ addCoachTask }}">Add</button>
+            </div>
+          </div>
+          <div class="card" style="padding:22px;margin-bottom:20px">
+            <div class="card-title" style="margin-bottom:10px">Coach notes</div>
+            <p style="font-family:var(--font-body);margin:0" class="muted">{{ selectedClient.notes }}</p>
+          </div>
+          <div class="card" style="padding:22px;margin-bottom:20px">
+            <div class="card-title" style="margin-bottom:4px">AI Session Assistant</div>
+            <p class="muted" style="font-family:var(--font-body);font-size:12.5px;margin:0 0 14px">Type a quick summary or record a voice note — AI drafts the client follow-up, you review before it sends.</p>
+
+            <sc-if value="{{ isVoiceIdle }}" hint-placeholder-val="{{ true }}">
+            <textarea class="input" style="width:100%;min-height:70px;resize:vertical;font-family:var(--font-body);font-size:13.5px" placeholder="e.g. Great session, squat form improved, missed nutrition log twice…" value="{{ sessionInputText }}" onChange="{{ setSessionInputText }}"></textarea>
+            <div style="display:flex;gap:10px;margin-top:12px">
+              <button class="btn btn-secondary" onClick="{{ startRecording }}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:6px;vertical-align:-2px"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"></path></svg>
+                Record voice note
+              </button>
+              <button class="btn btn-primary" onClick="{{ generateFollowUp }}">✨ Generate follow-up</button>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ isVoiceRecording }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 0">
+              <span class="dot rec-dot" style="background:var(--color-accent-700);width:9px;height:9px;margin:0"></span>
+              <span style="font-family:var(--font-body);font-size:13.5px">Recording… {{ recordingTime }} / 1:00</span>
+              <button class="btn btn-secondary" style="margin-left:auto" onClick="{{ stopRecording }}">Stop &amp; transcribe</button>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ isVoiceTranscribing }}" hint-placeholder-val="{{ false }}">
+            <p class="muted" style="font-family:var(--font-body);font-size:13px;padding:10px 0">Transcribing voice note…</p>
+            </sc-if>
+
+            <sc-if value="{{ isFollowUpReady }}" hint-placeholder-val="{{ false }}">
+            <div style="border-top:1px solid var(--color-divider);margin-top:4px;padding-top:16px">
+              <div class="kicker-accent" style="margin-bottom:6px">AI summary</div>
+              <p style="font-family:var(--font-body);font-size:13.5px;margin:0 0 14px">{{ aiSummary }}</p>
+              <div class="kicker-accent" style="margin-bottom:6px">Action items</div>
+              <ul style="margin:0 0 14px;padding-left:18px;font-family:var(--font-body);font-size:13.5px">
+                <sc-for list="{{ aiActionItems }}" as="item" hint-placeholder-count="3">
+                  <li style="margin-bottom:4px">{{ item }}</li>
+                </sc-for>
+              </ul>
+              <div class="kicker-accent" style="margin-bottom:6px">Draft message to {{ selectedClient.name }}</div>
+              <textarea class="input" style="width:100%;min-height:80px;resize:vertical;font-family:var(--font-body);font-size:13.5px" value="{{ draftMessage }}" onChange="{{ setDraftMessage }}"></textarea>
+              <div style="display:flex;gap:10px;margin-top:12px">
+                <button class="btn btn-ghost" onClick="{{ resetSessionAssistant }}">Discard</button>
+                <button class="btn btn-primary" onClick="{{ sendFollowUp }}">{{ sendFollowUpLabel }}</button>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+          <div class="card" style="padding:22px">
+            <div class="card-title" style="margin-bottom:10px">Documents</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;justify-content:space-between;font-family:var(--font-body);font-size:13.5px;border-top:1px solid var(--color-divider);padding-top:8px"><span>Program.pdf</span><a href="#">Download</a></div>
+              <div style="display:flex;justify-content:space-between;font-family:var(--font-body);font-size:13.5px;border-top:1px solid var(--color-divider);padding-top:8px"><span>Nutrition Guide.pdf</span><a href="#">Download</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isCalendar }}" hint-placeholder-val="{{ false }}">
+    <div class="main anim-in">
+      <div class="card" style="padding:26px;margin-bottom:20px">
+        <div class="kicker-accent" style="margin-bottom:6px">Integrations</div>
+        <div class="card-title" style="margin-bottom:4px">Connect your scheduling tools</div>
+        <p class="muted" style="font-family:var(--font-body);font-size:13px;margin:0 0 6px">Once connected, your live availability shows automatically on your client portal so clients can book themselves in.</p>
+        <div class="integration-row">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="integration-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.8"><path d="m23 7-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2"></rect></svg></div>
+            <div>
+              <div style="font-family:var(--font-body);font-weight:600;font-size:14px">Google Meet</div>
+              <div class="muted" style="font-family:var(--font-body);font-size:12px">{{ googleStatusText }}</div>
+            </div>
+          </div>
+          <button class="btn {{ googleBtnClass }}" onClick="{{ toggleGoogle }}">{{ googleLabel }}</button>
+        </div>
+        <div class="integration-row">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="integration-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg></div>
+            <div>
+              <div style="font-family:var(--font-body);font-weight:600;font-size:14px">Cal.com</div>
+              <div class="muted" style="font-family:var(--font-body);font-size:12px">{{ calStatusText }}</div>
+            </div>
+          </div>
+          <button class="btn {{ calBtnClass }}" onClick="{{ toggleCal }}">{{ calLabel }}</button>
+        </div>
+      </div>
+      <div class="card" style="padding:26px;margin-bottom:20px">
+        <div class="kicker-accent" style="margin-bottom:6px">Availability</div>
+        <div class="card-title" style="margin-bottom:14px">Session &amp; scheduling rules</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="field"><label>Session length</label>
+            <select class="input" value="{{ availabilityRules.sessionLength }}" onChange="{{ setSessionLength }}">
+              <option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option><option value="90">90 min</option>
+            </select>
+          </div>
+          <div class="field"><label>Buffer between sessions</label>
+            <select class="input" value="{{ availabilityRules.buffer }}" onChange="{{ setBuffer }}">
+              <option value="0">No buffer</option><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-kicker" style="margin-bottom:8px">Available days</div>
+        <div style="display:flex;gap:8px;margin-bottom:20px">
+          <sc-for list="{{ dayToggles }}" as="d" hint-placeholder-count="7">
+            <button class="tag {{ d.tagClass }}" style="cursor:pointer;border:none" onClick="{{ d.toggle }}">{{ d.label }}</button>
+          </sc-for>
+        </div>
+        <div class="card-kicker" style="margin-bottom:8px">Recurring time slots</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+          <sc-for list="{{ slotChips }}" as="s" hint-placeholder-count="3">
+            <span class="tag tag-outline" style="display:flex;align-items:center;gap:6px">{{ s.time }}<button onClick="{{ s.remove }}" style="border:none;background:none;cursor:pointer;color:inherit;padding:0;font-size:13px;line-height:1">&times;</button></span>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px">
+          <input class="input" type="time" style="width:150px" value="{{ newSlotTime }}" onChange="{{ setNewSlotTime }}">
+          <button class="btn btn-secondary" onClick="{{ addSlot }}">+ Add time slot</button>
+        </div>
+      </div>
+      <div class="card" style="padding:28px">
+        <div class="card-title" style="margin-bottom:16px">Upcoming meetings</div>
+        <sc-for list="{{ meetings }}" as="m" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-top:1px solid var(--color-divider)">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div class="avatar-sm">{{ m.initials }}</div>
+              <div>
+                <div style="font-family:var(--font-body);font-weight:600">{{ m.name }}</div>
+                <div class="muted" style="font-family:var(--font-body);font-size:12.5px">{{ m.type }}</div>
+              </div>
+            </div>
+            <span class="muted" style="font-family:var(--font-body)">{{ m.time }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isDocuments }}" hint-placeholder-val="{{ false }}">
+    <div class="main anim-in">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div class="kicker-accent">Documents</div>
+        <button class="btn btn-primary">+ Upload</button>
+      </div>
+      <table class="table">
+        <thead><tr><th>Name</th><th>Client</th><th>Type</th><th>Uploaded</th></tr></thead>
+        <tbody>
+          <tr><td>12-Week Strength Program.pdf</td><td>John Alvarez</td><td>Workout plan</td><td>Jul 12</td></tr>
+          <tr><td>Nutrition Guide.pdf</td><td>All clients</td><td>Template</td><td>Jun 28</td></tr>
+          <tr><td>Onboarding Checklist.pdf</td><td>Priya Nair</td><td>Assignment</td><td>Jul 22</td></tr>
+        </tbody>
+      </table>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isChat }}" hint-placeholder-val="{{ false }}">
+    <div class="anim-in" style="display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 72px)">
+      <div style="border-right:1px solid var(--color-divider);overflow-y:auto">
+        <sc-for list="{{ chatList }}" as="c" hint-placeholder-count="5">
+          <div class="chat-list-item {{ c.activeClass }}" style="{{ c.activeStyle }};padding:14px 20px;border-bottom:1px solid var(--color-divider);cursor:pointer;display:flex;gap:10px;align-items:center" onClick="{{ c.onClick }}">
+            <div class="avatar-sm">{{ c.initials }}</div>
+            <div>
+              <div style="font-family:var(--font-body);font-weight:600;font-size:14px">{{ c.name }}</div>
+              <div class="muted" style="font-family:var(--font-body);font-size:12.5px;margin-top:2px">{{ c.preview }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div style="padding:18px 26px;border-bottom:1px solid var(--color-divider);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--font-heading);font-weight:600;font-size:16px">{{ activeChatName }}</span>
+          <button class="btn btn-secondary" onClick="{{ openBooking }}">Book a meeting</button>
+        </div>
+        <div style="flex:1;padding:26px;display:flex;flex-direction:column;gap:12px;overflow-y:auto">
+          <div class="chat-bubble" style="align-self:flex-start;background:var(--color-neutral-100);color:var(--color-text)">Hey Rahul, quick question about tomorrow's session — should I still do the fasted cardio beforehand?</div>
+          <div class="chat-bubble" style="align-self:flex-end;background:var(--color-accent-100);color:var(--color-text);border:1px solid var(--color-accent-500)">Good question — skip it this week, we're testing your squat max so save the energy.</div>
+          <div class="chat-bubble" style="align-self:flex-start;background:var(--color-neutral-100);color:var(--color-text)">Got it, thank you!</div>
+          <sc-for list="{{ attachments }}" as="att" hint-placeholder-count="0">
+            <div class="file-bubble" style="align-self:flex-end">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.8"><path d="{{ att.iconPath }}"></path></svg>
+              <span>{{ att.label }}</span>
+            </div>
+          </sc-for>
+          <sc-for list="{{ sentMessages }}" as="sm" hint-placeholder-count="0">
+            <div class="chat-bubble" style="align-self:flex-end;background:var(--color-accent-100);color:var(--color-text);border:1px solid var(--color-accent-500)">{{ sm.text }}</div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ isAttachMenuOpen }}" hint-placeholder-val="{{ false }}">
+        <div class="attach-menu">
+          <button class="attach-opt" onClick="{{ addAttachment.image }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg>
+            Image
+          </button>
+          <button class="attach-opt" onClick="{{ addAttachment.doc }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+            Document
+          </button>
+          <button class="attach-opt" onClick="{{ addAttachment.video }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m23 7-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2"></rect></svg>
+            Video
+          </button>
+          <button class="attach-opt" onClick="{{ addAttachment.link }}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+            Link
+          </button>
+        </div>
+        </sc-if>
+        <div style="padding:16px 26px;border-top:1px solid var(--color-divider);display:flex;gap:10px;align-items:center">
+          <button class="icon-btn" onClick="{{ toggleAttachMenu }}">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+          </button>
+          <button class="icon-btn" onClick="{{ suggestReply }}" title="Suggest AI reply">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+          </button>
+          <input class="input" placeholder="Write a message…" style="flex:1" value="{{ chatDraft }}" onChange="{{ setChatDraft }}">
+          <button class="btn btn-primary" onClick="{{ sendChatMessage }}">Send</button>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isPortal }}" hint-placeholder-val="{{ false }}">
+    <div class="anim-in" style="display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 72px)">
+      <div style="border-right:1px solid var(--color-divider);padding:28px 20px">
+        <div style="font-family:var(--font-heading);font-weight:600;font-size:15px;color:var(--color-accent-700);margin-bottom:6px">{{ niche.portalSlug }}</div>
+        <div class="muted" style="font-family:var(--font-body);font-size:12px;margin-bottom:20px">Client's view of the portal</div>
+        <sc-for list="{{ portalNav }}" as="n" hint-placeholder-count="8">
+          <div style="{{ n.activeStyle }};padding:9px 10px;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:14px;color:var(--color-text);margin-bottom:2px;cursor:pointer" onClick="{{ n.onClick }}">{{ n.label }}</div>
+        </sc-for>
+      </div>
+      <div style="padding:36px 40px;max-width:760px">
+
+        <sc-if value="{{ isPortalIntake }}" hint-placeholder-val="{{ false }}">
+        <span class="page-title">Onboarding</span>
+        <p class="muted" style="font-family:var(--font-body);font-size:13px;margin:6px 0 20px">A few quick questions so {{ niche.coachFirstName }} can personalize your plan from day one.</p>
+        <sc-if value="{{ isIntakeSubmitted }}" hint-placeholder-val="{{ false }}">
+        <div class="card" style="padding:22px;background:var(--color-accent-100);border-color:var(--color-accent-200)">
+          <div class="card-title" style="margin-bottom:6px">Thanks — you're all set!</div>
+          <p class="muted" style="font-family:var(--font-body);font-size:13.5px;margin:0">{{ niche.coachFirstName }} can already see your answers, and the AI briefing will factor them in.</p>
+        </div>
+        </sc-if>
+        <sc-if value="{{ isIntakeNotSubmitted }}" hint-placeholder-val="{{ true }}">
+        <div class="card" style="padding:22px">
+          <div class="field" style="margin-bottom:14px"><label>Primary goal</label><input class="input" placeholder="e.g. Lose 8kg and build a sustainable routine" value="{{ intakeGoals }}" onChange="{{ setIntakeGoals }}"></div>
+          <div class="field" style="margin-bottom:14px"><label>Experience level</label>
+            <select class="input" value="{{ intakeExperience }}" onChange="{{ setIntakeExperience }}">
+              <option value="Beginner">Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom:14px"><label>When are you usually available?</label><input class="input" placeholder="e.g. Weekday evenings" value="{{ intakeAvailability }}" onChange="{{ setIntakeAvailability }}"></div>
+          <div class="field"><label>Anything else your coach should know?</label><input class="input" placeholder="Optional" value="{{ intakeNotes }}" onChange="{{ setIntakeNotes }}"></div>
+          <button class="btn btn-primary" style="margin-top:16px" onClick="{{ submitIntake }}">Submit</button>
+        </div>
+        </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ isPortalDashboard }}" hint-placeholder-val="{{ true }}">
+        <span class="page-title">Welcome back, John</span>
+        <div class="card elev-sm" style="padding:20px;margin-top:24px">
+          <div class="card-kicker">Next session</div>
+          <div style="font-family:var(--font-body);font-size:15px;margin-top:6px">Thursday, Aug 1 · 6:00 PM with {{ niche.coachFirstName }}</div>
+          <button class="btn btn-secondary" style="margin-top:12px" onClick="{{ openBooking }}">Reschedule</button>
+        </div>
+        <div class="card" style="padding:20px;margin-top:16px">
+          <div class="card-title" style="margin-bottom:4px">Book a session</div>
+          <p class="muted" style="font-family:var(--font-body);font-size:12.5px;margin:0 0 12px">{{ niche.coachFirstName }} is available via:</p>
+          <div style="display:flex;gap:8px;margin-bottom:14px">
+            <span class="tag {{ googleTagClass }}">Google Meet</span>
+            <span class="tag {{ calTagClass }}">Cal.com</span>
+          </div>
+          <button class="btn btn-primary btn-block" onClick="{{ openBooking }}">See available times</button>
+        </div>
+        <div class="card" style="padding:20px;margin-top:16px">
+          <div class="card-title" style="margin-bottom:10px">This week's tasks</div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--color-divider);font-family:var(--font-body)"><span>Log 4 workouts</span><span class="tag tag-neutral">In progress</span></div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--color-divider);font-family:var(--font-body)"><span>Submit weekly check-in</span><span class="tag tag-accent">Due today</span></div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isPortalMessages }}" hint-placeholder-val="{{ false }}">
+        <span class="page-title">Messages</span>
+        <div class="card" style="margin-top:20px;padding:0;overflow:hidden">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--color-divider);font-family:var(--font-body);font-weight:600">{{ niche.coachName }}</div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:12px;min-height:220px">
+            <div class="chat-bubble" style="align-self:flex-start;background:var(--color-neutral-100);color:var(--color-text)">Hey! Quick question about tomorrow's session — should I still prep beforehand?</div>
+            <div class="chat-bubble" style="align-self:flex-end;background:var(--color-accent-100);color:var(--color-text);border:1px solid var(--color-accent-500)">Good question — no prep needed, just show up ready to work.</div>
+            <div class="chat-bubble" style="align-self:flex-start;background:var(--color-neutral-100);color:var(--color-text)">Got it, thank you!</div>
+          </div>
+          <div style="padding:14px 20px;border-top:1px solid var(--color-divider);display:flex;gap:10px">
+            <button class="icon-btn" onClick="{{ toggleAttachMenu }}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+            </button>
+            <input class="input" placeholder="Write a message…" style="flex:1">
+            <button class="btn btn-primary">Send</button>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isPortalTasks }}" hint-placeholder-val="{{ false }}">
+        <span class="page-title">Tasks</span>
+        <div class="card" style="margin-top:20px;padding:22px">
+          <sc-for list="{{ portalTasksView }}" as="t" hint-placeholder-count="4">
+            <div style="padding:11px 0;border-top:1px solid var(--color-divider)">
+              <sc-if value="{{ t.isEditing }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:8px;align-items:center">
+                <input class="input" style="flex:1" value="{{ editTaskTitle }}" onChange="{{ setEditTaskTitle }}">
+                <input class="input" type="date" style="width:150px" value="{{ editTaskDue }}" onChange="{{ setEditTaskDue }}">
+                <button class="btn btn-primary" onClick="{{ t.saveEdit }}">Save</button>
+              </div>
+              </sc-if>
+              <sc-if value="{{ t.isNotEditing }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div style="display:flex;gap:10px;align-items:flex-start">
+                  <input type="checkbox" checked="{{ t.done }}" onChange="{{ t.toggle }}" style="margin-top:3px;width:16px;height:16px;accent-color:var(--color-accent-600)">
+                  <div>
+                    <div style="font-family:var(--font-body);{{ t.doneStyle }}">{{ t.title }}</div>
+                    <div class="muted" style="font-family:var(--font-body);font-size:12px;margin-top:2px">Due {{ t.due }} · {{ t.addedByLabel }}</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <span class="tag {{ t.tagClass }}">{{ t.statusLabel }}</span>
+                  <button class="icon-btn" onClick="{{ t.startEdit }}" title="Edit">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+                  </button>
+                </div>
+              </div>
+              </sc-if>
+            </div>
+          </sc-for>
+          <div style="display:flex;gap:8px;margin-top:16px;border-top:1px solid var(--color-divider);padding-top:16px">
+            <input class="input" placeholder="Add a task…" style="flex:1" value="{{ taskTitle }}" onChange="{{ setTaskTitle }}">
+            <input class="input" type="date" style="width:150px" value="{{ taskDue }}" onChange="{{ setTaskDue }}">
+            <button class="btn btn-primary" onClick="{{ addPortalTask }}">Add</button>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isPortalCalendar }}" hint-placeholder-val="{{ false }}">
+        <span class="page-title">Calendar</span>
+        <div class="card" style="margin-top:20px;padding:22px">
+          <div class="card-kicker" style="margin-bottom:10px">Upcoming</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--color-divider)">
+            <span style="font-family:var(--font-body)">Session with {{ niche.coachFirstName }}</span>
+            <span class="muted" style="font-family:var(--font-body)">Thu, Aug 1 · 6:00 PM</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--color-divider)">
+            <span style="font-family:var(--font-body)">Progress check-in call</span>
+            <span class="muted" style="font-family:var(--font-body)">Tue, Aug 6 · 5:00 PM</span>
+          </div>
+          <button class="btn btn-primary" style="margin-top:16px" onClick="{{ openBooking }}">Book a new session</button>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isPortalFiles }}" hint-placeholder-val="{{ false }}">
+        <span class="page-title">Files</span>
+        <div class="card" style="margin-top:20px;padding:0;overflow:hidden">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid var(--color-divider);font-family:var(--font-body);font-size:14px"><span>Program.pdf</span><a href="#">Download</a></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid var(--color-divider);font-family:var(--font-body);font-size:14px"><span>Welcome Guide.pdf</span><a href="#">Download</a></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid var(--color-divider);font-family:var(--font-body);font-size:14px"><span>Week 4 Notes.pdf</span><a href="#">Download</a></div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isPortalProgress }}" hint-placeholder-val="{{ false }}">
+        <span class="page-title">Progress</span>
+        <div class="card" style="margin-top:20px;padding:22px">
+          <div style="display:flex;justify-content:space-between;font-family:var(--font-body);font-size:13px;margin-bottom:6px"><span>{{ selectedClient.progressLabel }}</span><span>{{ selectedClient.progress }}%</span></div>
+          <div class="progress-track"><div class="progress-fill" style="width:{{ selectedClient.progress }}%"></div></div>
+          <div style="display:flex;align-items:flex-start;margin-top:18px">
+            <sc-for list="{{ milestones }}" as="m" hint-placeholder-count="6">
+              <div style="flex:1;text-align:center;position:relative">
+                <div style="height:2px;background:var(--color-divider);position:absolute;top:7px;left:0;right:0;z-index:0"></div>
+                <div style="width:14px;height:14px;border-radius:50%;background:{{ m.dotBg }};border:2px solid {{ m.dotBorder }};margin:0 auto;position:relative;z-index:1"></div>
+                <div class="muted" style="font-family:var(--font-body);font-size:10.5px;margin-top:8px;padding:0 3px;line-height:1.3">{{ m.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <p class="muted" style="font-family:var(--font-body);font-size:13.5px;margin-top:16px">{{ selectedClient.notes }}</p>
+        </div>
+        <div class="card" style="margin-top:16px;padding:22px;background:var(--color-accent-100);border-color:var(--color-accent-200)">
+          <div class="card-kicker" style="margin-bottom:6px">AI Progress Insight</div>
+          <p style="font-family:var(--font-body);font-size:13.5px;margin:0;color:var(--color-text)">{{ progressInsight }}</p>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isPortalCheckin }}" hint-placeholder-val="{{ false }}">
+        <span class="page-title">Check-In</span>
+        <div style="display:flex;gap:8px;margin:16px 0 4px">
+          <button class="btn {{ dailyTabClass }}" onClick="{{ setCheckinTabDaily }}">Daily</button>
+          <button class="btn {{ weeklyTabClass }}" onClick="{{ setCheckinTabWeekly }}">Weekly</button>
+        </div>
+        <sc-if value="{{ isCheckinDaily }}" hint-placeholder-val="{{ true }}">
+        <div class="card" style="padding:22px;margin-top:12px">
+          <div class="field" style="margin-bottom:12px"><label>How did today go?</label>
+            <span class="seg"><span class="seg-opt">Low</span><span class="seg-opt">Okay</span><span class="seg-opt">Good</span><span class="seg-opt">Great</span></span>
+          </div>
+          <div class="field"><label>One line about today</label><input class="input" placeholder="e.g. Stuck to the meal plan, felt strong"></div>
+          <button class="btn btn-primary" style="margin-top:14px" onClick="{{ submitDailyCheckin }}">{{ dailyCheckinLabel }}</button>
+        </div>
+        </sc-if>
+        <sc-if value="{{ isCheckinWeekly }}" hint-placeholder-val="{{ false }}">
+        <div class="card" style="padding:22px;margin-top:12px">
+          <div class="field" style="margin-bottom:12px"><label>How's your mood this week?</label>
+            <span class="seg"><span class="seg-opt">Low</span><span class="seg-opt">Okay</span><span class="seg-opt">Good</span><span class="seg-opt">Great</span></span>
+          </div>
+          <div class="field" style="margin-bottom:12px"><label>Biggest win this week</label><input class="input" placeholder="e.g. Hit a new deadlift PR"></div>
+          <div class="field"><label>Any challenges?</label><input class="input" placeholder="Optional"></div>
+          <button class="btn btn-primary" style="margin-top:14px" onClick="{{ submitCheckin }}">{{ checkinLabel }}</button>
+        </div>
+        </sc-if>
+        </sc-if>
+
+        <sc-if value="{{ isPortalSettings }}" hint-placeholder-val="{{ false }}">
+        <span class="page-title">Settings</span>
+        <div class="card" style="padding:22px;margin-top:20px">
+          <div class="field" style="margin-bottom:12px"><label>Name</label><input class="input" value="John Alvarez"></div>
+          <div class="field" style="margin-bottom:12px"><label>Email</label><input class="input" value="john@email.com"></div>
+          <div class="field"><label>Timezone</label><input class="input" value="America/New_York"></div>
+          <button class="btn btn-secondary" style="margin-top:14px">Save changes</button>
+        </div>
+        </sc-if>
+
+      </div>
+    </div>
+    </sc-if>
+  </div>
+</div>
+
+<sc-if value="{{ isAddLeadOpen }}" hint-placeholder-val="{{ false }}">
+<div class="dialog-backdrop" onClick="{{ closeAddLead }}">
+  <div class="dialog" style="max-width:440px" onClick="{{ stopProp }}">
+    <div class="dialog-title">Add a lead</div>
+    <div class="dialog-body">
+      <div class="field" style="margin-bottom:12px"><label>Full name</label><input class="input" placeholder="e.g. Dana Lee"></div>
+      <div class="field" style="margin-bottom:12px"><label>Phone</label><input class="input" placeholder="+1 (555) 000-0000"></div>
+      <div class="field" style="margin-bottom:12px"><label>Email</label><input class="input" placeholder="dana@email.com"></div>
+      <div class="field" style="margin-bottom:12px"><label>Interested in</label><input class="input" placeholder="e.g. Strength coaching"></div>
+      <div class="field" style="margin-bottom:12px"><label>Lead stage</label>
+        <select class="input">
+          <option>New</option><option>Contacted</option><option>Follow Up</option><option>Booked</option><option>Converted</option><option>Lost</option>
+        </select>
+      </div>
+      <div class="field"><label>Notes</label><input class="input" placeholder="Optional"></div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" onClick="{{ closeAddLead }}">Cancel</button>
+      <button class="btn btn-primary" onClick="{{ closeAddLead }}">Add lead</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isAddClientOpen }}" hint-placeholder-val="{{ false }}">
+<div class="dialog-backdrop" onClick="{{ closeAddClient }}">
+  <div class="dialog" style="max-width:440px" onClick="{{ stopProp }}">
+    <div class="dialog-title">Add a client</div>
+    <div class="dialog-body">
+      <div class="field" style="margin-bottom:12px"><label>Full name</label><input class="input" placeholder="e.g. Alex Rivera"></div>
+      <div class="field" style="margin-bottom:12px"><label>Email</label><input class="input" placeholder="alex@email.com"></div>
+      <div class="field"><label>Program</label><input class="input" placeholder="e.g. 8-Week Coaching Program"></div>
+      <hr class="hr" style="margin:20px 0">
+      <div class="card-kicker">Or send your invite link</div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input class="input" value="coachapp.com/{{ niche.portalSlug }}" readonly style="flex:1">
+        <button class="btn btn-secondary" onClick="{{ copyInviteLink }}">{{ inviteCopyLabel }}</button>
+      </div>
+      <p class="muted" style="font-family:var(--font-body);font-size:12.5px;margin-top:8px;line-height:1.5">Clients who use this link create their own account and land in your roster automatically — no manual entry needed.</p>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" onClick="{{ closeAddClient }}">Cancel</button>
+      <button class="btn btn-primary" onClick="{{ closeAddClient }}">Add client</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isBookingOpen }}" hint-placeholder-val="{{ false }}">
+<div class="dialog-backdrop" onClick="{{ closeBooking }}">
+  <div class="dialog" style="max-width:420px" onClick="{{ stopProp }}">
+    <div class="dialog-title">Book with {{ selectedClient.name }}</div>
+    <div class="dialog-body">
+      <p class="muted" style="font-family:var(--font-body);font-size:13px;margin:0 0 14px">Booking via {{ bookingChannelLabel }}.</p>
+      <div class="card-kicker" style="margin-bottom:10px">Available this week</div>
+      <sc-for list="{{ slots }}" as="s" hint-placeholder-count="4">
+        <div class="clickable card" style="padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center" onClick="{{ s.onClick }}">
+          <span style="font-family:var(--font-body)">{{ s.label }}</span>
+          <span class="tag {{ s.tagClass }}">{{ s.tagText }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div class="dialog-actions"><button class="btn btn-ghost" onClick="{{ closeBooking }}">Close</button></div>
+  </div>
+</div>
+</sc-if>
+</sc-if>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;niche&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;fitness&quot;, &quot;options&quot;: [&quot;fitness&quot;, &quot;business&quot;, &quot;career&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Content&quot;},
+  &quot;sidebarTheme&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;dark&quot;, &quot;options&quot;: [&quot;dark&quot;, &quot;light&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Look&quot;},
+  &quot;briefingStyle&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;list&quot;, &quot;options&quot;: [&quot;list&quot;, &quot;narrative&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Look&quot;}
+}">
+class Component extends DCLogic {
+  state = {
+    view: 'landing', selectedClientId: 'john', activeChatId: 'john',
+    isAddClientOpen: false, isAddLeadOpen: false, isBookingOpen: false, isAttachMenuOpen: false,
+    inviteCopied: false, connectedGoogle: false, connectedCal: true,
+    bookedSlotId: 's2', attachments: [], portalView: 'dashboard', checkinSubmitted: false, themeDark: false,
+    chatDraft: '', sentMessages: [], sessionInputText: '', voiceState: 'idle', recordingSeconds: 0,
+    aiGenerated: false, aiSummary: '', aiActionItems: [], draftMessage: '', sessionSent: false,
+    clientTasksOverride: {}, taskTitle: '', taskDue: '', editingTaskId: null, editTaskTitle: '', editTaskDue: '',
+    checkinTab: 'daily', dailyCheckinSubmitted: false,
+    clientIntake: {}, intakeGoals: '', intakeExperience: 'Beginner', intakeAvailability: '', intakeNotes: '', intakeSubmittedFlag: false,
+    billingOverride: {}, invoiceAmount: '', invoiceDue: '',
+    availabilityRules: { sessionLength: '60', buffer: '15', days: { Mon: true, Tue: true, Wed: true, Thu: true, Fri: true, Sat: false, Sun: false }, slots: ['9:00 AM', '2:00 PM', '5:00 PM'] },
+    newSlotTime: ''
+  };
+
+  formatTime(v) {
+    const [h, m] = v.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hh = ((h + 11) % 12) + 1;
+    return `${hh}:${String(m).padStart(2, '0')} ${period}`;
+  }
+  toggleDay(day) { this.setState(s => ({ availabilityRules: { ...s.availabilityRules, days: { ...s.availabilityRules.days, [day]: !s.availabilityRules.days[day] } } })); }
+  addSlot() {
+    if (!this.state.newSlotTime) return;
+    const label = this.formatTime(this.state.newSlotTime);
+    this.setState(s => ({ availabilityRules: { ...s.availabilityRules, slots: [...s.availabilityRules.slots, label] }, newSlotTime: '' }));
+  }
+  removeSlot(idx) { this.setState(s => ({ availabilityRules: { ...s.availabilityRules, slots: s.availabilityRules.slots.filter((_, i) => i !== idx) } })); }
+  getBilling(clientId) { return this.state.billingOverride[clientId] || { validUntil: '', invoices: [] }; }
+  setBilling(clientId, billing) { this.setState(s => ({ billingOverride: { ...s.billingOverride, [clientId]: billing } })); }
+  addInvoice(clientId) {
+    if (!this.state.invoiceAmount) return;
+    const billing = this.getBilling(clientId);
+    const invoices = [...billing.invoices, { id: 'i' + Date.now(), amount: this.state.invoiceAmount, due: this.state.invoiceDue || 'No date', paid: false }];
+    this.setBilling(clientId, { ...billing, invoices });
+    this.setState({ invoiceAmount: '', invoiceDue: '' });
+  }
+  toggleInvoicePaid(clientId, invId) {
+    const billing = this.getBilling(clientId);
+    this.setBilling(clientId, { ...billing, invoices: billing.invoices.map(i => i.id === invId ? { ...i, paid: !i.paid } : i) });
+  }
+  buildMilestones(progress) {
+    const steps = [
+      { label: 'Kickoff', pct: 0 }, { label: 'Foundations', pct: 20 }, { label: 'Midpoint review', pct: 45 },
+      { label: 'Momentum phase', pct: 70 }, { label: 'Final stretch', pct: 90 }, { label: 'Complete', pct: 100 }
+    ];
+    let currentSet = false;
+    return steps.map(s => {
+      let state;
+      if (progress >= s.pct) state = 'done';
+      else if (!currentSet) { state = 'current'; currentSet = true; }
+      else state = 'upcoming';
+      return {
+        label: s.label,
+        dotBg: state === 'done' ? 'var(--color-accent-600)' : 'var(--color-bg)',
+        dotBorder: state === 'upcoming' ? 'var(--color-neutral-300)' : 'var(--color-accent-600)'
+      };
+    });
+  }
+
+  getTasksList(clientId) {
+    if (this.state.clientTasksOverride[clientId]) return this.state.clientTasksOverride[clientId];
+    return [
+      { id: 't1', title: 'Log 4 workouts', due: 'Sunday', done: false, addedBy: 'coach' },
+      { id: 't2', title: 'Submit weekly check-in', due: 'Today', done: false, addedBy: 'coach' },
+      { id: 't3', title: 'Review nutrition guide', due: 'Aug 2', done: false, addedBy: 'coach' },
+      { id: 't4', title: 'Upload progress photo', due: 'Aug 3', done: false, addedBy: 'coach' }
+    ];
+  }
+  setTasksList(clientId, list) { this.setState(s => ({ clientTasksOverride: { ...s.clientTasksOverride, [clientId]: list } })); }
+  toggleTask(clientId, taskId) { this.setTasksList(clientId, this.getTasksList(clientId).map(t => t.id === taskId ? { ...t, done: !t.done } : t)); }
+  addTask(clientId, addedBy) {
+    const title = this.state.taskTitle.trim();
+    if (!title) return;
+    const due = this.state.taskDue || 'No due date';
+    this.setTasksList(clientId, [...this.getTasksList(clientId), { id: 't' + Date.now(), title, due, done: false, addedBy }]);
+    this.setState({ taskTitle: '', taskDue: '' });
+  }
+  saveEditTask(clientId) {
+    const list = this.getTasksList(clientId).map(t => t.id === this.state.editingTaskId ? { ...t, title: this.state.editTaskTitle, due: this.state.editTaskDue } : t);
+    this.setTasksList(clientId, list);
+    this.setState({ editingTaskId: null });
+  }
+
+  go(view, extra) { this.setState({ view, ...extra }); }
+  stopProp(e) { e.stopPropagation(); }
+
+  startRecording() {
+    this.setState({ voiceState: 'recording', recordingSeconds: 0 });
+    this._recTimer = setInterval(() => this.setState(s => ({ recordingSeconds: Math.min(60, s.recordingSeconds + 1) })), 1000);
+  }
+  stopRecording(client) {
+    clearInterval(this._recTimer);
+    this.setState({ voiceState: 'transcribing' });
+    setTimeout(() => {
+      const transcript = `Session with ${client.name}: covered ${client.program}. ${client.notes}`;
+      this.setState({ voiceState: 'idle', sessionInputText: transcript });
+    }, 1200);
+  }
+  generateFollowUp(client) {
+    const text = this.state.sessionInputText.trim();
+    const base = text || `${client.name} is at ${client.progress}% through ${client.program} (${client.progressLabel}).`;
+    const summary = `${client.name}: ${base}`;
+    const actionItems = [
+      `Log this session summary to ${client.name}'s file`,
+      `Follow up before next session on: ${base.slice(0, 70)}${base.length > 70 ? '…' : ''}`,
+      `Check in on ${client.tag2 || client.tag1} progress next cycle`
+    ];
+    const draftMessage = `Hi ${client.name.split(' ')[0]}, quick recap from today: ${base} Keep up the great work — see you at our next session!`;
+    this.setState({ aiGenerated: true, aiSummary: summary, aiActionItems: actionItems, draftMessage });
+  }
+  toggleTheme() {
+    this.setState(s => {
+      const next = !s.themeDark;
+      document.documentElement.classList.toggle('dark', next);
+      return { themeDark: next };
+    });
+  }
+
+  getNiches() {
+    return {
+      fitness: {
+        coachName: 'Rahul Sharma', coachFirstName: 'Rahul', coachTitle: 'Fitness Coach', avatarInitials: 'RS', portalSlug: 'rahulfitness',
+        clients: [
+          { id: 'john', initials: 'JA', name: 'John Alvarez', program: '12-Week Strength Rebuild', status: 'Active', statusClass: 'tag-live', progress: 67, progressLabel: 'Week 8 of 12', joined: 'Feb 3, 2026', tag1: 'Strength', tag2: 'Renewal soon', goal: 'Build sustainable strength training habit, lose 6kg by end of program, deadlift bodyweight by week 12.', notes: 'Strong session Tuesday, form on squats is much cleaner. Watch recovery — mentioned poor sleep twice this week.' },
+          { id: 'sofia', initials: 'SR', name: 'Sofia Ruiz', program: 'Weight Loss Program', status: 'Active', statusClass: 'tag-live', progress: 81, progressLabel: 'Week 10 of 12', joined: 'Jan 8, 2026', tag1: 'Nutrition', tag2: 'Top performer', goal: 'Lose 8kg and build a repeatable meal-prep routine.', notes: 'Excellent adherence, hit every check-in this month. Ready to plan maintenance phase.' },
+          { id: 'hank', initials: 'HS', name: 'Hank Silva', program: 'Strength &amp; Conditioning', status: 'At risk', statusClass: 'tag-risk', progress: 30, progressLabel: 'Week 3 of 12', joined: 'Jul 1, 2026', tag1: 'Strength', tag2: 'At risk', goal: 'Return to pre-injury deadlift numbers safely.', notes: "Missed two sessions in a row — hasn't responded in 5 days." },
+          { id: 'maria', initials: 'ML', name: 'Maria Lopez', program: 'Marathon Training', status: 'Active', statusClass: 'tag-live', progress: 58, progressLabel: 'Week 7 of 14', joined: 'Mar 15, 2026', tag1: 'Endurance', tag2: '', goal: 'Finish first marathon under 4:15.', notes: 'Long run pace improving steadily; watch shin soreness.' },
+          { id: 'chris', initials: 'CB', name: 'Chris Byrne', program: 'Mobility Reset', status: 'Active', statusClass: 'tag-live', progress: 45, progressLabel: 'Week 4 of 8', joined: 'Jun 2, 2026', tag1: 'Mobility', tag2: '', goal: 'Resolve chronic lower-back tightness.', notes: 'Reports noticeably less stiffness in the mornings.' },
+          { id: 'dana', initials: 'DK', name: 'Dana Kim', program: 'HIIT Program', status: 'Active', statusClass: 'tag-live', progress: 72, progressLabel: 'Week 6 of 8', joined: 'May 20, 2026', tag1: 'Conditioning', tag2: '', goal: 'Improve conditioning ahead of a fitness test.', notes: 'Consistent attendance, pushing intensity well.' }
+        ],
+        leadColumns: [
+          { name: 'New', count: 2, leads: [{ name: 'Amanda Torres', interest: 'Weight loss' }, { name: 'Ben Kim', interest: 'Strength' }] },
+          { name: 'Contacted', count: 1, leads: [{ name: 'Fay Chen', interest: 'Marathon training' }] },
+          { name: 'Follow Up', count: 2, leads: [{ name: 'Eli Ross', interest: 'General fitness' }, { name: 'Owen Frost', interest: 'HIIT' }] },
+          { name: 'Booked', count: 1, leads: [{ name: 'Ivy Brandt', interest: 'Mobility' }] },
+          { name: 'Converted', count: 1, leads: [{ name: 'Grace Oduya', interest: 'Strength' }] },
+          { name: 'Lost', count: 1, leads: [{ name: 'Sam Okafor', interest: 'Nutrition' }] }
+        ],
+        tasksList: [
+          { title: "Review John's check-in", priority: 'High', tagClass: 'tag-accent' },
+          { title: 'Send renewal invoice — Hank', priority: 'High', tagClass: 'tag-accent' },
+          { title: "Update Maria's program", priority: 'Medium', tagClass: 'tag-neutral' }
+        ],
+        activity: ['Sofia Ruiz completed Week 6 tasks', 'New lead: Amanda Torres (Instagram)', 'John Alvarez uploaded a progress photo'],
+        meetingTypes: ['Strength check-in', 'Weekly session', 'Program review', 'HIIT session'],
+        testimonialQuote: "I used to lose clients because I forgot to follow up. Now the briefing tells me before it's a problem.",
+        testimonialAttribution: 'Early access fitness coach, 40+ active clients'
+      },
+      business: {
+        coachName: 'Elena Cross', coachFirstName: 'Elena', coachTitle: 'Business Coach', avatarInitials: 'EC', portalSlug: 'elenaconsulting',
+        clients: [
+          { id: 'marcus', initials: 'MW', name: 'Marcus Webb', program: 'Founder Mentorship', status: 'At risk', statusClass: 'tag-risk', progress: 22, progressLabel: 'Week 2 of 10', joined: 'Jun 30, 2026', tag1: 'Business', tag2: 'At risk', goal: 'Validate pricing model and close first 10 paying customers.', notes: "Hasn't responded in 5 days, attendance dropped last two sessions — recommend a check-in call." },
+          { id: 'grace', initials: 'GO', name: 'Grace Oduya', program: 'Executive Coaching', status: 'Active', statusClass: 'tag-live', progress: 55, progressLabel: 'Week 5 of 10', joined: 'Apr 2, 2026', tag1: 'Leadership', tag2: 'Renewal soon', goal: 'Improve executive presence ahead of board presentations.', notes: 'Confident progress on delivery style; still working on concise framing.' },
+          { id: 'owen', initials: 'OF', name: 'Owen Frost', program: 'Scaling Operations', status: 'Active', statusClass: 'tag-live', progress: 48, progressLabel: 'Week 4 of 8', joined: 'May 11, 2026', tag1: 'Operations', tag2: '', goal: 'Build a repeatable hiring process for the next 5 roles.', notes: 'First playbook draft is solid, needs a review pass.' },
+          { id: 'nina', initials: 'NP', name: 'Nina Patel', program: 'Pricing Strategy', status: 'Active', statusClass: 'tag-live', progress: 63, progressLabel: 'Week 6 of 8', joined: 'Mar 3, 2026', tag1: 'Strategy', tag2: 'Top performer', goal: 'Restructure pricing tiers to lift margin by 15%.', notes: 'New pricing page tested well with early customers.' },
+          { id: 'leo', initials: 'LZ', name: 'Leo Zhang', program: 'Fundraising Prep', status: 'Active', statusClass: 'tag-live', progress: 35, progressLabel: 'Week 3 of 10', joined: 'Jul 8, 2026', tag1: 'Fundraising', tag2: '', goal: 'Close a $1.5M seed round in the next quarter.', notes: 'Pitch deck narrative much tighter after last session.' },
+          { id: 'tara', initials: 'TS', name: 'Tara Singh', program: 'Leadership Systems', status: 'Active', statusClass: 'tag-live', progress: 70, progressLabel: 'Week 7 of 10', joined: 'Feb 19, 2026', tag1: 'Leadership', tag2: '', goal: 'Delegate effectively across a newly doubled team.', notes: 'Weekly 1:1 cadence with reports is sticking well.' }
+        ],
+        leadColumns: [
+          { name: 'New', count: 2, leads: [{ name: 'Priya Nair', interest: 'Consulting' }, { name: 'Dana Lee', interest: 'Ops strategy' }] },
+          { name: 'Contacted', count: 1, leads: [{ name: 'Ben Kim', interest: 'Fundraising' }] },
+          { name: 'Follow Up', count: 2, leads: [{ name: 'Fay Chen', interest: 'Pricing' }, { name: 'Eli Ross', interest: 'Leadership' }] },
+          { name: 'Booked', count: 1, leads: [{ name: 'Ivy Brandt', interest: 'Scaling ops' }] },
+          { name: 'Converted', count: 1, leads: [{ name: 'Sofia Ruiz', interest: 'Founder mentorship' }] },
+          { name: 'Lost', count: 1, leads: [{ name: 'Chris Byrne', interest: 'Consulting' }] }
+        ],
+        tasksList: [
+          { title: "Review Marcus's pricing model", priority: 'High', tagClass: 'tag-accent' },
+          { title: 'Send renewal invoice — Grace', priority: 'High', tagClass: 'tag-accent' },
+          { title: "Update Owen's playbook draft", priority: 'Medium', tagClass: 'tag-neutral' }
+        ],
+        activity: ['Nina Patel completed Week 6 tasks', 'New lead: Priya Nair (referral)', 'Marcus Webb uploaded a pitch deck'],
+        meetingTypes: ['Founder check-in', 'Executive session', 'Ops review', 'Fundraising prep'],
+        testimonialQuote: 'My old spreadsheet never told me who was going quiet. Now I know before a client churns.',
+        testimonialAttribution: 'Early access business coach, 30+ active clients'
+      },
+      career: {
+        coachName: 'Maya Patel', coachFirstName: 'Maya', coachTitle: 'Career Coach', avatarInitials: 'MP', portalSlug: 'mayacareers',
+        clients: [
+          { id: 'priya', initials: 'PN', name: 'Priya Nair', program: 'Career Transition Coaching', status: 'Active', statusClass: 'tag-live', progress: 40, progressLabel: 'Week 3 of 8', joined: 'May 19, 2026', tag1: 'Career', tag2: 'New client', goal: 'Land a senior PM role within 3 months, sharpen interview storytelling.', notes: 'Great momentum after mock interview. Needs a refreshed resume draft by Friday.' },
+          { id: 'jordan', initials: 'JB', name: 'Jordan Blake', program: 'Resume &amp; Interview Prep', status: 'Active', statusClass: 'tag-live', progress: 60, progressLabel: 'Week 4 of 6', joined: 'Apr 14, 2026', tag1: 'Interviewing', tag2: 'Top performer', goal: 'Convert 3 first-round interviews into offers.', notes: 'Nailed the behavioral round this week, one offer pending.' },
+          { id: 'sam', initials: 'SO', name: 'Sam Okafor', program: 'Promotion Strategy', status: 'At risk', statusClass: 'tag-risk', progress: 25, progressLabel: 'Week 2 of 8', joined: 'Jun 25, 2026', tag1: 'Promotion', tag2: 'At risk', goal: 'Build the case for a promotion to staff engineer.', notes: "Hasn't responded in 5 days — was due to send a draft promo doc." },
+          { id: 'alex', initials: 'AR', name: 'Alex Rivera', program: 'Career Pivot', status: 'Active', statusClass: 'tag-live', progress: 50, progressLabel: 'Week 4 of 8', joined: 'Mar 30, 2026', tag1: 'Pivot', tag2: '', goal: 'Move from finance into product management.', notes: 'Informational interviews going well, two referrals lined up.' },
+          { id: 'nora', initials: 'NB', name: 'Nora Bennett', program: 'Salary Negotiation', status: 'Active', statusClass: 'tag-live', progress: 80, progressLabel: 'Week 5 of 6', joined: 'Feb 9, 2026', tag1: 'Negotiation', tag2: 'Renewal soon', goal: 'Negotiate a 20% increase on a pending offer.', notes: 'Offer letter arrived — prepping counter script for Monday.' },
+          { id: 'theo', initials: 'TM', name: 'Théo Martin', program: 'Executive Search Prep', status: 'Active', statusClass: 'tag-live', progress: 33, progressLabel: 'Week 2 of 6', joined: 'Jul 5, 2026', tag1: 'Executive', tag2: '', goal: 'Position for VP-level roles with recruiters.', notes: 'LinkedIn narrative rewritten, strong early recruiter response.' }
+        ],
+        leadColumns: [
+          { name: 'New', count: 2, leads: [{ name: 'John Alvarez', interest: 'Career pivot' }, { name: 'Ben Kim', interest: 'Interview prep' }] },
+          { name: 'Contacted', count: 1, leads: [{ name: 'Dana Lee', interest: 'Promotion strategy' }] },
+          { name: 'Follow Up', count: 2, leads: [{ name: 'Fay Chen', interest: 'Resume review' }, { name: 'Eli Ross', interest: 'Salary negotiation' }] },
+          { name: 'Booked', count: 1, leads: [{ name: 'Ivy Brandt', interest: 'Executive search' }] },
+          { name: 'Converted', count: 1, leads: [{ name: 'Owen Frost', interest: 'Career transition' }] },
+          { name: 'Lost', count: 1, leads: [{ name: 'Hank Silva', interest: 'Interview prep' }] }
+        ],
+        tasksList: [
+          { title: "Review Priya's resume draft", priority: 'High', tagClass: 'tag-accent' },
+          { title: 'Send renewal invoice — Nora', priority: 'High', tagClass: 'tag-accent' },
+          { title: "Follow up on Sam's promo doc", priority: 'Medium', tagClass: 'tag-neutral' }
+        ],
+        activity: ['Jordan Blake completed Week 4 tasks', 'New lead: John Alvarez (LinkedIn)', 'Priya Nair uploaded an updated resume'],
+        meetingTypes: ['Discovery call', 'Mock interview', 'Strategy session', 'Negotiation prep'],
+        testimonialQuote: 'Between resumes, mock interviews and follow-ups, I was the bottleneck. Now the briefing does the triage for me.',
+        testimonialAttribution: 'Early access career coach, 25+ active clients'
+      }
+    };
+  }
+
+  renderVals() {
+    const v = this.state.view;
+    const nicheKey = ['fitness', 'business', 'career'].includes(this.props.niche) ? this.props.niche : 'fitness';
+    const niche = this.getNiches()[nicheKey];
+    niche.milestoneClientName = niche.clients[0].name;
+    const clientsData = niche.clients;
+    const selectedClient = clientsData.find(c => c.id === this.state.selectedClientId) || clientsData[0];
+    const chatPeople = clientsData.slice(0, 4).map((c, i) => ({ id: c.id, initials: c.initials, name: c.name, preview: ['Got it, thank you!', 'Can we move Thursday?', 'Sent my check-in!', "Loved this week's plan"][i] }));
+    const activeChatPerson = chatPeople.find(c => c.id === this.state.activeChatId) || chatPeople[0];
+    const sidebarClass = 'sidebar' + (this.props.sidebarTheme === 'light' ? ' sidebar-light' : '');
+
+    const navMap = { dashboard: 'Dashboard', leads: 'Leads', clients: 'Clients', chat: 'Chat', calendar: 'Calendar', documents: 'Documents', portal: 'Client Portal' };
+    const navClass = {};
+    Object.keys(navMap).forEach(k => { navClass[k] = (v === k || (k === 'clients' && v === 'client-profile')) ? 'active' : ''; });
+
+    const titles = { dashboard: 'Dashboard', leads: 'Leads', clients: 'Clients', 'client-profile': selectedClient.name, chat: 'Chat', calendar: 'Calendar', documents: 'Documents', portal: 'Client Portal' };
+
+    return {
+      isLanding: v === 'landing',
+      isApp: v !== 'landing',
+      isDashboard: v === 'dashboard',
+      isLeads: v === 'leads',
+      isClients: v === 'clients',
+      isClientProfile: v === 'client-profile',
+      isChat: v === 'chat',
+      isCalendar: v === 'calendar',
+      isDocuments: v === 'documents',
+      isPortal: v === 'portal',
+      pageTitle: titles[v] || 'Dashboard',
+      navClass,
+      sidebarClass,
+      niche,
+      isDark: this.state.themeDark,
+      isLightMode: !this.state.themeDark,
+      toggleTheme: () => this.toggleTheme(),
+      isBriefingList: this.props.briefingStyle !== 'narrative',
+      isBriefingNarrative: this.props.briefingStyle === 'narrative',
+      isAddClientOpen: this.state.isAddClientOpen,
+      isBookingOpen: this.state.isBookingOpen,
+      isAttachMenuOpen: this.state.isAttachMenuOpen,
+      openAddClient: () => this.setState({ isAddClientOpen: true }),
+      closeAddClient: () => this.setState({ isAddClientOpen: false }),
+      isAddLeadOpen: this.state.isAddLeadOpen,
+      openAddLead: () => this.setState({ isAddLeadOpen: true }),
+      closeAddLead: () => this.setState({ isAddLeadOpen: false }),
+      openBooking: () => this.setState({ isBookingOpen: true }),
+      closeBooking: () => this.setState({ isBookingOpen: false }),
+      toggleAttachMenu: () => this.setState(s => ({ isAttachMenuOpen: !s.isAttachMenuOpen })),
+      stopProp: (e) => this.stopProp(e),
+      isVoiceIdle: this.state.voiceState === 'idle' && !this.state.aiGenerated,
+      isVoiceRecording: this.state.voiceState === 'recording',
+      isVoiceTranscribing: this.state.voiceState === 'transcribing',
+      isFollowUpReady: this.state.aiGenerated,
+      recordingTime: `0:${String(this.state.recordingSeconds).padStart(2, '0')}`,
+      sessionInputText: this.state.sessionInputText,
+      setSessionInputText: (e) => this.setState({ sessionInputText: e.target.value }),
+      startRecording: () => this.startRecording(),
+      stopRecording: () => this.stopRecording(selectedClient),
+      generateFollowUp: () => this.generateFollowUp(selectedClient),
+      aiSummary: this.state.aiSummary,
+      aiActionItems: this.state.aiActionItems,
+      draftMessage: this.state.draftMessage,
+      setDraftMessage: (e) => this.setState({ draftMessage: e.target.value }),
+      resetSessionAssistant: () => this.setState({ aiGenerated: false, sessionInputText: '', draftMessage: '', sessionSent: false }),
+      sendFollowUp: () => { this.setState({ sessionSent: true }); setTimeout(() => this.setState({ sessionSent: false }), 2000); },
+      sendFollowUpLabel: this.state.sessionSent ? 'Sent ✓' : 'Review & send to client',
+      chatDraft: this.state.chatDraft,
+      setChatDraft: (e) => this.setState({ chatDraft: e.target.value }),
+      sentMessages: this.state.sentMessages,
+      sendChatMessage: () => { if (!this.state.chatDraft.trim()) return; this.setState(s => ({ sentMessages: [...s.sentMessages, { text: s.chatDraft }], chatDraft: '' })); },
+      suggestReply: () => {
+        const c = clientsData.find(cl => cl.id === this.state.activeChatId) || clientsData[0];
+        const suggestion = `Great to hear from you — you're at ${c.progress}% through ${c.program} (${c.progressLabel}). ${c.notes.split('.')[0]}. Let's keep the momentum going into our next session.`;
+        this.setState({ chatDraft: suggestion });
+      },
+      progressInsight: (() => {
+        const trend = selectedClient.progress >= 70 ? 'ahead of pace' : selectedClient.progress >= 45 ? 'on pace' : 'behind pace — worth extra attention';
+        return `You're ${trend} at ${selectedClient.progress}% through ${selectedClient.progressLabel}. ${selectedClient.notes}`;
+      })(),
+      inviteCopyLabel: this.state.inviteCopied ? 'Copied!' : 'Copy link',
+      copyInviteLink: () => { this.setState({ inviteCopied: true }); setTimeout(() => this.setState({ inviteCopied: false }), 1500); },
+      googleLabel: this.state.connectedGoogle ? 'Connected' : 'Connect',
+      googleBtnClass: this.state.connectedGoogle ? 'btn-primary' : 'btn-secondary',
+      googleStatusText: this.state.connectedGoogle ? 'Connected — availability synced' : 'Not connected',
+      googleTagClass: this.state.connectedGoogle ? 'tag-accent' : 'tag-outline',
+      toggleGoogle: () => this.setState(s => ({ connectedGoogle: !s.connectedGoogle })),
+      calLabel: this.state.connectedCal ? 'Connected' : 'Connect',
+      calBtnClass: this.state.connectedCal ? 'btn-primary' : 'btn-secondary',
+      calStatusText: this.state.connectedCal ? 'Connected — availability synced' : 'Not connected',
+      calTagClass: this.state.connectedCal ? 'tag-accent' : 'tag-outline',
+      toggleCal: () => this.setState(s => ({ connectedCal: !s.connectedCal })),
+      bookingChannelLabel: this.state.connectedCal ? 'Cal.com' : (this.state.connectedGoogle ? 'Google Meet' : 'no connected tool yet'),
+      slots: [
+        { id: 's1', label: 'Wed, Jul 30 · 9:00 AM' },
+        { id: 's2', label: 'Wed, Jul 30 · 2:00 PM' },
+        { id: 's3', label: 'Thu, Jul 31 · 11:00 AM' },
+        { id: 's4', label: 'Fri, Aug 1 · 4:30 PM' }
+      ].map(s => ({
+        ...s,
+        tagText: this.state.bookedSlotId === s.id ? 'Booked' : 'Available',
+        tagClass: this.state.bookedSlotId === s.id ? 'tag-accent' : 'tag-outline',
+        onClick: () => this.setState({ bookedSlotId: s.id })
+      })),
+      attachments: this.state.attachments,
+      addAttachment: {
+        image: () => this.setState(s => ({ attachments: [...s.attachments, { label: 'progress-photo.jpg', iconPath: 'M3 3h18v18H3zM8.5 8.5a1.5 1.5 0 1 0 0 .01M21 15l-5-5L5 21' }], isAttachMenuOpen: false })),
+        doc: () => this.setState(s => ({ attachments: [...s.attachments, { label: 'session-notes.pdf', iconPath: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6' }], isAttachMenuOpen: false })),
+        video: () => this.setState(s => ({ attachments: [...s.attachments, { label: 'form-check.mp4', iconPath: 'M23 7l-7 5 7 5V7zM1 5h15v14H1z' }], isAttachMenuOpen: false })),
+        link: () => this.setState(s => ({ attachments: [...s.attachments, { label: 'coachapp.com/resource', iconPath: 'M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71' }], isAttachMenuOpen: false }))
+      },
+      goDashboard: () => this.go('dashboard'),
+      goLeads: () => this.go('leads'),
+      goClients: () => this.go('clients'),
+      goChat: () => this.go('chat'),
+      goCalendar: () => this.go('calendar'),
+      goDocuments: () => this.go('documents'),
+      goPortal: () => this.go('portal'),
+      goJohn: () => this.go('client-profile', { selectedClientId: niche.milestoneClientName && clientsData[0].id }),
+      selectedClient,
+      clients: clientsData.map(c => ({ ...c, onClick: () => this.go('client-profile', { selectedClientId: c.id }) })),
+      meetings: clientsData.slice(0, 4).map((c, i) => ({ name: c.name, initials: c.initials, type: niche.meetingTypes[i], time: ['9:00 AM', '11:30 AM', '2:00 PM', '4:30 PM'][i], onClick: () => this.go('client-profile', { selectedClientId: c.id }) })),
+      messagesPreview: clientsData.slice(1, 4).map((c, i) => ({ name: c.name, preview: ['Can we move Thursday to Friday?', 'Sent my check-in, let me know!', "Loved this week's plan"][i] })),
+      tasksList: niche.tasksList,
+      activity: niche.activity,
+      leadColumns: niche.leadColumns,
+      portalNav: [
+        ['intake', 'Onboarding'], ['dashboard', 'Dashboard'], ['messages', 'Messages'], ['tasks', 'Tasks'], ['calendar', 'Calendar'],
+        ['files', 'Files'], ['progress', 'Progress'], ['checkin', 'Check-In'], ['settings', 'Settings']
+      ].map(([key, label]) => ({
+        label,
+        activeStyle: this.state.portalView === key ? 'background:var(--color-accent-100);color:var(--color-accent-700)' : '',
+        onClick: () => this.setState({ portalView: key })
+      })),
+      isPortalIntake: this.state.portalView === 'intake',
+      isPortalDashboard: this.state.portalView === 'dashboard',
+      isPortalMessages: this.state.portalView === 'messages',
+      isPortalTasks: this.state.portalView === 'tasks',
+      isPortalCalendar: this.state.portalView === 'calendar',
+      isPortalFiles: this.state.portalView === 'files',
+      isPortalProgress: this.state.portalView === 'progress',
+      isPortalCheckin: this.state.portalView === 'checkin',
+      isPortalSettings: this.state.portalView === 'settings',
+      portalTasksView: this.getTasksList(selectedClient.id).map(t => ({
+        ...t,
+        isEditing: this.state.editingTaskId === t.id,
+        isNotEditing: this.state.editingTaskId !== t.id,
+        doneStyle: t.done ? 'text-decoration:line-through;color:var(--color-neutral-600)' : '',
+        tagClass: t.done ? 'tag-live' : 'tag-accent',
+        statusLabel: t.done ? 'Done' : 'Due ' + t.due,
+        addedByLabel: t.addedBy === 'coach' ? `Added by ${niche.coachFirstName}` : 'Added by you',
+        toggle: () => this.toggleTask(selectedClient.id, t.id),
+        startEdit: () => this.setState({ editingTaskId: t.id, editTaskTitle: t.title, editTaskDue: t.due }),
+        saveEdit: () => this.saveEditTask(selectedClient.id)
+      })),
+      coachTasksView: this.getTasksList(selectedClient.id).map(t => ({
+        ...t,
+        isEditing: this.state.editingTaskId === t.id,
+        isNotEditing: this.state.editingTaskId !== t.id,
+        doneStyle: t.done ? 'text-decoration:line-through;color:var(--color-neutral-600)' : '',
+        tagClass: t.done ? 'tag-live' : 'tag-accent',
+        statusLabel: t.done ? 'Done' : 'Due ' + t.due,
+        addedByLabel: t.addedBy === 'coach' ? 'Added by you' : `Added by ${selectedClient.name.split(' ')[0]}`,
+        toggle: () => this.toggleTask(selectedClient.id, t.id),
+        startEdit: () => this.setState({ editingTaskId: t.id, editTaskTitle: t.title, editTaskDue: t.due }),
+        saveEdit: () => this.saveEditTask(selectedClient.id)
+      })),
+      taskTitle: this.state.taskTitle,
+      setTaskTitle: (e) => this.setState({ taskTitle: e.target.value }),
+      taskDue: this.state.taskDue,
+      setTaskDue: (e) => this.setState({ taskDue: e.target.value }),
+      editTaskTitle: this.state.editTaskTitle,
+      setEditTaskTitle: (e) => this.setState({ editTaskTitle: e.target.value }),
+      editTaskDue: this.state.editTaskDue,
+      setEditTaskDue: (e) => this.setState({ editTaskDue: e.target.value }),
+      addPortalTask: () => this.addTask(selectedClient.id, 'client'),
+      addCoachTask: () => this.addTask(selectedClient.id, 'coach'),
+      isCheckinDaily: this.state.checkinTab === 'daily',
+      isCheckinWeekly: this.state.checkinTab === 'weekly',
+      dailyTabClass: this.state.checkinTab === 'daily' ? 'btn-primary' : 'btn-secondary',
+      weeklyTabClass: this.state.checkinTab === 'weekly' ? 'btn-primary' : 'btn-secondary',
+      setCheckinTabDaily: () => this.setState({ checkinTab: 'daily' }),
+      setCheckinTabWeekly: () => this.setState({ checkinTab: 'weekly' }),
+      dailyCheckinLabel: this.state.dailyCheckinSubmitted ? 'Submitted ✓' : 'Submit check-in',
+      submitDailyCheckin: () => { this.setState({ dailyCheckinSubmitted: true }); setTimeout(() => this.setState({ dailyCheckinSubmitted: false }), 2000); },
+      intakeGoals: this.state.intakeGoals,
+      setIntakeGoals: (e) => this.setState({ intakeGoals: e.target.value }),
+      intakeExperience: this.state.intakeExperience,
+      setIntakeExperience: (e) => this.setState({ intakeExperience: e.target.value }),
+      intakeAvailability: this.state.intakeAvailability,
+      setIntakeAvailability: (e) => this.setState({ intakeAvailability: e.target.value }),
+      intakeNotes: this.state.intakeNotes,
+      setIntakeNotes: (e) => this.setState({ intakeNotes: e.target.value }),
+      isIntakeSubmitted: !!this.state.clientIntake[selectedClient.id],
+      isIntakeNotSubmitted: !this.state.clientIntake[selectedClient.id],
+      submitIntake: () => {
+        const data = { goals: this.state.intakeGoals, experience: this.state.intakeExperience, availability: this.state.intakeAvailability, notes: this.state.intakeNotes || 'None' };
+        this.setState(s => ({ clientIntake: { ...s.clientIntake, [selectedClient.id]: data } }));
+      },
+      hasIntake: !!this.state.clientIntake[selectedClient.id],
+      hasNoIntake: !this.state.clientIntake[selectedClient.id],
+      intakeView: this.state.clientIntake[selectedClient.id] || {},
+      milestones: this.buildMilestones(selectedClient.progress),
+      billingValidUntil: this.getBilling(selectedClient.id).validUntil,
+      setValidUntil: (e) => this.setBilling(selectedClient.id, { ...this.getBilling(selectedClient.id), validUntil: e.target.value }),
+      billingStatusLabel: (() => {
+        const vu = this.getBilling(selectedClient.id).validUntil;
+        if (!vu) return 'No subscription set';
+        const days = Math.ceil((new Date(vu) - new Date()) / 86400000);
+        if (days < 0) return 'Overdue — renewal reminder sent';
+        if (days <= 7) return `Renewal due in ${days}d`;
+        return 'Active';
+      })(),
+      billingStatusClass: (() => {
+        const vu = this.getBilling(selectedClient.id).validUntil;
+        if (!vu) return 'tag-outline';
+        const days = Math.ceil((new Date(vu) - new Date()) / 86400000);
+        if (days < 0) return 'tag-risk';
+        if (days <= 7) return 'tag-accent';
+        return 'tag-live';
+      })(),
+      invoiceAmount: this.state.invoiceAmount,
+      setInvoiceAmount: (e) => this.setState({ invoiceAmount: e.target.value }),
+      invoiceDue: this.state.invoiceDue,
+      setInvoiceDue: (e) => this.setState({ invoiceDue: e.target.value }),
+      addInvoice: () => this.addInvoice(selectedClient.id),
+      invoicesView: this.getBilling(selectedClient.id).invoices.map(inv => ({
+        ...inv,
+        tagClass: inv.paid ? 'tag-live' : 'tag-accent',
+        statusLabel: inv.paid ? 'Paid' : 'Pending',
+        toggle: () => this.toggleInvoicePaid(selectedClient.id, inv.id)
+      })),
+      availabilityRules: this.state.availabilityRules,
+      setSessionLength: (e) => this.setState(s => ({ availabilityRules: { ...s.availabilityRules, sessionLength: e.target.value } })),
+      setBuffer: (e) => this.setState(s => ({ availabilityRules: { ...s.availabilityRules, buffer: e.target.value } })),
+      dayToggles: Object.keys(this.state.availabilityRules.days).map(d => ({
+        label: d,
+        tagClass: this.state.availabilityRules.days[d] ? 'tag-accent' : 'tag-outline',
+        toggle: () => this.toggleDay(d)
+      })),
+      slotChips: this.state.availabilityRules.slots.map((time, i) => ({ time, remove: () => this.removeSlot(i) })),
+      newSlotTime: this.state.newSlotTime,
+      setNewSlotTime: (e) => this.setState({ newSlotTime: e.target.value }),
+      addSlot: () => this.addSlot(),
+      checkinLabel: this.state.checkinSubmitted ? 'Submitted ✓' : 'Submit check-in',
+      submitCheckin: () => { this.setState({ checkinSubmitted: true }); setTimeout(() => this.setState({ checkinSubmitted: false }), 2000); },
+      activeChatName: activeChatPerson.name,
+      chatList: chatPeople.map(c => ({
+        ...c,
+        activeStyle: c.id === this.state.activeChatId ? 'background:var(--color-accent-100)' : '',
+        activeClass: c.id === this.state.activeChatId ? 'is-active' : '',
+        onClick: () => this.setState({ activeChatId: c.id })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>
