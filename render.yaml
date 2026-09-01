@@ -24,6 +24,12 @@ services:
     startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
+      # Render defaults to a much newer Python (3.14 as of writing) than
+      # what this app was actually built and tested against. Pinning this
+      # avoids finding out about a version-specific difference in production
+      # instead of locally.
+      - key: PYTHON_VERSION
+        value: 3.11.14
       - key: ENVIRONMENT
         value: production
       - key: FRONTEND_URL
