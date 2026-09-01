@@ -1,16 +1,24 @@
 import csv
 import io
+import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
+from sqlalchemy import select
+from sqlalchemy.exc import DBAPIError
 
 from app.ai.import_mapping import TARGET_FIELDS, suggest_column_mapping
 from app.db import get_db
 from app.deps import require_active_coach
+from app.models.custom_fields import CustomFieldDefinition, CustomFieldValue
+from app.models.enums import CustomFieldType
 from app.models.users import User
 from app.rate_limit import limiter
 from app.routers.clients import create_client_with_user
 from app.schemas.client_import import ImportCommitOut, ImportCommitRequest, ImportPreviewOut, ImportSkip
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/clients/import", tags=["clients"])
 
@@ -91,16 +99,41 @@ async def commit_import(
 
     name_col = body.mapping.get("name")
     email_col = body.mapping.get("email")
+    phone_col = body.mapping.get("phone")
     goals_col = body.mapping.get("goals")
     program_col = body.mapping.get("program")
     tags_col = body.mapping.get("tags")
     notes_col = body.mapping.get("notes")
 
+    # Get-or-create a text-type custom field definition per unmapped column the
+    # coach chose to keep, so values land in real per-client fields instead of
+    # being silently dropped. Matched by name so re-running an import (or a
+    # coach who's already added a field by hand) doesn't create duplicates.
+    custom_field_defs: dict[str, uuid.UUID] = {}
+    for column in body.custom_field_columns:
+        column = column.strip()
+        if not column:
+            continue
+        existing = await db.execute(
+            select(CustomFieldDefinition).where(
+                CustomFieldDefinition.coach_id == coach.id,
+                CustomFieldDefinition.name == column,
+            )
+        )
+        definition = existing.scalar_one_or_none()
+        if definition is None:
+            definition = CustomFieldDefinition(
+                coach_id=coach.id, name=column, field_type=CustomFieldType.text
+            )
+            db.add(definition)
+            await db.flush()
+        custom_field_defs[column] = definition.id
+
     created = 0
     skipped: list[ImportSkip] = []
     seen_emails: set[str] = set()
 
-    for row in body.rows:
+    for row_index, row in enumerate(body.rows):
         name = row.get(name_col, "").strip() if name_col else ""
         email = row.get(email_col, "").strip().lower() if email_col else ""
 
@@ -116,20 +149,41 @@ async def commit_import(
 
         try:
             async with db.begin_nested():
-                await create_client_with_user(
+                client = await create_client_with_user(
                     db,
                     coach,
                     name=name,
                     email=email,
-                    phone=None,
+                    phone=(row.get(phone_col, "").strip() or None) if phone_col else None,
                     program=(row.get(program_col, "").strip() or None) if program_col else None,
                     goals=(row.get(goals_col, "").strip() or None) if goals_col else None,
                     tags=tags,
                     notes=(row.get(notes_col, "").strip() or None) if notes_col else None,
                 )
+                for column, definition_id in custom_field_defs.items():
+                    raw_value = (row.get(column) or "").strip()
+                    if raw_value:
+                        db.add(
+                            CustomFieldValue(
+                                definition_id=definition_id, client_id=client.id, value=raw_value
+                            )
+                        )
         except HTTPException as exc:
             skipped.append(ImportSkip(row=row, reason=str(exc.detail)))
             continue
+        except DBAPIError:
+            # The DB connection itself dropped mid-request (e.g. Neon's serverless
+            # compute recycling a connection) — every row already committed below
+            # stays, but retrying further rows against the same dead connection
+            # would just fail identically. Stop here instead of 500ing the whole
+            # response, and tell the coach exactly what to do.
+            logger.exception("Database connection lost during client import commit")
+            remaining = body.rows[row_index:]
+            skipped.extend(
+                ImportSkip(row=r, reason="Not attempted — connection interrupted, please retry")
+                for r in remaining
+            )
+            break
 
         seen_emails.add(email)
         created += 1

@@ -16,8 +16,30 @@ from app.models.notifications import Notification
 from app.models.tasks import Task
 from app.models.users import User
 from app.utils.time import utcnow
+from app.ws import manager
 
 logger = logging.getLogger(__name__)
+
+
+async def broadcast_notification(notification: Notification) -> None:
+    """Pushes a lightweight live-update event over the same WebSocket
+    connection NotificationBell already opens — the bell's own 30s poll
+    stays as a fallback for any missed event, this just cuts the common-case
+    latency from ~30s to near-instant. Mirrors threads.py's
+    _create_and_broadcast, which already does this for new chat messages."""
+    await manager.send_to_user(
+        notification.user_id,
+        {
+            "event": "notification",
+            "notification": {
+                "id": str(notification.id),
+                "type": notification.type,
+                "payload_json": notification.payload_json,
+                "read_at": None,
+                "created_at": notification.created_at.isoformat(),
+            },
+        },
+    )
 
 
 async def _create_if_new(
@@ -25,16 +47,27 @@ async def _create_if_new(
 ) -> None:
     today_start = utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     result = await db.execute(
-        select(Notification).where(
+        select(Notification)
+        .where(
             Notification.user_id == user_id,
             Notification.type == type_,
             Notification.payload_json["key"].as_string() == key,
             Notification.created_at >= today_start,
         )
+        .limit(1)
     )
-    if result.scalar_one_or_none() is not None:
+    # .first() rather than .scalar_one_or_none() — concurrent requests can each
+    # pass this check before either commits (no unique constraint backs it),
+    # so duplicates are possible; tolerate that instead of crashing on them.
+    if result.first() is not None:
         return
-    db.add(Notification(user_id=user_id, type=type_, payload_json={**payload, "key": key}))
+    notification = Notification(user_id=user_id, type=type_, payload_json={**payload, "key": key})
+    db.add(notification)
+    # flush (not commit) — assigns the real id/created_at within the caller's
+    # own transaction without ending it, so this stays a drop-in replacement
+    # for every existing call site's commit timing.
+    await db.flush()
+    await broadcast_notification(notification)
 
 
 async def generate_coach_notifications(db: AsyncSession, coach_id: uuid.UUID) -> None:
@@ -61,7 +94,11 @@ async def generate_coach_notifications(db: AsyncSession, coach_id: uuid.UUID) ->
             coach_id,
             "meeting_soon",
             str(meeting.id),
-            {"message": f"Meeting with {user.name} starting soon", "client_name": user.name},
+            {
+                "message": f"Meeting with {user.name} starting soon",
+                "client_name": user.name,
+                "client_id": str(meeting.client_id),
+            },
         )
 
     # Tasks due today or overdue, not done
@@ -82,7 +119,11 @@ async def generate_coach_notifications(db: AsyncSession, coach_id: uuid.UUID) ->
                     coach_id,
                     "task_due",
                     str(task.id),
-                    {"message": f'"{task.title}" for {user.name} is due', "client_name": user.name},
+                    {
+                        "message": f'"{task.title}" for {user.name} is due',
+                        "client_name": user.name,
+                        "client_id": str(client.id),
+                    },
                 )
 
     # Subscriptions expiring within 3 days
@@ -98,6 +139,7 @@ async def generate_coach_notifications(db: AsyncSession, coach_id: uuid.UUID) ->
                     {
                         "message": f"{user.name}'s subscription expires in {days_left}d",
                         "client_name": user.name,
+                        "client_id": str(client.id),
                     },
                 )
 
@@ -111,7 +153,11 @@ async def generate_coach_notifications(db: AsyncSession, coach_id: uuid.UUID) ->
                 coach_id,
                 "unread_message",
                 str(thread.id),
-                {"message": f"{user.name} hasn't heard back in 24h+", "client_name": user.name},
+                {
+                    "message": f"{user.name} hasn't heard back in 24h+",
+                    "client_name": user.name,
+                    "thread_id": str(thread.id),
+                },
             )
 
     # Leads awaiting follow-up (no contact in 5+ days, or never contacted)
@@ -129,7 +175,11 @@ async def generate_coach_notifications(db: AsyncSession, coach_id: uuid.UUID) ->
                 coach_id,
                 "lead_followup",
                 str(lead.id),
-                {"message": f"{lead.name} is awaiting follow-up", "client_name": lead.name},
+                {
+                    "message": f"{lead.name} is awaiting follow-up",
+                    "client_name": lead.name,
+                    "lead_id": str(lead.id),
+                },
             )
 
     # Overdue invoices
@@ -147,6 +197,7 @@ async def generate_coach_notifications(db: AsyncSession, coach_id: uuid.UUID) ->
                     {
                         "message": f"Invoice for {user.name} (${invoice.amount}) is overdue",
                         "client_name": user.name,
+                        "client_id": str(client.id),
                     },
                 )
 

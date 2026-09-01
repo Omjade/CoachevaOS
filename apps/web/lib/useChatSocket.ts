@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { API_URL, MessageData } from "@/lib/api";
+import { API_URL, MessageData, NotificationData } from "@/lib/api";
 
 export type SocketState = "connecting" | "open" | "closed";
 
@@ -16,23 +16,30 @@ interface TypingEvent {
   user_id: string;
 }
 
+interface NotificationEvent {
+  event: "notification";
+  notification: NotificationData;
+}
+
 export function useChatSocket({
   onMessage,
   onPresence,
   onTyping,
   onReconnect,
+  onNotification,
 }: {
   onMessage: (message: MessageData) => void;
   onPresence?: (event: PresenceEvent) => void;
   onTyping?: (event: TypingEvent) => void;
   onReconnect?: () => void;
+  onNotification?: (event: NotificationEvent) => void;
 }) {
   const [state, setState] = useState<SocketState>("connecting");
   const wsRef = useRef<WebSocket | null>(null);
   const attemptRef = useRef(0);
   const hasConnectedOnceRef = useRef(false);
-  const callbacksRef = useRef({ onMessage, onPresence, onTyping, onReconnect });
-  callbacksRef.current = { onMessage, onPresence, onTyping, onReconnect };
+  const callbacksRef = useRef({ onMessage, onPresence, onTyping, onReconnect, onNotification });
+  callbacksRef.current = { onMessage, onPresence, onTyping, onReconnect, onNotification };
 
   useEffect(() => {
     let cancelled = false;
@@ -63,6 +70,8 @@ export function useChatSocket({
             callbacksRef.current.onPresence?.(data as PresenceEvent);
           } else if (data.event === "typing") {
             callbacksRef.current.onTyping?.(data as TypingEvent);
+          } else if (data.event === "notification") {
+            callbacksRef.current.onNotification?.(data as NotificationEvent);
           }
         } catch {
           // ignore malformed payloads

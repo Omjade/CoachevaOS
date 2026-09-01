@@ -12,6 +12,7 @@ from app.deps import get_current_client, get_current_user, require_coach
 from app.models.clients import Client
 from app.models.enums import MessageType
 from app.models.messaging import Message, Thread
+from app.models.notifications import Notification
 from app.models.users import User
 from app.schemas.messaging import MessageCreate, MessageOut, PresenceOut, ThreadOut
 from app.security import decode_token
@@ -60,7 +61,10 @@ async def _counterpart_user_ids(db: AsyncSession, user: User) -> list[uuid.UUID]
 
 @router.get("/threads", response_model=list[ThreadOut])
 async def list_threads(
-    coach: User = Depends(require_coach), db: AsyncSession = Depends(get_db)
+    limit: int = 100,
+    offset: int = 0,
+    coach: User = Depends(require_coach),
+    db: AsyncSession = Depends(get_db),
 ) -> list[ThreadOut]:
     result = await db.execute(
         select(Thread, Client, User)
@@ -68,6 +72,8 @@ async def list_threads(
         .join(User, User.id == Client.user_id)
         .where(Thread.coach_id == coach.id)
         .order_by(Thread.last_message_at.desc().nulls_last())
+        .limit(min(limit, 500))
+        .offset(offset)
     )
     rows = result.all()
     thread_ids = [thread.id for thread, _client, _user in rows]
@@ -142,14 +148,20 @@ async def get_my_thread(
 @router.get("/threads/{thread_id}/messages", response_model=list[MessageOut])
 async def list_messages(
     thread_id: uuid.UUID,
+    limit: int = 200,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[Message]:
     await _get_authorized_thread(db, user, thread_id)
+    # Fetch the most recent `limit` messages, then re-sort ascending — a plain
+    # ascending-order LIMIT would truncate the newest messages instead of the oldest.
     result = await db.execute(
-        select(Message).where(Message.thread_id == thread_id).order_by(Message.created_at.asc())
+        select(Message)
+        .where(Message.thread_id == thread_id)
+        .order_by(Message.created_at.desc())
+        .limit(min(limit, 1000))
     )
-    return list(result.scalars().all())
+    return list(reversed(result.scalars().all()))
 
 
 @router.get("/threads/{thread_id}/presence", response_model=PresenceOut)
@@ -201,10 +213,19 @@ async def _create_and_broadcast(
     )
     db.add(message)
     thread.last_message_at = utcnow()
+
+    other_user_id = await _other_party_user_id(db, thread, sender.id)
+    db.add(
+        Notification(
+            user_id=other_user_id,
+            type="new_message",
+            payload_json={"message": f"New message from {sender.name}", "thread_id": str(thread.id)},
+        )
+    )
+
     await db.commit()
     await db.refresh(message)
 
-    other_user_id = await _other_party_user_id(db, thread, sender.id)
     payload = {
         "event": "message",
         "message": {

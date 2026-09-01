@@ -1,30 +1,54 @@
+import secrets
 import uuid
+from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.deps import get_current_client, require_active_coach, require_coach
+from app.deps import check_client_cap, get_current_client, get_current_user, require_active_coach, require_coach
 from app.models.clients import Client, IntakeResponse
 from app.models.enums import ClientStatus, UserRole
 from app.models.messaging import Thread
 from app.models.users import CoachProfile, User
+from app.storage import save_upload
 from app.schemas.clients import (
     ClientCreate,
     ClientDetailOut,
     ClientNotesUpdate,
     ClientOut,
+    ClientPortalLinkOut,
     ClientSelfProfileOut,
     ClientSelfProfileUpdate,
     ClientUpdate,
     InviteInfoOut,
 )
 from app.schemas.intake import IntakeCreate, IntakeOut
-from app.security import create_invite_token
+from app.routers.billing import _compute_status
 from app.utils.time import utcnow
 
 router = APIRouter(prefix="/clients", tags=["clients"])
+
+INVITE_VALIDITY = timedelta(days=14)
+
+
+async def _generate_unique_invite_code(db: AsyncSession) -> str:
+    for _ in range(5):
+        code = secrets.token_urlsafe(6)
+        existing = await db.execute(select(Client.id).where(Client.invite_code == code))
+        if existing.scalar_one_or_none() is None:
+            return code
+    raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Could not generate an invite link — try again")
+
+
+async def _generate_unique_portal_code(db: AsyncSession) -> str:
+    for _ in range(5):
+        code = secrets.token_urlsafe(6)
+        existing = await db.execute(select(Client.id).where(Client.portal_code == code))
+        if existing.scalar_one_or_none() is None:
+            return code
+    raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Could not generate a portal link — try again")
 
 
 async def create_client_with_user(
@@ -39,17 +63,33 @@ async def create_client_with_user(
     tags: list[str] | None = None,
     notes: str | None = None,
 ) -> Client:
-    existing = await db.execute(select(User).where(User.email == email))
-    if existing.scalar_one_or_none() is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "A user with that email already exists")
+    # Coach-scoped dedup, not global — the same email may legitimately already
+    # be a client of a DIFFERENT coach (switched coaches, or works with two at
+    # once). Only reject if THIS coach already has that email as a client.
+    existing_for_coach = await db.execute(
+        select(Client)
+        .join(User, User.id == Client.user_id)
+        .where(User.email == email, Client.coach_id == coach.id)
+    )
+    if existing_for_coach.scalar_one_or_none() is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This is already one of your clients")
 
-    user = User(email=email, name=name, role=UserRole.client, password_hash=None)
-    db.add(user)
-    await db.flush()
+    await check_client_cap(db, coach.id)
+
+    # Reuse an existing User (any role, any other coach) rather than trying to
+    # create a second one — users.email has a real global-unique constraint,
+    # so a duplicate insert would fail outright regardless.
+    existing_user = await db.execute(select(User).where(User.email == email))
+    user = existing_user.scalar_one_or_none()
+    if user is None:
+        user = User(email=email, name=name, role=UserRole.client, password_hash=None)
+        db.add(user)
+        await db.flush()
 
     client = Client(
         coach_id=coach.id,
         user_id=user.id,
+        phone=phone,
         goals=goals,
         program=program,
         tags=tags,
@@ -71,10 +111,15 @@ def _to_client_out(client: Client, user: User) -> ClientOut:
         user_id=user.id,
         name=user.name,
         email=user.email,
+        phone=client.phone,
         program=client.program,
         status=client.status,
         joined_at=client.joined_at,
-        invite_pending=user.password_hash is None,
+        # Not user.password_hash is None — a reused existing User (shared
+        # identity across coaches, see create_client_with_user) may already
+        # have a password from another coach's relationship while THIS
+        # specific coach's invite is still unaccepted.
+        invite_pending=client.invite_accepted_at is None,
     )
 
 
@@ -148,6 +193,7 @@ async def get_my_client_profile(
     profile = await db.get(CoachProfile, client.coach_id)
     assert me is not None and coach is not None
     return ClientSelfProfileOut(
+        id=client.id,
         name=me.name,
         email=me.email,
         timezone=me.timezone,
@@ -155,6 +201,13 @@ async def get_my_client_profile(
         program=client.program,
         coach_name=coach.name,
         portal_slug=profile.portal_slug if profile else None,
+        subscription_valid_from=client.subscription_valid_from,
+        subscription_valid_until=client.subscription_valid_until,
+        billing_status=_compute_status(client.subscription_valid_until),
+        niche=client.niche,
+        phone=client.phone,
+        status=client.status,
+        billing_currency=client.billing_currency,
     )
 
 
@@ -176,6 +229,7 @@ async def update_my_client_profile(
     profile = await db.get(CoachProfile, client.coach_id)
     assert coach is not None
     return ClientSelfProfileOut(
+        id=client.id,
         name=me.name,
         email=me.email,
         timezone=me.timezone,
@@ -183,6 +237,13 @@ async def update_my_client_profile(
         program=client.program,
         coach_name=coach.name,
         portal_slug=profile.portal_slug if profile else None,
+        subscription_valid_from=client.subscription_valid_from,
+        subscription_valid_until=client.subscription_valid_until,
+        billing_status=_compute_status(client.subscription_valid_until),
+        niche=client.niche,
+        phone=client.phone,
+        status=client.status,
+        billing_currency=client.billing_currency,
     )
 
 
@@ -203,6 +264,7 @@ async def get_my_intake(
 async def submit_my_intake(
     body: IntakeCreate,
     client: Client = Depends(get_current_client),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> IntakeOut:
     existing = await db.execute(
@@ -220,8 +282,22 @@ async def submit_my_intake(
         submitted_at=utcnow(),
     )
     db.add(intake)
+    if body.country_code:
+        user.country_code = body.country_code
+    if body.timezone:
+        user.timezone = body.timezone
     await db.commit()
     await db.refresh(intake)
+
+    # Local import: app.routers.automation -> app.routers.programs ->
+    # app.routers.clients would be a circular import at module load time
+    # otherwise. By call time every module is already fully loaded.
+    from app.routers.automation import run_auto_onboarding
+
+    coach = await db.get(User, client.coach_id)
+    if coach is not None:
+        await run_auto_onboarding(db, coach, client, user)
+
     return intake
 
 
@@ -246,6 +322,8 @@ async def get_client(
         notes=client.notes,
         thread_id=await _thread_id_for_client(db, client.id),
         timezone=user.timezone,
+        niche=client.niche,
+        billing_currency=client.billing_currency,
     )
 
 
@@ -259,13 +337,21 @@ async def update_client(
     client, user = await _get_owned_client(db, coach, client_id)
     if body.name is not None:
         user.name = body.name
+    if body.phone is not None:
+        client.phone = body.phone
     if body.goals is not None:
         client.goals = body.goals
     if body.program is not None:
         client.program = body.program
+    if body.niche is not None:
+        client.niche = body.niche
+    if body.billing_currency is not None:
+        client.billing_currency = body.billing_currency
     if body.tags is not None:
         client.tags = body.tags
     if body.status is not None:
+        if body.status == ClientStatus.active and client.status != ClientStatus.active:
+            await check_client_cap(db, coach.id)
         client.status = body.status
     await db.commit()
     base = _to_client_out(client, user)
@@ -277,6 +363,8 @@ async def update_client(
         notes=client.notes,
         thread_id=await _thread_id_for_client(db, client.id),
         timezone=user.timezone,
+        niche=client.niche,
+        billing_currency=client.billing_currency,
     )
 
 
@@ -299,6 +387,8 @@ async def update_client_notes(
         thread_id=await _thread_id_for_client(db, client.id),
         notes=client.notes,
         timezone=user.timezone,
+        niche=client.niche,
+        billing_currency=client.billing_currency,
     )
 
 
@@ -309,10 +399,57 @@ async def get_client_invite(
     db: AsyncSession = Depends(get_db),
 ) -> InviteInfoOut:
     client, user = await _get_owned_client(db, coach, client_id)
-    if user.password_hash is not None:
+    if client.invite_accepted_at is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "This client has already joined")
-    token = create_invite_token(user.id)
-    return InviteInfoOut(invite_token=token, invite_path=f"/invite/{token}")
+    if client.invite_code is None:
+        client.invite_code = await _generate_unique_invite_code(db)
+    # Re-requesting the link (e.g. "copy link" clicked again later) refreshes
+    # the validity window rather than rotating the code, so a previously
+    # shared link keeps working once renewed.
+    client.invite_expires_at = utcnow() + INVITE_VALIDITY
+    await db.commit()
+    return InviteInfoOut(invite_token=client.invite_code, invite_path=f"/invite/{client.invite_code}")
+
+
+@router.get("/{client_id}/portal-link", response_model=ClientPortalLinkOut)
+async def get_client_portal_link(
+    client_id: uuid.UUID,
+    coach: User = Depends(require_coach),
+    db: AsyncSession = Depends(get_db),
+) -> ClientPortalLinkOut:
+    """A permanent personal bookmark link for an already-joined client — landing
+    there resolves their identity and sends them into the normal login flow
+    pre-filled, or straight to their dashboard if already signed in. Distinct
+    from the pre-signup /invite/{code} link, which stops working once accepted."""
+    client, user = await _get_owned_client(db, coach, client_id)
+    if client.invite_accepted_at is None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Share the invite link first — this client hasn't joined yet"
+        )
+    if client.portal_code is None:
+        client.portal_code = await _generate_unique_portal_code(db)
+        await db.commit()
+
+    profile = await db.get(CoachProfile, coach.id)
+    slug = profile.portal_slug if profile else ""
+    return ClientPortalLinkOut(portal_code=client.portal_code, portal_path=f"/{slug}/c/{client.portal_code}")
+
+
+@router.post("/{client_id}/avatar", status_code=status.HTTP_204_NO_CONTENT)
+async def upload_client_avatar(
+    client_id: uuid.UUID,
+    file: UploadFile,
+    coach: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Coach-side photo upload for a client — same storage pattern as the
+    client's own self-service avatar upload (POST /auth/me/avatar)."""
+    _, user = await _get_owned_client(db, coach, client_id)
+    key, file_type = await save_upload(file)
+    if file_type != "image":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Please upload an image file")
+    user.avatar_url = key
+    await db.commit()
 
 
 @router.get("/{client_id}/intake", response_model=IntakeOut)

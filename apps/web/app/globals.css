@@ -40,6 +40,7 @@
 
   --animate-fade-up: fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-spin-slow: spin 1s linear infinite;
+  --animate-marquee: marquee 22s linear infinite;
 
   @keyframes fade-up {
     from {
@@ -51,25 +52,17 @@
       transform: translateY(0);
     }
   }
-}
 
-/* Dark mode: provisional inversion until dark-mode screenshots are supplied —
-   the design system doc only specifies the light palette above. */
-:root[data-theme="dark"] {
-  --color-bg: #17181a;
-  --color-surface: #202124;
-  --color-text: #f3f3f1;
-  --color-divider: rgba(255, 255, 255, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-bg: #17181a;
-    --color-surface: #202124;
-    --color-text: #f3f3f1;
-    --color-divider: rgba(255, 255, 255, 0.1);
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
   }
 }
+
 
 body {
   background: var(--color-bg);
@@ -84,4 +77,48 @@ h3,
   font-family: var(--font-heading);
   font-weight: 700;
   text-wrap: pretty;
+}
+
+/* A slim, low-contrast scrollbar for scroll surfaces inside the dark sidebar
+   (and anywhere else that opts in) — replaces the browser-default chunky
+   scrollbar without ever forcing a scrollbar to show; overflow:auto still
+   decides that. Firefox uses the standard scrollbar-width/-color properties;
+   WebKit/Chromium/Edge need the -webkit-scrollbar pseudo-elements. */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.32);
+}
+
+/* Same treatment for light surfaces (e.g. dropdown/dialog scroll areas). */
+.scrollbar-thin-light {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(28, 29, 31, 0.18) transparent;
+}
+.scrollbar-thin-light::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-thin-light::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin-light::-webkit-scrollbar-thumb {
+  background-color: rgba(28, 29, 31, 0.18);
+  border-radius: 999px;
+}
+.scrollbar-thin-light::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(28, 29, 31, 0.32);
 }

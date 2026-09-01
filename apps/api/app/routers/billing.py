@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, timedelta
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -10,14 +10,13 @@ from app.deps import get_platform_subscription as fetch_platform_subscription
 from app.deps import require_active_coach, require_coach
 from app.models.billing import Invoice
 from app.models.clients import Client
-from app.models.enums import SubscriptionStatus, SubscriptionTier
+from app.models.enums import ClientStatus, SubscriptionStatus, SubscriptionTier
 from app.models.users import User
 from app.schemas.billing import (
     ClientBillingOut,
     InvoiceCreate,
     InvoiceOut,
     PlatformSubscriptionOut,
-    SelectPlanRequest,
     SubscriptionUpdate,
 )
 from app.utils.time import utcnow
@@ -25,11 +24,21 @@ from app.utils.time import utcnow
 router = APIRouter(tags=["billing"])
 
 TIER_CLIENT_LIMITS: dict[SubscriptionTier, int | None] = {
-    SubscriptionTier.starter: 49,
-    SubscriptionTier.growth: 100,
-    SubscriptionTier.scale: 200,
+    SubscriptionTier.starter: 15,
+    SubscriptionTier.growth: 30,
+    SubscriptionTier.scale: 60,
+    SubscriptionTier.pro: 100,
     SubscriptionTier.enterprise: None,
 }
+
+
+async def _active_client_count(db: AsyncSession, coach_id: uuid.UUID) -> int:
+    result = await db.execute(
+        select(func.count()).select_from(Client).where(
+            Client.coach_id == coach_id, Client.status == ClientStatus.active
+        )
+    )
+    return result.scalar_one()
 
 
 def _compute_status(valid_until: date | None) -> str:
@@ -62,8 +71,10 @@ async def get_client_billing(
     )
     invoices = list(result.scalars().all())
     return ClientBillingOut(
+        subscription_valid_from=client.subscription_valid_from,
         subscription_valid_until=client.subscription_valid_until,
         status=_compute_status(client.subscription_valid_until),
+        billing_currency=client.billing_currency,
         invoices=invoices,
     )
 
@@ -77,6 +88,7 @@ async def update_client_subscription(
 ) -> ClientBillingOut:
     client = await _get_owned_client(db, coach, client_id)
     client.subscription_valid_until = body.subscription_valid_until
+    client.subscription_valid_from = body.subscription_valid_from
     await db.commit()
 
     result = await db.execute(
@@ -84,8 +96,10 @@ async def update_client_subscription(
     )
     invoices = list(result.scalars().all())
     return ClientBillingOut(
+        subscription_valid_from=client.subscription_valid_from,
         subscription_valid_until=client.subscription_valid_until,
         status=_compute_status(client.subscription_valid_until),
+        billing_currency=client.billing_currency,
         invoices=invoices,
     )
 
@@ -99,8 +113,14 @@ async def add_invoice(
     coach: User = Depends(require_active_coach),
     db: AsyncSession = Depends(get_db),
 ) -> Invoice:
-    await _get_owned_client(db, coach, client_id)
-    invoice = Invoice(client_id=client_id, amount=body.amount, due_date=body.due_date, paid=False)
+    client = await _get_owned_client(db, coach, client_id)
+    invoice = Invoice(
+        client_id=client_id,
+        amount=body.amount,
+        currency=body.currency or client.billing_currency or "USD",
+        due_date=body.due_date,
+        paid=False,
+    )
     db.add(invoice)
     await db.commit()
     await db.refresh(invoice)
@@ -118,6 +138,7 @@ async def toggle_invoice_paid(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Invoice not found")
     await _get_owned_client(db, coach, invoice.client_id)
     invoice.paid = not invoice.paid
+    invoice.paid_at = utcnow() if invoice.paid else None
     await db.commit()
     await db.refresh(invoice)
     return invoice
@@ -135,10 +156,7 @@ async def get_platform_subscription(
         sub.status = SubscriptionStatus.trial_expired
         await db.commit()
 
-    count_result = await db.execute(
-        select(func.count()).select_from(Client).where(Client.coach_id == coach.id)
-    )
-    active_count = count_result.scalar_one()
+    active_count = await _active_client_count(db, coach.id)
 
     return PlatformSubscriptionOut(
         tier=sub.tier,
@@ -147,35 +165,15 @@ async def get_platform_subscription(
         current_period_end=sub.current_period_end,
         client_limit=sub.client_limit,
         active_client_count=active_count,
+        provider=sub.provider,
+        currency=sub.currency,
+        billing_cycle=sub.billing_cycle,
+        cancel_at_period_end=sub.cancel_at_period_end,
+        grace_period_ends_at=sub.grace_period_ends_at,
     )
 
 
-@router.post("/coach/subscription/select-plan", response_model=PlatformSubscriptionOut)
-async def select_plan(
-    body: SelectPlanRequest,
-    coach: User = Depends(require_coach),
-    db: AsyncSession = Depends(get_db),
-) -> PlatformSubscriptionOut:
-    sub = await fetch_platform_subscription(db, coach.id)
-    if sub is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No subscription found")
-
-    sub.tier = body.tier
-    sub.status = SubscriptionStatus.active
-    sub.client_limit = TIER_CLIENT_LIMITS[body.tier]
-    sub.current_period_end = utcnow() + timedelta(days=30)
-    await db.commit()
-
-    count_result = await db.execute(
-        select(func.count()).select_from(Client).where(Client.coach_id == coach.id)
-    )
-    active_count = count_result.scalar_one()
-
-    return PlatformSubscriptionOut(
-        tier=sub.tier,
-        status=sub.status,
-        trial_ends_at=sub.trial_ends_at,
-        current_period_end=sub.current_period_end,
-        client_limit=sub.client_limit,
-        active_client_count=active_count,
-    )
+# `select-plan` (free, no-payment activation) is retired — real checkout now
+# happens via POST /billing/paddle/checkout-token (app/routers/payments_paddle.py),
+# followed by a Paddle-hosted checkout that only ever activates a subscription
+# through a verified webhook, never a direct client request.

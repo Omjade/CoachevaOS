@@ -10,6 +10,9 @@ class AnalyticsSummary(BaseModel):
     task_completion_rate: float
     leads_total: int
     leads_converted: int
+    # Excluded from "waiting" math (leads_total - leads_converted - leads_lost)
+    # — a parked/dead lead isn't a real client still waiting on a follow-up.
+    leads_lost: int = 0
     tasks_total: int
     tasks_done: int
 

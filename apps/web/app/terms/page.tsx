@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CircleWavyCheckIcon as CircleWavyCheck } from "@phosphor-icons/react/dist/ssr";
 import { Eyebrow } from "@/components/ui";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -35,7 +36,7 @@ const sections = [
     body: [
       "Don't use CoachevaOS to store or transmit content that's unlawful, infringing, or that you don't have the right to share.",
       "Don't attempt to access another coach's or client's account or data, probe the platform for vulnerabilities without authorization, or interfere with the service's normal operation.",
-      "AI features assist your work but are not a substitute for professional medical, legal, or financial advice — you remain responsible for the guidance you give your clients.",
+      "AI features assist your work but are not a substitute for professional medical, legal, or financial advice. You remain responsible for the guidance you give your clients.",
     ],
   },
   {
@@ -72,22 +73,16 @@ const sections = [
   },
   {
     heading: "10. Contact",
-    body: ["Questions about these terms can be sent to legal@coacheva.os."],
+    body: ["Questions about these terms can be sent to legal@coachevaos.com."],
   },
 ];
 
 export default function TermsPage() {
   return (
     <div className="flex flex-1 flex-col bg-neutral-100">
-      <div className="p-3 md:p-4">
-        <div className="mx-auto w-full max-w-3xl px-3 py-16 md:px-4">
-          <Link href="/" className="mb-8 inline-flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-900 text-neutral-100">
-              <CircleWavyCheck className="h-3.5 w-3.5" weight="fill" />
-            </span>
-            <span className="font-heading text-sm font-bold text-neutral-900">CoachevaOS</span>
-          </Link>
-
+      <SiteHeader variant="static" />
+      <main className="p-3 md:p-4">
+        <div className="mx-auto w-full max-w-3xl px-3 py-10 md:px-4">
           <Eyebrow className="mb-4">Legal</Eyebrow>
           <h1 className="font-heading mb-2 text-[36px] font-semibold tracking-tight text-neutral-900 md:text-[44px]">
             Terms of Service
@@ -123,7 +118,8 @@ export default function TermsPage() {
             </Link>
           </div>
         </div>
-      </div>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

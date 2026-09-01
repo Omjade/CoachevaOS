@@ -1,46 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, TaskData, User } from "@/lib/api";
-import { Card } from "@/components/ui";
-import TaskList from "@/components/TaskList";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { useViewerRole } from "@/lib/useViewerRole";
 
-export default function ClientTasksPage() {
-  const [tasks, setTasks] = useState<TaskData[]>([]);
-  const [user, setUser] = useState<User | null>(null);
-
-  function refresh() {
-    api.listMyTasks().then(setTasks).catch(() => {});
-  }
+// Superseded by /{slug}/client/{clientId}/tasks — this flat route only
+// exists to catch old links/bookmarks and bounce them to the real one.
+export default function TasksRedirectPage() {
+  const role = useViewerRole();
+  const router = useRouter();
+  const params = useParams<{ slug: string }>();
 
   useEffect(() => {
-    api.me().then(setUser).catch(() => {});
-    refresh();
-  }, []);
+    if (role === "client") {
+      api
+        .getMyClientProfile()
+        .then((p) => router.replace(`/${params.slug}/client/${p.id}/tasks`))
+        .catch(() => router.replace(`/${params.slug}/dashboard`));
+    } else if (role === "coach") {
+      router.replace(`/${params.slug}/dashboard`);
+    }
+  }, [role, router, params.slug]);
 
-  return (
-    <div>
-      <h1 className="font-heading mb-6 text-[26px] font-semibold tracking-tight text-neutral-900">
-        Tasks
-      </h1>
-      <Card>
-        <TaskList
-          tasks={tasks}
-          viewerUserId={user?.id ?? null}
-          onAdd={async (title, dueDate) => {
-            await api.addMyTask({ title, due_date: dueDate });
-            refresh();
-          }}
-          onToggle={async (id) => {
-            await api.toggleTaskComplete(id);
-            refresh();
-          }}
-          onEdit={async (id, title, dueDate) => {
-            await api.updateTask(id, { title, due_date: dueDate });
-            refresh();
-          }}
-        />
-      </Card>
-    </div>
-  );
+  return null;
 }

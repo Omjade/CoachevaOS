@@ -3,17 +3,18 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ChatCircleIcon as ChatCircle } from "@phosphor-icons/react";
-import { api, ThreadData, User } from "@/lib/api";
+import { api, ThreadData } from "@/lib/api";
 import { useChatSocket } from "@/lib/useChatSocket";
 import { Card } from "@/components/ui";
 import ChatThread from "@/components/ChatThread";
 import Avatar from "@/components/Avatar";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export default function ChatInbox({ activeThreadId }: { activeThreadId?: string }) {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
+  const { user } = useCurrentUser();
   const [threads, setThreads] = useState<ThreadData[]>([]);
-  const [user, setUser] = useState<User | null>(null);
   const [presenceByThread, setPresenceByThread] = useState<Record<string, boolean>>({});
   const [userIdByThread, setUserIdByThread] = useState<Record<string, string>>({});
 
@@ -40,7 +41,6 @@ export default function ChatInbox({ activeThreadId }: { activeThreadId?: string 
   }
 
   useEffect(() => {
-    api.me().then(setUser).catch(() => {});
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -58,7 +58,12 @@ export default function ChatInbox({ activeThreadId }: { activeThreadId?: string 
     },
   });
 
-  const active = threads.find((t) => t.id === activeThreadId);
+  // A direct deep link (chat/[threadId]) already knows the thread id from the
+  // URL — don't block ChatThread's mount (and its own message fetch) on the
+  // full listThreads() round-trip just to look up display metadata. Render
+  // immediately with whatever metadata is available and let it fill in once
+  // the list resolves.
+  const activeMeta = threads.find((t) => t.id === activeThreadId);
 
   return (
     <div className="flex h-[calc(100vh-9rem)] overflow-hidden rounded-[22px] border border-neutral-300/50 bg-white shadow-[0_20px_44px_rgba(28,29,31,0.06)]">
@@ -70,7 +75,7 @@ export default function ChatInbox({ activeThreadId }: { activeThreadId?: string 
                 <ChatCircle className="h-4.5 w-4.5" weight="fill" />
               </div>
               <p className="text-sm text-neutral-600">
-                No conversations yet — once you add clients, their chat threads will show up
+                No conversations yet. Once you add clients, their chat threads will show up
                 here.
               </p>
             </Card>
@@ -118,13 +123,13 @@ export default function ChatInbox({ activeThreadId }: { activeThreadId?: string 
         )}
       </div>
       <div className="flex-1">
-        {active && user ? (
+        {activeThreadId && user ? (
           <ChatThread
-            key={active.id}
-            threadId={active.id}
+            key={activeThreadId}
+            threadId={activeThreadId}
             meId={user.id}
-            otherName={active.client_name}
-            otherTimezone={active.timezone}
+            otherName={activeMeta?.client_name ?? "..."}
+            otherTimezone={activeMeta?.timezone}
             showSuggestReply
           />
         ) : (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   PlusIcon as Plus,
   CheckIcon as Check,
@@ -8,7 +9,7 @@ import {
   CameraIcon as Camera,
   NotePencilIcon as NotePencil,
 } from "@phosphor-icons/react";
-import { api, ClientGoal, ProgressEntry } from "@/lib/api";
+import { api, ApiError, ClientGoal, ProgressEntry } from "@/lib/api";
 import { Button, Card, Input } from "@/components/ui";
 
 interface GoalsAndProgressProps {
@@ -35,6 +36,8 @@ export default function GoalsAndProgress(props: GoalsAndProgressProps) {
   const [entryDate, setEntryDate] = useState(todayStr());
   const [file, setFile] = useState<File | null>(null);
   const [addingEntry, setAddingEntry] = useState(false);
+  const [goalsError, setGoalsError] = useState<string | null>(null);
+  const [progressError, setProgressError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function refreshGoals() {
@@ -55,30 +58,55 @@ export default function GoalsAndProgress(props: GoalsAndProgressProps) {
     e.preventDefault();
     if (!newGoal.trim()) return;
     setAddingGoal(true);
+    setGoalsError(null);
     try {
       await createGoal({ title: newGoal.trim(), target_date: newGoalDate || null });
       setNewGoal("");
       setNewGoalDate("");
       refreshGoals();
+    } catch (err) {
+      setGoalsError(err instanceof ApiError ? err.message : "Couldn't add that goal. Try again.");
     } finally {
       setAddingGoal(false);
     }
   }
 
   async function toggleGoal(goal: ClientGoal) {
+    setGoalsError(null);
     setGoals((prev) => prev?.map((g) => (g.id === goal.id ? { ...g, done: !g.done } : g)) ?? null);
-    await updateGoal(goal.id, { done: !goal.done });
+    try {
+      await updateGoal(goal.id, { done: !goal.done });
+    } catch (err) {
+      setGoals((prev) => prev?.map((g) => (g.id === goal.id ? { ...g, done: goal.done } : g)) ?? null);
+      setGoalsError(err instanceof ApiError ? err.message : "Couldn't update that goal. Try again.");
+    }
   }
 
   async function removeGoal(goalId: string) {
+    setGoalsError(null);
+    const removed = goals?.find((g) => g.id === goalId) ?? null;
+    const previousIndex = goals?.findIndex((g) => g.id === goalId) ?? -1;
     setGoals((prev) => prev?.filter((g) => g.id !== goalId) ?? null);
-    await deleteGoal(goalId);
+    try {
+      await deleteGoal(goalId);
+    } catch (err) {
+      if (removed) {
+        setGoals((prev) => {
+          if (!prev) return prev;
+          const next = [...prev];
+          next.splice(previousIndex, 0, removed);
+          return next;
+        });
+      }
+      setGoalsError(err instanceof ApiError ? err.message : "Couldn't remove that goal. Try again.");
+    }
   }
 
   async function handleAddEntry(e: React.FormEvent) {
     e.preventDefault();
     if (!note.trim() && !file) return;
     setAddingEntry(true);
+    setProgressError(null);
     try {
       await createProgress(note.trim(), entryDate, file);
       setNote("");
@@ -86,6 +114,8 @@ export default function GoalsAndProgress(props: GoalsAndProgressProps) {
       setEntryDate(todayStr());
       if (fileInputRef.current) fileInputRef.current.value = "";
       refreshProgress();
+    } catch (err) {
+      setProgressError(err instanceof ApiError ? err.message : "Couldn't add that entry. Try again.");
     } finally {
       setAddingEntry(false);
     }
@@ -96,7 +126,7 @@ export default function GoalsAndProgress(props: GoalsAndProgressProps) {
       <Card>
         <h3 className="font-heading mb-3 text-sm font-semibold text-neutral-900">Goals</h3>
         {goals && goals.length === 0 && (
-          <p className="mb-3 text-xs text-neutral-500">No goals yet — add the first one below.</p>
+          <p className="mb-3 text-xs text-neutral-500">No goals yet. Add the first one below.</p>
         )}
         <div className="mb-4 flex flex-col gap-2">
           {goals?.map((goal) => (
@@ -152,6 +182,7 @@ export default function GoalsAndProgress(props: GoalsAndProgressProps) {
             <Plus className="h-4 w-4" weight="bold" />
           </Button>
         </form>
+        {goalsError && <p className="mt-2 text-xs text-accent-600">{goalsError}</p>}
       </Card>
 
       <Card>
@@ -186,6 +217,7 @@ export default function GoalsAndProgress(props: GoalsAndProgressProps) {
               Add entry
             </Button>
           </div>
+          {progressError && <p className="text-xs text-accent-600">{progressError}</p>}
         </form>
 
         <div className="flex flex-col gap-3">
@@ -202,10 +234,12 @@ export default function GoalsAndProgress(props: GoalsAndProgressProps) {
                     className="h-20 w-20 shrink-0 rounded-[10px] bg-neutral-900 object-cover"
                   />
                 ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={api.progressMediaUrl(entry.id)}
                     alt=""
+                    width={80}
+                    height={80}
+                    unoptimized
                     className="h-20 w-20 shrink-0 rounded-[10px] object-cover"
                   />
                 )

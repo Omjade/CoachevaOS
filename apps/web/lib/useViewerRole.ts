@@ -1,19 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, UserRole } from "@/lib/api";
+import { UserRole } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 export type ViewerRole = UserRole | "anonymous" | null;
 
 export function useViewerRole(): ViewerRole {
-  const [role, setRole] = useState<ViewerRole>(null);
-
-  useEffect(() => {
-    api
-      .me()
-      .then((u) => setRole(u.role))
-      .catch(() => setRole("anonymous"));
-  }, []);
-
-  return role;
+  const { user, loading, error } = useCurrentUser();
+  if (loading) return null;
+  if (error) return "anonymous";
+  return user?.role ?? "anonymous";
 }

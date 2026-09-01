@@ -1,14 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import mimetypes
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
+from app.models.clients import Client
 from app.models.forms import Form, FormSubmission
+from app.models.landing_interest import LandingInterest
 from app.models.leads import Lead
 from app.models.enums import LeadStage
+from app.models.notifications import Notification
+from app.notifications import broadcast_notification
+from app.models.programs import Program
 from app.models.users import CoachProfile, User
+from app.rate_limit import limiter
+from app.routers.programs import _to_template_out
+from app.schemas.clients import ClientPortalPreviewOut
 from app.schemas.coach import PortalPublicOut
 from app.schemas.forms import FormFieldSchema, FormSubmitRequest, PublicFormOut
+from app.schemas.landing_interest import LandingInterestCreate
+from app.schemas.programs import ProgramTemplateOut
+from app.storage import read_file
 from app.utils.time import utcnow
 
 router = APIRouter(prefix="/portal", tags=["portal"])
@@ -35,6 +48,71 @@ async def get_portal_by_slug(slug: str, db: AsyncSession = Depends(get_db)) -> P
         brand_color=profile.brand_color,
         logo_url=profile.logo_url,
         coach_name=user.name,
+        bio=profile.bio,
+        website_url=profile.website_url,
+        instagram_url=profile.instagram_url,
+        linkedin_url=profile.linkedin_url,
+        gallery_image_urls=profile.gallery_image_urls,
+    )
+
+
+@router.get("/{slug}/gallery/{index}")
+async def get_public_gallery_image(slug: str, index: int, db: AsyncSession = Depends(get_db)):
+    """Mirrors get_public_form_image's exact pattern — serves by index rather
+    than exposing the raw storage key."""
+    profile, _user = await _get_coach_by_slug(db, slug)
+    images = profile.gallery_image_urls or []
+    if index < 0 or index >= len(images):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
+    key = images[index]
+    content = await read_file(key)
+    if content is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
+    content_type, _ = mimetypes.guess_type(key)
+    return Response(
+        content=content, media_type=content_type or "image/jpeg", headers={"Content-Disposition": "inline"}
+    )
+
+
+@router.get("/{slug}/packages", response_model=list[ProgramTemplateOut])
+async def get_public_packages(slug: str, db: AsyncSession = Depends(get_db)) -> list[ProgramTemplateOut]:
+    """Public, no-session equivalent of programs.py's list_my_available_packages
+    — for an anonymous portfolio visitor there's no client context to sort
+    niche-matches first, so this just lists every client-selectable template."""
+    profile, _user = await _get_coach_by_slug(db, slug)
+    result = await db.execute(
+        select(Program).where(
+            Program.coach_id == profile.user_id,
+            Program.is_template.is_(True),
+            Program.client_selectable.is_(True),
+        )
+    )
+    templates = list(result.scalars().all())
+    return [await _to_template_out(db, t) for t in templates]
+
+
+@router.get("/{slug}/c/{code}", response_model=ClientPortalPreviewOut)
+@limiter.limit("20/minute")
+async def get_client_portal_preview(
+    request: Request, slug: str, code: str, db: AsyncSession = Depends(get_db)
+) -> ClientPortalPreviewOut:
+    """Resolves a client's permanent personal bookmark link — the frontend page
+    at /{slug}/c/{code} uses this to personalize the login redirect (pre-filled
+    email, coach branding) for a client who isn't currently signed in."""
+    profile, _coach_user = await _get_coach_by_slug(db, slug)
+    result = await db.execute(
+        select(Client).where(Client.portal_code == code, Client.coach_id == profile.user_id)
+    )
+    client = result.scalar_one_or_none()
+    if client is None or client.user_id is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This link isn't available")
+
+    user = await db.get(User, client.user_id)
+    if user is None or client.invite_accepted_at is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "This link isn't available")
+
+    return ClientPortalPreviewOut(
+        name=user.name, email=user.email, coach_name=_coach_user.name, business_name=profile.business_name
     )
 
 
@@ -57,6 +135,27 @@ async def get_public_form(
         fields=[FormFieldSchema.model_validate(f) for f in (form.fields_json or [])],
         coach_name=user.name,
         business_name=profile.business_name,
+        has_image=form.image_key is not None,
+    )
+
+
+@router.get("/{slug}/forms/{form_slug}/image")
+async def get_public_form_image(slug: str, form_slug: str, db: AsyncSession = Depends(get_db)):
+    profile, _user = await _get_coach_by_slug(db, slug)
+    result = await db.execute(
+        select(Form).where(
+            Form.coach_id == profile.user_id, Form.slug == form_slug, Form.is_active.is_(True)
+        )
+    )
+    form = result.scalar_one_or_none()
+    if form is None or not form.image_key:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No cover image set")
+    content = await read_file(form.image_key)
+    if content is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No cover image set")
+    content_type, _ = mimetypes.guess_type(form.image_key)
+    return Response(
+        content=content, media_type=content_type or "image/jpeg", headers={"Content-Disposition": "inline"}
     )
 
 
@@ -128,5 +227,26 @@ async def submit_public_form(
         form_submission_id=submission.id,
     )
     db.add(lead)
+    notification = Notification(
+        user_id=profile.user_id,
+        type="form_submitted",
+        payload_json={
+            "message": f'New submission: "{form.title}" from {lead.name}',
+            "form_id": str(form.id),
+        },
+    )
+    db.add(notification)
+    await db.commit()
+    await db.refresh(notification)
+    await broadcast_notification(notification)
+    return {"ok": True}
+
+
+@router.post("/landing-interest", status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+async def submit_landing_interest(
+    request: Request, body: LandingInterestCreate, db: AsyncSession = Depends(get_db)
+) -> dict:
+    db.add(LandingInterest(name=body.name, email=body.email, niche=body.niche, note=body.note))
     await db.commit()
     return {"ok": True}

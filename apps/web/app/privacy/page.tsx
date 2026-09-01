@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CircleWavyCheckIcon as CircleWavyCheck } from "@phosphor-icons/react/dist/ssr";
 import { Eyebrow } from "@/components/ui";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -14,25 +15,25 @@ const sections = [
     heading: "What we collect",
     body: [
       "Account information you provide when you sign up: name, email address, business name, timezone, and (for coaches) your coaching niche.",
-      "Client and coaching data that coaches enter or that clients submit through intake forms, check-ins, messages, tasks, documents, and progress updates — this data belongs to the coach's practice, not to CoachevaOS.",
+      "Client and coaching data that coaches enter or that clients submit through intake forms, check-ins, messages, tasks, documents, and progress updates. This data belongs to the coach's practice, not to CoachevaOS.",
       "Usage data such as pages visited and features used, collected automatically to keep the product reliable and to improve it.",
-      "Payment and subscription details when a coach selects a paid plan, processed by our payment providers — we do not store full card numbers on our own servers.",
+      "Payment and subscription details when a coach selects a paid plan, processed by our payment providers. We do not store full card numbers on our own servers.",
     ],
   },
   {
     heading: "How we use it",
     body: [
       "To operate the core product: authenticate you, keep coach and client portals working, and deliver messages, bookings, and notifications in real time.",
-      "To power AI features (daily briefings, session-note follow-ups, smart replies, progress insights) using a coach's own account data — this data is never used to train shared models or shown to other coaches.",
-      "To send account-related and, where you've opted in, product email — never sold to third parties for advertising.",
+      "To power AI features (daily briefings, session-note follow-ups, smart replies, progress insights) using a coach's own account data. This data is never used to train shared models or shown to other coaches.",
+      "To send account-related and, where you've opted in, product email, never sold to third parties for advertising.",
       "To detect abuse and keep the platform secure, including rate-limiting and monitoring for suspicious login activity.",
     ],
   },
   {
     heading: "Who can see what",
     body: [
-      "Every account is scoped to its owner. A coach can only see their own clients, leads, and messages — never another coach's data.",
-      "A client can only see their own records and their own coach's shared content (messages, tasks, documents, sessions) — never another client's data, and never another coach's internal notes or business data.",
+      "Every account is scoped to its owner. A coach can only see their own clients, leads, and messages, never another coach's data.",
+      "A client can only see their own records and their own coach's shared content (messages, tasks, documents, sessions), never another client's data, and never another coach's internal notes or business data.",
       "CoachevaOS staff do not access account content except as needed to provide support you've requested or to investigate a security issue.",
     ],
   },
@@ -40,7 +41,7 @@ const sections = [
     heading: "You own your client data",
     body: [
       "Client records, notes, messages, and files created within your practice belong to you. If you close your account, you can request an export of your data before deletion.",
-      "We act as a processor of the client data you and your clients enter — you remain responsible for having the right to collect and store that information under applicable law in your jurisdiction.",
+      "We act as a processor of the client data you and your clients enter. You remain responsible for having the right to collect and store that information under applicable law in your jurisdiction.",
     ],
   },
   {
@@ -65,7 +66,7 @@ const sections = [
   {
     heading: "Contact",
     body: [
-      "Questions about this policy or your data can be sent to privacy@coacheva.os.",
+      "Questions about this policy or your data can be sent to privacy@coachevaos.com.",
     ],
   },
 ];
@@ -73,15 +74,9 @@ const sections = [
 export default function PrivacyPage() {
   return (
     <div className="flex flex-1 flex-col bg-neutral-100">
-      <div className="p-3 md:p-4">
-        <div className="mx-auto w-full max-w-3xl px-3 py-16 md:px-4">
-          <Link href="/" className="mb-8 inline-flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-900 text-neutral-100">
-              <CircleWavyCheck className="h-3.5 w-3.5" weight="fill" />
-            </span>
-            <span className="font-heading text-sm font-bold text-neutral-900">CoachevaOS</span>
-          </Link>
-
+      <SiteHeader variant="static" />
+      <main className="p-3 md:p-4">
+        <div className="mx-auto w-full max-w-3xl px-3 py-10 md:px-4">
           <Eyebrow className="mb-4">Legal</Eyebrow>
           <h1 className="font-heading mb-2 text-[36px] font-semibold tracking-tight text-neutral-900 md:text-[44px]">
             Privacy Policy
@@ -117,7 +112,8 @@ export default function PrivacyPage() {
             </Link>
           </div>
         </div>
-      </div>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

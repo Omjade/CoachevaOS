@@ -37,6 +37,7 @@ class FormOut(BaseModel):
     is_active: bool
     created_at: datetime
     submission_count: int = 0
+    has_image: bool = False
 
 
 class PublicFormOut(BaseModel):
@@ -45,6 +46,7 @@ class PublicFormOut(BaseModel):
     fields: list[FormFieldSchema]
     coach_name: str
     business_name: str | None
+    has_image: bool = False
 
 
 class FormSubmitRequest(BaseModel):
@@ -56,3 +58,11 @@ class FormSubmissionOut(BaseModel):
     form_id: uuid.UUID
     answers: dict[str, str | list[str]]
     submitted_at: datetime
+
+
+class FormShareRequest(BaseModel):
+    client_ids: list[uuid.UUID]
+
+
+class FormShareOut(BaseModel):
+    sent: int

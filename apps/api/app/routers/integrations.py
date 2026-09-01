@@ -17,7 +17,7 @@ from app.deps import require_coach
 from app.models.calendar_connections import CalendarConnection
 from app.models.enums import CalendarProvider
 from app.models.users import CoachProfile, User
-from app.schemas.integrations import IntegrationStatusOut
+from app.schemas.integrations import GoogleCalendarEventOut, IntegrationStatusOut
 from app.security import create_integration_state_token, decode_token
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
@@ -371,6 +371,61 @@ async def _ensure_fresh_token(db: AsyncSession, connection: CalendarConnection) 
     return connection.access_token
 
 
+@router.get("/google/events", response_model=list[GoogleCalendarEventOut])
+async def list_google_calendar_events(
+    coach: User = Depends(require_coach), db: AsyncSession = Depends(get_db)
+) -> list[GoogleCalendarEventOut]:
+    """A live read straight from the coach's actual Google Calendar (not our
+    own internal Meeting table) — lets the app surface "what's really on your
+    calendar," including events that were never booked through CoachevaOS."""
+    connection = await _get_connection(db, coach.id, CalendarProvider.google)
+    if connection is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Google Calendar isn't connected")
+
+    token = await _ensure_fresh_token(db, connection)
+    now = datetime.now(timezone.utc)
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            res = await http.get(
+                "https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                headers={"Authorization": f"Bearer {token}"},
+                params={
+                    "timeMin": now.isoformat(),
+                    "maxResults": 10,
+                    "singleEvents": "true",
+                    "orderBy": "startTime",
+                },
+            )
+    except httpx.HTTPError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Couldn't reach Google Calendar") from exc
+
+    if res.status_code == 401:
+        # The refreshed token was itself rejected — the connection is dead
+        # (revoked access, expired refresh token). Surface that plainly
+        # rather than an opaque 502, so the coach knows to reconnect.
+        raise HTTPException(status.HTTP_409_CONFLICT, "Google Calendar access has expired — reconnect it")
+    if res.status_code != 200:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Couldn't load events from Google Calendar")
+
+    events = res.json().get("items", [])
+    out: list[GoogleCalendarEventOut] = []
+    for e in events:
+        start = e.get("start", {})
+        end = e.get("end", {})
+        out.append(
+            GoogleCalendarEventOut(
+                id=e.get("id", ""),
+                summary=e.get("summary") or "(No title)",
+                start=start.get("dateTime"),
+                end=end.get("dateTime"),
+                all_day_date=start.get("date"),
+                hangout_link=e.get("hangoutLink"),
+                html_link=e.get("htmlLink"),
+            )
+        )
+    return out
+
+
 async def create_video_call_link(
     db: AsyncSession,
     coach_id: uuid.UUID,
@@ -414,7 +469,15 @@ async def create_video_call_link(
                         json={
                             "topic": topic,
                             "type": 2,
+                            # starts_at is stored UTC-aware (Meeting.starts_at) —
+                            # a bare "%Y-%m-%dT%H:%M:%S" with no offset and no
+                            # timezone field is interpreted by Zoom in the
+                            # account's own default timezone, not UTC, so the
+                            # real meeting would silently land at the wrong
+                            # wall-clock time. Explicit "timezone": "UTC" fixes
+                            # this without needing to know that account default.
                             "start_time": starts_at.strftime("%Y-%m-%dT%H:%M:%S"),
+                            "timezone": "UTC",
                             "duration": max(1, int((ends_at - starts_at).total_seconds() // 60)),
                         },
                     )

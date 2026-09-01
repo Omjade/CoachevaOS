@@ -21,6 +21,7 @@ class Form(Base, UUIDPk, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text)
     fields_json: Mapped[list] = mapped_column(JSONB, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    image_key: Mapped[str | None] = mapped_column(String(512))
 
 
 class FormSubmission(Base, UUIDPk):

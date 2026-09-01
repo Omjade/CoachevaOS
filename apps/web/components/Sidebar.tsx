@@ -16,6 +16,7 @@ export interface NavItem {
   seg: string;
   label: string;
   Icon: PhosphorIcon;
+  badgeCount?: number;
 }
 
 export default function Sidebar({
@@ -56,6 +57,20 @@ export default function Sidebar({
     });
   }
 
+  // Longest matching href wins — otherwise a nested item like
+  // "settings/custom-fields" would also satisfy the plain "settings" item's
+  // startsWith check and both would light up as active at once.
+  let bestSeg: string | null = null;
+  let bestLen = -1;
+  for (const item of navItems) {
+    const href = `/${slug}/${item.seg}`;
+    const matches = pathname === href || pathname.startsWith(`${href}/`);
+    if (matches && href.length > bestLen) {
+      bestSeg = item.seg;
+      bestLen = href.length;
+    }
+  }
+
   const navContent = (isCollapsed: boolean) => (
     <>
       <div className={`mb-8 flex items-center gap-2 px-2 ${isCollapsed ? "justify-center px-0" : ""}`}>
@@ -66,10 +81,10 @@ export default function Sidebar({
           <span className="font-heading truncate text-sm font-bold">{brandLabel}</span>
         )}
       </div>
-      <nav className="flex flex-1 flex-col gap-1">
+      <nav className="scrollbar-thin flex flex-1 flex-col gap-1 overflow-y-auto">
         {navItems.map((item) => {
           const href = `/${slug}/${item.seg}`;
-          const active = pathname === href;
+          const active = item.seg === bestSeg;
           return (
             <Link
               key={item.seg}
@@ -83,12 +98,28 @@ export default function Sidebar({
                   : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
               }`}
             >
-              <item.Icon
-                className="h-4 w-4 shrink-0"
-                weight={active ? "fill" : "regular"}
-                style={{ color: active ? "var(--color-accent-500)" : undefined }}
-              />
-              {!isCollapsed && item.label}
+              <span className="relative shrink-0">
+                <item.Icon
+                  className="h-4 w-4"
+                  weight={active ? "fill" : "regular"}
+                  style={{ color: active ? "var(--color-accent-500)" : undefined }}
+                />
+                {isCollapsed && !!item.badgeCount && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent-600 text-[8px] font-semibold text-white">
+                    {item.badgeCount > 9 ? "9+" : item.badgeCount}
+                  </span>
+                )}
+              </span>
+              {!isCollapsed && (
+                <span className="flex flex-1 items-center justify-between gap-2">
+                  {item.label}
+                  {!!item.badgeCount && (
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-accent-600 px-1 text-[10px] font-semibold text-white">
+                      {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                    </span>
+                  )}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -106,15 +137,15 @@ export default function Sidebar({
       </button>
 
       <div
-        className={`flex items-center gap-3 border-t border-white/10 px-2 pt-4 ${
+        className={`flex items-center gap-2 border-t border-white/10 px-2 pt-4 ${
           isCollapsed ? "justify-center px-0" : ""
         }`}
       >
-        <Avatar userId={identityUserId} name={identityName} className="h-9 w-9 text-sm" />
+        <Avatar userId={identityUserId} name={identityName} className="h-9 w-9 text-sm shrink-0" />
         {!isCollapsed && (
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm text-white">{identityName}</p>
-            <p className="text-xs text-neutral-500">{identityRole}</p>
+            <p className="truncate text-xs text-neutral-500">{identityRole}</p>
           </div>
         )}
       </div>
@@ -124,7 +155,7 @@ export default function Sidebar({
   return (
     <>
       <aside
-        className={`hidden shrink-0 flex-col overflow-hidden bg-neutral-900 px-4 py-6 transition-[width] duration-200 md:flex ${
+        className={`sticky top-0 hidden h-screen shrink-0 flex-col overflow-hidden bg-neutral-900 px-4 py-6 transition-[width] duration-200 md:flex ${
           ready && collapsed ? "w-16" : expandedWidth
         }`}
       >

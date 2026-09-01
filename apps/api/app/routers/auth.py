@@ -18,12 +18,21 @@ from app.models.goals import ClientGoal
 from app.models.leads import Lead
 from app.models.progress import ProgressEntry
 from app.models.users import CoachProfile, User
+from app.payments.geo import client_ip, lookup_country
 from app.utils.time import utcnow
 from app.rate_limit import limiter
-from app.schemas.auth import LoginRequest, RegisterRequest, UserOut
+from app.schemas.auth import (
+    CoachChoice,
+    CoachChoiceRequiredOut,
+    LoginRequest,
+    RegisterRequest,
+    SelectCoachRequest,
+    UserOut,
+)
 from app.schemas.mfa import MfaRequiredOut
 from app.security import (
     create_access_token,
+    create_coach_choice_token,
     create_mfa_challenge_token,
     create_refresh_token,
     decode_token,
@@ -38,9 +47,9 @@ ACCESS_COOKIE = "access_token"
 REFRESH_COOKIE = "refresh_token"
 
 
-def _set_auth_cookies(response: Response, user: User) -> None:
-    access = create_access_token(user.id, user.role.value)
-    refresh = create_refresh_token(user.id, user.role.value)
+def _set_auth_cookies(response: Response, user: User, coach_id: uuid.UUID | None = None) -> None:
+    access = create_access_token(user.id, user.role.value, coach_id=coach_id)
+    refresh = create_refresh_token(user.id, user.role.value, coach_id=coach_id)
     cookie_kwargs = dict(httponly=True, samesite="lax", secure=settings.cookie_secure, path="/")
     response.set_cookie(
         ACCESS_COOKIE, access, max_age=settings.access_token_expire_minutes * 60, **cookie_kwargs
@@ -53,23 +62,49 @@ def _set_auth_cookies(response: Response, user: User) -> None:
     )
 
 
-async def _post_login_url(db: AsyncSession, user: User) -> str:
+async def _client_rows_for_user(db: AsyncSession, user_id: uuid.UUID) -> list[Client]:
+    result = await db.execute(select(Client).where(Client.user_id == user_id))
+    return list(result.scalars().all())
+
+
+async def _coach_choices_out(db: AsyncSession, clients: list[Client]) -> list[CoachChoice]:
+    out = []
+    for c in clients:
+        profile = await db.get(CoachProfile, c.coach_id)
+        out.append(
+            CoachChoice(
+                coach_id=c.coach_id,
+                business_name=(profile.business_name if profile and profile.business_name else "Coach"),
+                portal_slug=profile.portal_slug if profile else None,
+            )
+        )
+    return out
+
+
+async def _post_login_url(
+    db: AsyncSession, user: User, coach_id: uuid.UUID | None = None
+) -> str:
     """Where to land a coach or client right after auth — resolves their real
-    slug-scoped dashboard instead of the flat (dead, pre-Phase-7) /dashboard."""
+    slug-scoped dashboard instead of the flat (dead, pre-Phase-7) /dashboard.
+    `coach_id` disambiguates which Client row applies when a client has more
+    than one coach — callers must resolve ambiguity before calling this."""
     if user.role == UserRole.coach:
         profile = await db.get(CoachProfile, user.id)
         if profile is None:
             return f"{settings.frontend_url}/onboarding"
         return f"{settings.frontend_url}/{profile.portal_slug}/dashboard"
 
-    result = await db.execute(select(Client).where(Client.user_id == user.id))
-    client = result.scalar_one_or_none()
+    query = select(Client).where(Client.user_id == user.id)
+    if coach_id is not None:
+        query = query.where(Client.coach_id == coach_id)
+    result = await db.execute(query)
+    client = result.scalars().first()
     if client is None:
         return settings.frontend_url
     profile = await db.get(CoachProfile, client.coach_id)
     if profile is None:
         return settings.frontend_url
-    return f"{settings.frontend_url}/{profile.portal_slug}/dashboard"
+    return f"{settings.frontend_url}/{profile.portal_slug}/client/{client.id}/dashboard"
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
@@ -81,12 +116,16 @@ async def register(
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
 
+    ip = client_ip(request.headers.get("x-forwarded-for"), request.client.host if request.client else None)
+    country_code = await lookup_country(ip)
+
     user = User(
         email=body.email,
         password_hash=hash_password(body.password),
         name=body.name,
         role=body.role,
         timezone=body.timezone,
+        country_code=country_code,
     )
     db.add(user)
     await db.commit()
@@ -96,11 +135,11 @@ async def register(
     return user
 
 
-@router.post("/login", response_model=UserOut | MfaRequiredOut)
+@router.post("/login", response_model=UserOut | MfaRequiredOut | CoachChoiceRequiredOut)
 @limiter.limit("10/minute")
 async def login(
     request: Request, body: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)
-) -> User | MfaRequiredOut:
+) -> User | MfaRequiredOut | CoachChoiceRequiredOut:
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     if user is None or user.password_hash is None or not verify_password(
@@ -108,10 +147,85 @@ async def login(
     ):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
 
-    if user.mfa_enabled:
-        return MfaRequiredOut(challenge_token=create_mfa_challenge_token(user.id))
+    # Coach ambiguity is resolved BEFORE MFA — a client with more than one
+    # coach relationship picks which one first; the normal MFA challenge (MFA
+    # is a per-user setting, not per-coach) then runs with the now-known
+    # coach_id already embedded in its payload.
+    coach_id: uuid.UUID | None = None
+    if user.role == UserRole.client:
+        clients = await _client_rows_for_user(db, user.id)
+        if len(clients) > 1:
+            choices = await _coach_choices_out(db, clients)
+            return CoachChoiceRequiredOut(
+                challenge_token=create_coach_choice_token(user.id), choices=choices
+            )
+        if len(clients) == 1:
+            coach_id = clients[0].coach_id
 
-    _set_auth_cookies(response, user)
+    if user.mfa_enabled:
+        return MfaRequiredOut(challenge_token=create_mfa_challenge_token(user.id, coach_id=coach_id))
+
+    _set_auth_cookies(response, user, coach_id=coach_id)
+    return user
+
+
+@router.get("/login/coach-choices", response_model=CoachChoiceRequiredOut)
+@limiter.limit("20/minute")
+async def get_login_coach_choices(
+    request: Request, challenge_token: str, db: AsyncSession = Depends(get_db)
+) -> CoachChoiceRequiredOut:
+    """The Google OAuth redirect (google_callback) hands off an ambiguous
+    client login with only a bare challenge token in the query string — no
+    request body available to return the choices list through directly. The
+    frontend calls this once on arrival to render the same picker the
+    password-login path gets inline from POST /auth/login."""
+    try:
+        payload = decode_token(challenge_token)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired selection") from exc
+    if payload.get("type") != "coach_choice":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid selection token")
+
+    user = await db.get(User, uuid.UUID(payload["sub"]))
+    if user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid selection token")
+
+    clients = await _client_rows_for_user(db, user.id)
+    choices = await _coach_choices_out(db, clients)
+    return CoachChoiceRequiredOut(challenge_token=challenge_token, choices=choices)
+
+
+@router.post("/login/select-coach", response_model=UserOut | MfaRequiredOut)
+@limiter.limit("10/minute")
+async def select_login_coach(
+    request: Request,
+    body: SelectCoachRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> User | MfaRequiredOut:
+    try:
+        payload = decode_token(body.challenge_token)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired selection") from exc
+    if payload.get("type") != "coach_choice":
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid selection token")
+
+    user = await db.get(User, uuid.UUID(payload["sub"]))
+    if user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid selection token")
+
+    result = await db.execute(
+        select(Client).where(Client.user_id == user.id, Client.coach_id == body.coach_id)
+    )
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "That coach relationship no longer exists")
+
+    if user.mfa_enabled:
+        return MfaRequiredOut(
+            challenge_token=create_mfa_challenge_token(user.id, coach_id=body.coach_id)
+        )
+
+    _set_auth_cookies(response, user, coach_id=body.coach_id)
     return user
 
 
@@ -177,8 +291,21 @@ async def google_callback(
         await db.commit()
         await db.refresh(user)
 
-    response = RedirectResponse(await _post_login_url(db, user))
-    _set_auth_cookies(response, user)
+    coach_id: uuid.UUID | None = None
+    if user.role == UserRole.client:
+        clients = await _client_rows_for_user(db, user.id)
+        if len(clients) > 1:
+            # Same ambiguity as password login, but there's no request body to
+            # return a choice payload through — hand off to the frontend login
+            # page with a coach-choice challenge token in the query string; it
+            # renders the same picker and posts to /auth/login/select-coach.
+            token = create_coach_choice_token(user.id)
+            return RedirectResponse(f"{settings.frontend_url}/login?coach_choice={token}")
+        if len(clients) == 1:
+            coach_id = clients[0].coach_id
+
+    response = RedirectResponse(await _post_login_url(db, user, coach_id=coach_id))
+    _set_auth_cookies(response, user, coach_id=coach_id)
     return response
 
 
@@ -208,7 +335,9 @@ async def refresh(
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")
 
-    _set_auth_cookies(response, user)
+    raw_coach_id = payload.get("coach_id")
+    coach_id = uuid.UUID(raw_coach_id) if raw_coach_id else None
+    _set_auth_cookies(response, user, coach_id=coach_id)
     return user
 
 

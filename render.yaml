@@ -1,0 +1,112 @@
+# Render Blueprint — deploys the FastAPI backend from apps/api on the free
+# tier. Nothing here renames or moves the actual apps/api directory; rootDir
+# is how Render is pointed at a subfolder of the monorepo without a rename.
+#
+# Free-tier caveat, stated plainly: Render's free web services spin down
+# after ~15 minutes of no traffic and take roughly 30-60s to wake on the
+# next request. That's a platform limit, not something this file or the
+# frontend's retry logic can eliminate — "zero cold-starts" on the free tier
+# specifically requires an external keep-alive ping (a free uptime monitor,
+# or a scheduled GitHub Actions workflow) hitting /health every ~10-14
+# minutes so the instance never actually goes idle. The frontend's retry/
+# backoff (see apps/web/lib/api.ts) only makes an unavoidable cold start feel
+# like a slow load instead of a failed request — it does not prevent one.
+services:
+  - type: web
+    name: coachevaos-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: apps/api
+    buildCommand: pip install -r requirements.txt
+    # Migrations run once per deploy, before the server starts serving
+    # traffic, so a deploy never serves against a stale schema.
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: FRONTEND_URL
+        value: https://coachevaos.com
+      - key: CORS_EXTRA_ORIGINS
+        value: '["https://coachevaos.com","https://www.coachevaos.com"]'
+      # Secrets and per-deploy values are never committed — Render prompts
+      # for these in the dashboard when the blueprint is applied.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # Every *_REDIRECT_URI below must be registered as an authorized
+      # redirect/callback URL in that provider's own console BEFORE go-live,
+      # or the OAuth flow will fail at the provider's end with a redirect_uri
+      # mismatch error, regardless of what this app sends.
+      - key: GOOGLE_REDIRECT_URI
+        value: https://api.coachevaos.com/auth/google/callback
+      - key: GOOGLE_CALENDAR_REDIRECT_URI
+        value: https://api.coachevaos.com/integrations/google/callback
+      - key: ZOOM_CLIENT_ID
+        sync: false
+      - key: ZOOM_CLIENT_SECRET
+        sync: false
+      - key: ZOOM_REDIRECT_URI
+        value: https://api.coachevaos.com/integrations/zoom/callback
+      - key: CALENDLY_CLIENT_ID
+        sync: false
+      - key: CALENDLY_CLIENT_SECRET
+        sync: false
+      - key: CALENDLY_REDIRECT_URI
+        value: https://api.coachevaos.com/integrations/calendly/callback
+      - key: CALCOM_CLIENT_ID
+        sync: false
+      - key: CALCOM_CLIENT_SECRET
+        sync: false
+      - key: CALCOM_REDIRECT_URI
+        value: https://api.coachevaos.com/integrations/calcom/callback
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1
+      # Paddle: switching this to "live" points the backend at Paddle's real
+      # API instead of the sandbox — do this only once a live Paddle account,
+      # live keys, and live price IDs (below) all actually exist. Sandbox
+      # price IDs do NOT work against the live API and vice versa.
+      - key: PADDLE_ENVIRONMENT
+        value: sandbox
+      - key: PADDLE_API_KEY
+        sync: false
+      - key: PADDLE_CLIENT_SIDE_TOKEN
+        sync: false
+      # Register this exact URL as the webhook destination in the Paddle
+      # dashboard: https://api.coachevaos.com/billing/paddle/webhook
+      - key: PADDLE_WEBHOOK_SECRET
+        sync: false
+      - key: PADDLE_PRICE_STARTER_MONTHLY
+        sync: false
+      - key: PADDLE_PRICE_STARTER_ANNUAL
+        sync: false
+      - key: PADDLE_PRICE_GROWTH_MONTHLY
+        sync: false
+      - key: PADDLE_PRICE_GROWTH_ANNUAL
+        sync: false
+      - key: PADDLE_PRICE_SCALE_MONTHLY
+        sync: false
+      - key: PADDLE_PRICE_SCALE_ANNUAL
+        sync: false
+      - key: PADDLE_PRICE_PRO_MONTHLY
+        sync: false
+      - key: PADDLE_PRICE_PRO_ANNUAL
+        sync: false
+      - key: SALES_CONTACT_EMAIL
+        value: sales@coachevaos.com

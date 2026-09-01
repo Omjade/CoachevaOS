@@ -11,7 +11,7 @@ import {
   FileTextIcon as FileText,
   MicrophoneIcon as Microphone,
 } from "@phosphor-icons/react";
-import { api, ApiError, MessageData } from "@/lib/api";
+import { api, API_URL, ApiError, MessageData } from "@/lib/api";
 import { useChatSocket } from "@/lib/useChatSocket";
 import { Button, Input } from "@/components/ui";
 import Avatar from "@/components/Avatar";
@@ -69,6 +69,7 @@ export default function ChatThread({
   const [online, setOnline] = useState(false);
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -132,16 +133,29 @@ export default function ChatThread({
     if (!text.trim()) return;
     const body = text.trim();
     setText("");
-    const message = await api.sendMessage(threadId, body);
-    setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+    setSendError(null);
+    try {
+      const message = await api.sendMessage(threadId, body);
+      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+    } catch (err) {
+      // Restore what they typed — a failed send shouldn't silently lose it.
+      setText(body);
+      setSendError(err instanceof ApiError ? err.message : "Couldn't send. Try again.");
+    }
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const message = await api.sendMediaMessage(threadId, file);
-    setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setSendError(null);
+    try {
+      const message = await api.sendMediaMessage(threadId, file);
+      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+    } catch (err) {
+      setSendError(err instanceof ApiError ? err.message : "Couldn't send that file. Try again.");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
   async function handleSuggestReply() {
@@ -156,10 +170,10 @@ export default function ChatThread({
     }
   }
 
-  const mediaBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const mediaBaseUrl = API_URL;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-w-0 flex-1 flex-col">
       <div className="flex items-center justify-between border-b border-neutral-200/70 px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -266,6 +280,9 @@ export default function ChatThread({
         <div ref={bottomRef} />
       </div>
 
+      {sendError && (
+        <p className="border-t border-neutral-200/70 px-3 pt-2 text-xs text-accent-600">{sendError}</p>
+      )}
       <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-neutral-200/70 p-3">
         <input ref={fileInputRef} type="file" className="hidden" onChange={handleFile} id="chat-attach" />
         <button

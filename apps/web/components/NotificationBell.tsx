@@ -1,28 +1,94 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { BellIcon as Bell } from "@phosphor-icons/react";
 import { api, NotificationData } from "@/lib/api";
+import { useChatSocket } from "@/lib/useChatSocket";
+import { useViewerRole } from "@/lib/useViewerRole";
 
 const TYPE_LABEL: Record<string, string> = {
   meeting_soon: "Meeting soon",
   task_due: "Task due",
   subscription_expiring: "Subscription expiring",
   unread_message: "Unread message",
+  new_message: "New message",
+  form_submitted: "New form submission",
   lead_followup: "Lead follow-up",
   invoice_overdue: "Invoice overdue",
+  client_onboarded: "Client onboarded",
+  package_selected: "Package selected",
+  ai_assistant_escalation: "Escalated question",
+  trial_reminder: "Trial reminder",
+  client_cap_exceeded: "Plan limit reached",
+  client_subscription_lapsed: "Subscription lapsed",
 };
+
+// Every notification type that carries enough context to know where it's
+// "about" gets a real link — clicking it should land on the specific
+// client/thread/form/lead it concerns, not just mark it read and sit there.
+function buildHref(
+  n: NotificationData,
+  slug: string,
+  role: "coach" | "client" | "anonymous" | null
+): string | null {
+  const p = n.payload_json;
+  switch (n.type) {
+    case "meeting_soon":
+    case "task_due":
+    case "subscription_expiring":
+    case "invoice_overdue":
+    case "client_onboarded":
+    case "package_selected":
+    case "ai_assistant_escalation":
+    case "client_subscription_lapsed":
+      return p.client_id ? `/${slug}/clients/${p.client_id}` : null;
+    case "unread_message":
+      return p.thread_id ? `/${slug}/chat/${p.thread_id}` : `/${slug}/chat`;
+    case "new_message":
+      if (role === "coach") return p.thread_id ? `/${slug}/chat/${p.thread_id}` : `/${slug}/chat`;
+      return `/${slug}/messages`;
+    case "lead_followup":
+      return `/${slug}/leads`;
+    case "form_submitted":
+      return p.form_id ? `/${slug}/forms/${p.form_id}/submissions` : `/${slug}/forms`;
+    case "trial_reminder":
+    case "client_cap_exceeded":
+      return `/${slug}/billing`;
+    default:
+      return null;
+  }
+}
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const params = useParams<{ slug: string }>();
+  const router = useRouter();
+  const role = useViewerRole();
 
   function refresh() {
     api.listNotifications().then(setNotifications).catch(() => {});
   }
 
-  useEffect(refresh, []);
+  useEffect(() => {
+    refresh();
+    // Kept as a fallback for any missed WebSocket event (e.g. a connection
+    // drop between reconnect attempts) — the socket below is what makes
+    // this feel instant in the common case.
+    const interval = setInterval(refresh, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // A new chat message also creates a "new_message" Notification row
+  // server-side (threads.py's _create_and_broadcast), so a "message" event
+  // is just as much a signal to refresh as the dedicated "notification"
+  // event other notification types broadcast.
+  useChatSocket({
+    onMessage: () => refresh(),
+    onNotification: () => refresh(),
+  });
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -40,13 +106,19 @@ export default function NotificationBell() {
 
   async function handleItemClick(n: NotificationData) {
     if (!n.read_at) {
-      await api.markNotificationRead(n.id);
+      // Low-stakes action — on failure the notification just stays unread,
+      // so this silently no-ops rather than surfacing an error UI, matching
+      // refresh()'s own silent-catch above. It must not crash the page.
+      await api.markNotificationRead(n.id).catch(() => {});
       refresh();
     }
+    setOpen(false);
+    const href = buildHref(n, params.slug, role);
+    if (href) router.push(href);
   }
 
   async function handleMarkAll() {
-    await api.markAllNotificationsRead();
+    await api.markAllNotificationsRead().catch(() => {});
     refresh();
   }
 
@@ -75,7 +147,7 @@ export default function NotificationBell() {
               </button>
             )}
           </div>
-          <div className="max-h-80 overflow-y-auto">
+          <div className="scrollbar-thin-light max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
               <p className="px-4 py-6 text-center text-sm text-neutral-600">
                 Nothing to see here.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   TextAaIcon as TextAa,
   ParagraphIcon as Paragraph,
@@ -17,8 +17,9 @@ import {
   ArrowUpIcon as ArrowUp,
   ArrowDownIcon as ArrowDown,
   XIcon as X,
+  ImageIcon as ImageIconGlyph,
 } from "@phosphor-icons/react";
-import { FormField, FormFieldType } from "@/lib/api";
+import { api, ApiError, formImageUrl, FormField, FormFieldType } from "@/lib/api";
 import { Button, Card, Input, Label } from "@/components/ui";
 
 const FIELD_TYPES: { type: FormFieldType; label: string; Icon: typeof TextAa; hasOptions: boolean }[] = [
@@ -49,6 +50,9 @@ export function FormBuilder({
   onDescriptionChange,
   fields,
   onFieldsChange,
+  formId,
+  hasImage,
+  onImageChange,
 }: {
   title: string;
   onTitleChange: (v: string) => void;
@@ -56,8 +60,46 @@ export function FormBuilder({
   onDescriptionChange: (v: string) => void;
   fields: FormField[];
   onFieldsChange: (fields: FormField[]) => void;
+  // Cover image only applies to an already-saved form (needs a real id to
+  // upload against) — omit these three props while creating a brand-new form.
+  formId?: string;
+  hasImage?: boolean;
+  onImageChange?: (hasImage: boolean) => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [imageVersion, setImageVersion] = useState(0);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !formId) return;
+    setImageError(null);
+    setImageUploading(true);
+    try {
+      await api.uploadFormImage(formId, file);
+      setImageVersion((v) => v + 1);
+      onImageChange?.(true);
+    } catch (err) {
+      setImageError(err instanceof ApiError ? err.message : "Couldn't upload that image. Try again.");
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  }
+
+  async function handleImageRemove() {
+    if (!formId) return;
+    setImageError(null);
+    try {
+      await api.deleteFormImage(formId);
+      setImageVersion((v) => v + 1);
+      onImageChange?.(false);
+    } catch (err) {
+      setImageError(err instanceof ApiError ? err.message : "Couldn't remove that image. Try again.");
+    }
+  }
 
   function addField(type: FormFieldType) {
     const meta = fieldMeta(type);
@@ -92,6 +134,57 @@ export function FormBuilder({
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div className="flex flex-col gap-5">
+        {formId && (
+          <Card>
+            <Label>Cover image</Label>
+            <p className="mb-3 text-xs text-neutral-500">
+              Shown across the top of the form when clients open it.
+            </p>
+            {hasImage ? (
+              <div className="relative mb-3 aspect-[3/1] w-full overflow-hidden rounded-[12px] bg-neutral-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  key={imageVersion}
+                  src={`${formImageUrl(formId)}?v=${imageVersion}`}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="mb-3 flex aspect-[3/1] w-full items-center justify-center rounded-[12px] border border-dashed border-neutral-300 bg-neutral-50/60 text-neutral-400">
+                <ImageIconGlyph className="h-6 w-6" />
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => imageInputRef.current?.click()}
+                loading={imageUploading}
+              >
+                {hasImage ? "Replace image" : "Upload image"}
+              </Button>
+              {hasImage && (
+                <button
+                  type="button"
+                  onClick={handleImageRemove}
+                  className="text-xs font-medium text-neutral-500 hover:text-accent-600"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageChange}
+            />
+            {imageError && <p className="mt-2 text-xs text-red-600">{imageError}</p>}
+          </Card>
+        )}
+
         <Card>
           <div className="flex flex-col gap-4">
             <div>
@@ -240,6 +333,17 @@ export function FormBuilder({
       <div className="lg:sticky lg:top-6 lg:self-start">
         <p className="mb-3 text-xs font-semibold text-neutral-500 uppercase">Live preview</p>
         <Card className="!bg-neutral-50/60">
+          {formId && hasImage && (
+            <div className="mb-4 -mx-7 -mt-7 aspect-[3/1] overflow-hidden rounded-t-[22px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                key={imageVersion}
+                src={`${formImageUrl(formId)}?v=${imageVersion}`}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )}
           <h3 className="font-heading mb-1 text-lg font-semibold text-neutral-900">
             {title || "Untitled form"}
           </h3>

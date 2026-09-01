@@ -12,6 +12,7 @@ class LeadCreate(BaseModel):
     email: str | None = None
     interested_in: str | None = None
     notes: str | None = None
+    source: str | None = None
 
 
 class LeadUpdate(BaseModel):

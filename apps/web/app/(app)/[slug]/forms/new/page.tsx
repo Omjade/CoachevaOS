@@ -2,9 +2,17 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { api, ApiError, FormField } from "@/lib/api";
-import { Button, Eyebrow, ErrorBanner } from "@/components/ui";
+import { SparkleIcon as Sparkle } from "@phosphor-icons/react";
+import { api, ApiError, FormField, FormFieldType } from "@/lib/api";
+import { Button, Eyebrow, ErrorBanner, Input, Card } from "@/components/ui";
 import { FormBuilder } from "@/components/FormBuilder";
+import { useRoleGuard } from "@/lib/useRoleGuard";
+
+let draftIdCounter = 0;
+function nextDraftId() {
+  draftIdCounter += 1;
+  return `ai_${Date.now()}_${draftIdCounter}`;
+}
 
 const STARTER_FIELDS: FormField[] = [
   { id: "f_name", type: "text", label: "Full name", required: true },
@@ -41,6 +49,7 @@ const STARTER_FIELDS: FormField[] = [
 ];
 
 export default function NewFormPage() {
+  const ok = useRoleGuard("coach");
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const [title, setTitle] = useState("New client intake");
@@ -48,6 +57,32 @@ export default function NewFormPage() {
   const [fields, setFields] = useState<FormField[]>(STARTER_FIELDS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiDescription, setAiDescription] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  async function handleAiDraft() {
+    if (!aiDescription.trim()) return;
+    setAiLoading(true);
+    setError(null);
+    try {
+      const draft = await api.getFormAiDraft(aiDescription.trim());
+      setTitle(draft.title);
+      setDescription(draft.description);
+      setFields(
+        draft.fields.map((f) => ({
+          id: nextDraftId(),
+          type: f.type as FormFieldType,
+          label: f.label,
+          required: f.required,
+          options: f.options ?? undefined,
+        }))
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   async function handleSave() {
     setError(null);
@@ -60,6 +95,8 @@ export default function NewFormPage() {
       setSaving(false);
     }
   }
+
+  if (!ok) return null;
 
   return (
     <div>
@@ -80,6 +117,36 @@ export default function NewFormPage() {
           <ErrorBanner>{error}</ErrorBanner>
         </div>
       )}
+
+      <Card className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkle className="h-4 w-4 text-accent-600" weight="fill" />
+          <h3 className="font-heading text-sm font-semibold text-neutral-900">
+            Describe your form
+          </h3>
+        </div>
+        <p className="mb-3 text-xs text-neutral-500">
+          Replaces the fields below with an AI-drafted list. You can still edit everything
+          before publishing.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={aiDescription}
+            onChange={(e) => setAiDescription(e.target.value)}
+            placeholder="e.g. intake form for a new nutrition client"
+            className="flex-1"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleAiDraft}
+            loading={aiLoading}
+            disabled={!aiDescription.trim()}
+          >
+            Draft with AI
+          </Button>
+        </div>
+      </Card>
 
       <FormBuilder
         title={title}

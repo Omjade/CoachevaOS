@@ -115,3 +115,30 @@ const DEFAULT_CONFIG: NicheConfig = {
 export function getNicheConfig(niche: string | null | undefined): NicheConfig {
   return (niche && NICHE_CONFIG[niche]) || DEFAULT_CONFIG;
 }
+
+const NICHE_SHORT_LABEL: Record<string, string> = {
+  fitness: "Fitness",
+  nutrition: "Nutrition",
+  business: "Business",
+  career: "Career",
+  life: "Life",
+  executive: "Executive",
+  relationship: "Relationship",
+  mindset: "Mindset",
+  academic: "Academic",
+  sports: "Sports",
+  parenting: "Parenting",
+  financial: "Financial",
+};
+
+// Short "{Niche} Coach" label for the sidebar identity block — distinct from
+// the plain "Coach" role string previously shown there. Falls back to
+// title-casing whatever free-text niche the coach entered (e.g. via the
+// onboarding "Other" option) rather than a fixed lookup table.
+export function nicheDisplayLabel(niche: string | null | undefined): string {
+  if (!niche) return "Coach";
+  const known = NICHE_SHORT_LABEL[niche];
+  if (known) return `${known} Coach`;
+  const titled = niche.charAt(0).toUpperCase() + niche.slice(1);
+  return `${titled} Coach`;
+}

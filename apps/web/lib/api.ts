@@ -1,7 +1,51 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// NEXT_PUBLIC_API_URL should always be set explicitly in Vercel's project
+// env vars — this fallback exists only so a build/preview that forgot to set
+// it doesn't silently try to reach localhost from a deployed site.
+export const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "production" ? "https://api.coachevaos.com" : "http://localhost:8000");
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Render's free tier spins the API down after ~15 minutes idle and takes
+// roughly 30-60s to wake on the next request — during that window a request
+// can fail outright (network error) or the platform proxy can return a
+// 502/503 while the instance is still starting. This retries only those two
+// cases, with backoff, so a cold start reads as "a bit slow" instead of "the
+// app is down." It does not retry any response the app itself returned
+// (4xx/5xx from real request handling) — those are real errors, not a
+// cold-start symptom, and must surface immediately.
+async function fetchWithColdStartRetry(doFetch: () => Promise<Response>, attempts = 4): Promise<Response> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await doFetch();
+      if ((res.status === 502 || res.status === 503) && i < attempts - 1) {
+        await sleep(750 * 2 ** i);
+        continue;
+      }
+      return res;
+    } catch (err) {
+      lastErr = err;
+      if (i === attempts - 1) throw err;
+      await sleep(750 * 2 ** i);
+    }
+  }
+  throw lastErr;
+}
 
 export function avatarUrl(userId: string): string {
   return `${API_URL}/auth/users/${userId}/avatar`;
+}
+
+export function formImageUrl(formId: string): string {
+  return `${API_URL}/forms/${formId}/image`;
+}
+
+export function publicFormImageUrl(slug: string, formSlug: string): string {
+  return `${API_URL}/portal/${slug}/forms/${formSlug}/image`;
 }
 
 export class ApiError extends Error {
@@ -52,10 +96,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       },
     });
 
-  let res = await doFetch();
+  let res = await fetchWithColdStartRetry(doFetch);
 
   if (res.status === 401 && !path.startsWith("/auth/")) {
-    if (await tryRefresh()) res = await doFetch();
+    if (await tryRefresh()) res = await fetchWithColdStartRetry(doFetch);
   }
 
   if (!res.ok) throw await parseError(res);
@@ -72,13 +116,14 @@ async function requestForm<T>(path: string, formData: FormData, init?: RequestIn
       body: formData,
     });
 
-  let res = await doFetch();
+  let res = await fetchWithColdStartRetry(doFetch);
 
   if (res.status === 401 && !path.startsWith("/auth/")) {
-    if (await tryRefresh()) res = await doFetch();
+    if (await tryRefresh()) res = await fetchWithColdStartRetry(doFetch);
   }
 
   if (!res.ok) throw await parseError(res);
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -91,6 +136,46 @@ export interface User {
   role: UserRole;
   avatar_url: string | null;
   timezone: string;
+  mfa_enabled: boolean;
+}
+
+export interface MfaSetup {
+  secret: string;
+  otpauth_uri: string;
+  qr_data_uri: string;
+}
+
+export interface MfaEnableResult {
+  backup_codes: string[];
+}
+
+export interface MfaRequired {
+  mfa_required: true;
+  challenge_token: string;
+}
+
+export function isMfaRequired(
+  result: User | MfaRequired | CoachChoiceRequired
+): result is MfaRequired {
+  return "mfa_required" in result;
+}
+
+export interface CoachChoice {
+  coach_id: string;
+  business_name: string;
+  portal_slug: string | null;
+}
+
+export interface CoachChoiceRequired {
+  coach_choice_required: true;
+  challenge_token: string;
+  choices: CoachChoice[];
+}
+
+export function isCoachChoiceRequired(
+  result: User | MfaRequired | CoachChoiceRequired
+): result is CoachChoiceRequired {
+  return "coach_choice_required" in result;
 }
 
 export interface CoachProfile {
@@ -102,6 +187,12 @@ export interface CoachProfile {
   name: string;
   email: string;
   timezone: string;
+  billing_country_code: string | null;
+  bio: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+  linkedin_url: string | null;
+  gallery_image_urls: string[] | null;
 }
 
 export interface CoachProfileUpdate {
@@ -109,9 +200,15 @@ export interface CoachProfileUpdate {
   timezone?: string;
   business_name?: string;
   niche?: string;
+  billing_country_code?: string;
+  bio?: string;
+  website_url?: string;
+  instagram_url?: string;
+  linkedin_url?: string;
 }
 
 export interface ClientSelfProfile {
+  id: string;
   name: string;
   email: string;
   timezone: string;
@@ -119,6 +216,13 @@ export interface ClientSelfProfile {
   program: string | null;
   coach_name: string;
   portal_slug: string | null;
+  subscription_valid_from: string | null;
+  subscription_valid_until: string | null;
+  billing_status: ClientBillingStatus;
+  niche: string | null;
+  phone: string | null;
+  status: ClientStatus;
+  billing_currency: string | null;
 }
 
 export interface ClientSelfProfileUpdate {
@@ -132,6 +236,11 @@ export interface PortalPublic {
   brand_color: string | null;
   logo_url: string | null;
   coach_name: string;
+  bio: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+  linkedin_url: string | null;
+  gallery_image_urls: string[] | null;
 }
 
 export type ClientStatus = "active" | "at_risk" | "paused" | "churned";
@@ -141,6 +250,7 @@ export interface ClientListItem {
   user_id: string;
   name: string;
   email: string;
+  phone: string | null;
   program: string | null;
   status: ClientStatus;
   joined_at: string;
@@ -154,6 +264,8 @@ export interface ClientDetail extends ClientListItem {
   notes: string | null;
   thread_id: string | null;
   timezone: string;
+  niche: string | null;
+  billing_currency: string | null;
 }
 
 export interface InviteInfo {
@@ -163,10 +275,13 @@ export interface InviteInfo {
 
 export interface ClientUpdate {
   name?: string;
+  phone?: string;
   goals?: string;
   program?: string;
+  niche?: string;
   tags?: string[];
   status?: ClientStatus;
+  billing_currency?: string;
 }
 
 // Client import
@@ -220,7 +335,7 @@ export interface IntakeResponseData {
   submitted_at: string;
 }
 
-export type LeadStage = "new" | "contacted" | "follow_up" | "booked" | "converted";
+export type LeadStage = "new" | "contacted" | "follow_up" | "booked" | "converted" | "lost";
 
 export interface Lead {
   id: string;
@@ -266,6 +381,7 @@ export interface CoachForm {
   is_active: boolean;
   created_at: string;
   submission_count: number;
+  has_image: boolean;
 }
 
 export interface PublicForm {
@@ -274,6 +390,7 @@ export interface PublicForm {
   fields: FormField[];
   coach_name: string;
   business_name: string | null;
+  has_image: boolean;
 }
 
 export interface FormSubmission {
@@ -288,10 +405,12 @@ export interface InvitePreview {
   email: string;
   coach_name: string;
   portal_slug: string | null;
+  existing_account: boolean;
 }
 
 export interface InviteAcceptResult {
   id: string;
+  client_id: string;
   email: string;
   name: string;
   portal_slug: string | null;
@@ -321,6 +440,7 @@ export interface DocumentData {
   uploaded_by_name: string;
   created_at: string;
   download_url: string;
+  is_library: boolean;
 }
 
 // Chat
@@ -377,6 +497,7 @@ export interface MeetingData {
   id: string;
   client_id: string;
   client_name: string;
+  client_timezone: string | null;
   starts_at: string;
   ends_at: string;
   status: MeetingStatus;
@@ -390,6 +511,16 @@ export interface IntegrationStatus {
   connected: boolean;
   account_label: string | null;
   connected_at: string | null;
+}
+
+export interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  start: string | null;
+  end: string | null;
+  all_day_date: string | null;
+  hangout_link: string | null;
+  html_link: string | null;
 }
 
 export interface SchedulingLinks {
@@ -421,21 +552,33 @@ export interface CurrentCheckins {
 export interface InvoiceData {
   id: string;
   amount: number;
+  currency: string;
   due_date: string;
   paid: boolean;
+  paid_at: string | null;
   created_at: string;
 }
 
 export type ClientBillingStatus = "not_set" | "active" | "renewal_due" | "overdue";
 
 export interface ClientBilling {
+  subscription_valid_from: string | null;
   subscription_valid_until: string | null;
   status: ClientBillingStatus;
+  billing_currency: string | null;
   invoices: InvoiceData[];
 }
 
-export type SubscriptionTier = "trial" | "starter" | "growth" | "scale" | "enterprise";
-export type SubscriptionStatus = "trialing" | "active" | "trial_expired" | "past_due" | "canceled";
+export type SubscriptionTier = "trial" | "starter" | "growth" | "scale" | "pro" | "enterprise";
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "trial_expired"
+  | "past_due"
+  | "restricted"
+  | "canceled";
+export type PaymentProvider = "paddle" | "razorpay";
+export type BillingCycle = "monthly" | "annual";
 
 export interface PlatformSubscriptionData {
   tier: SubscriptionTier;
@@ -444,6 +587,11 @@ export interface PlatformSubscriptionData {
   current_period_end: string | null;
   client_limit: number | null;
   active_client_count: number;
+  provider: PaymentProvider | null;
+  currency: string | null;
+  billing_cycle: BillingCycle | null;
+  cancel_at_period_end: boolean;
+  grace_period_ends_at: string | null;
 }
 
 // AI
@@ -452,17 +600,22 @@ export interface BriefingData {
   generated_at: string;
 }
 
-export interface RiskFlag {
-  client_id: string;
-  client_name: string;
-  level: string;
-  reason: string;
+export interface SuggestedGoalUpdate {
+  title: string;
+  target_date: string | null;
+}
+
+export interface SuggestedTask {
+  title: string;
+  due_date: string | null;
 }
 
 export interface SessionNoteResult {
   summary: string;
   action_items: string[];
   draft_message: string;
+  suggested_goal_updates: SuggestedGoalUpdate[];
+  suggested_tasks: SuggestedTask[];
 }
 
 export interface ProgressInsight {
@@ -471,11 +624,315 @@ export interface ProgressInsight {
   tasks_total: number;
 }
 
+export interface ChurnScorePoint {
+  date: string;
+  score: number;
+  explanation: string | null;
+}
+
+export interface ChurnTrend {
+  client_id: string;
+  points: ChurnScorePoint[];
+}
+
+export interface PrepMyDayItem {
+  client_name: string;
+  meeting_time: string;
+  reminder: string;
+}
+
+export interface PrepMyDayData {
+  items: PrepMyDayItem[];
+  generated_at: string;
+}
+
+export interface OnboardingGoalSuggestion {
+  title: string;
+  target_date: string | null;
+}
+
+export interface OnboardingDraft {
+  welcome_message: string;
+  suggested_goals: OnboardingGoalSuggestion[];
+  suggested_cadence: string;
+}
+
+export interface WeeklyDigestData {
+  bullets: string[];
+  generated_at: string;
+}
+
+export interface InvoiceReminderDraft {
+  draft_message: string;
+}
+
+export interface ProgramItemDraft {
+  title: string;
+  description: string;
+  target_metric: string | null;
+}
+
+export interface ProgramDraft {
+  title: string;
+  items: ProgramItemDraft[];
+}
+
+export type ProgramItemKind = "milestone" | "task" | "goal" | "form";
+
+export interface ProgramItem {
+  id: string;
+  order: number;
+  title: string;
+  description: string | null;
+  target_metric: string | null;
+  week_number: number | null;
+  item_kind: ProgramItemKind;
+  linked_form_id: string | null;
+}
+
+export interface Program {
+  id: string;
+  client_id: string | null;
+  title: string;
+  niche: string | null;
+  created_at: string;
+  items: ProgramItem[];
+  assigned_from_template_id: string | null;
+  duration_weeks: number | null;
+  started_at: string | null;
+  description: string | null;
+  checkin_cadence: string | null;
+  price_amount: number | null;
+  price_currency: string | null;
+  billing_cadence: string | null;
+}
+
+export interface ProgramItemInput {
+  title: string;
+  description?: string;
+  target_metric?: string;
+  week_number?: number;
+  item_kind?: ProgramItemKind;
+  linked_form_id?: string;
+}
+
+export interface ProgramTemplate {
+  id: string;
+  title: string;
+  niche: string | null;
+  duration_weeks: number | null;
+  description: string | null;
+  checkin_cadence: string | null;
+  price_amount: number | null;
+  price_currency: string | null;
+  billing_cadence: string | null;
+  client_selectable: boolean;
+  created_at: string;
+  items: ProgramItem[];
+  assigned_count: number;
+}
+
+export interface ProgramTemplateInput {
+  title: string;
+  niche?: string;
+  duration_weeks?: number;
+  description?: string;
+  checkin_cadence?: string;
+  price_amount?: number;
+  price_currency?: string;
+  billing_cadence?: string;
+  client_selectable?: boolean;
+  items?: ProgramItemInput[];
+}
+
+export interface ProgramTemplateDraft {
+  title: string;
+  description: string | null;
+  items: {
+    title: string;
+    description: string | null;
+    target_metric: string | null;
+    week_number: number | null;
+    item_kind: ProgramItemKind;
+  }[];
+}
+
+export interface AssistantSettings {
+  enabled: boolean;
+  tone: string | null;
+  style_notes: string | null;
+  custom_instructions: string | null;
+  daily_query_limit: number;
+  platform_query_ceiling: number;
+}
+
+export interface AutomationSettings {
+  auto_onboarding_enabled: boolean;
+  auto_assign_template_id: string | null;
+}
+
+export interface AssistantMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  escalated: boolean;
+  created_at: string;
+}
+
+export interface AssistantMessageSendResult {
+  reply: AssistantMessage;
+  remaining_today: number;
+}
+
+export interface AskSource {
+  document_id: string;
+  document_name: string;
+  snippet: string;
+}
+
+export interface AskResult {
+  answer: string;
+  sources: AskSource[];
+}
+
+export interface FormFieldDraft {
+  type: string;
+  label: string;
+  required: boolean;
+  options: string[] | null;
+}
+
+export interface FormAiDraft {
+  title: string;
+  description: string;
+  fields: FormFieldDraft[];
+}
+
+// Custom Fields
+export type CustomFieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "currency"
+  | "percentage"
+  | "date"
+  | "dropdown"
+  | "multi_select"
+  | "checkbox"
+  | "rating"
+  | "url"
+  | "email"
+  | "phone";
+
+export interface CustomFieldGroup {
+  id: string;
+  name: string;
+  order: number;
+}
+
+export interface CustomFieldDefinition {
+  id: string;
+  group_id: string | null;
+  name: string;
+  field_type: CustomFieldType;
+  options: string[] | null;
+  unit: string | null;
+  required: boolean;
+  visible_to_client: boolean;
+  order: number;
+}
+
+export interface ClientFieldValue {
+  definition: CustomFieldDefinition;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any;
+}
+
+export interface ClientCustomFields {
+  groups: CustomFieldGroup[];
+  fields: ClientFieldValue[];
+}
+
+export interface ApplyTemplateResult {
+  groups_created: number;
+  fields_created: number;
+  metrics_created: number;
+}
+
+export interface MetricDefinition {
+  id: string;
+  name: string;
+  unit: string | null;
+  category: string | null;
+}
+
+export interface MetricEntry {
+  id: string;
+  definition_id: string;
+  value: number;
+  recorded_at: string;
+  notes: string | null;
+  created_by: string;
+}
+
+export interface SessionNote {
+  id: string;
+  client_id: string;
+  meeting_id: string | null;
+  session_date: string;
+  objective: string | null;
+  discussion_notes: string | null;
+  key_insights: string | null;
+  wins: string | null;
+  challenges: string | null;
+  action_items: string[] | null;
+  follow_up_date: string | null;
+  created_by: string;
+}
+
+export interface ClientSnapshot {
+  narrative: string;
+  generated_at: string;
+}
+
+export interface AttentionItem {
+  client_id: string;
+  client_name: string;
+  bucket: "urgent" | "behind" | "minor";
+  reason: string;
+  thread_id: string | null;
+  suggested_action: string;
+}
+
+export interface NeedsAttention {
+  items: AttentionItem[];
+  generated_at: string;
+}
+
+export interface TimelineEvent {
+  type: "goal" | "task" | "progress" | "checkin" | "session" | "document" | "metric" | "payment" | "risk";
+  date: string;
+  title: string;
+  summary: string | null;
+}
+
+export interface Timeline {
+  events: TimelineEvent[];
+}
+
 // Notifications
 export interface NotificationData {
   id: string;
   type: string;
-  payload_json: { message?: string; client_name?: string; key?: string };
+  payload_json: {
+    message?: string;
+    client_name?: string;
+    key?: string;
+    client_id?: string;
+    thread_id?: string;
+    lead_id?: string;
+    form_id?: string;
+  };
   read_at: string | null;
   created_at: string;
 }
@@ -490,6 +947,7 @@ export interface AnalyticsSummary {
   task_completion_rate: number;
   leads_total: number;
   leads_converted: number;
+  leads_lost: number;
   tasks_total: number;
   tasks_done: number;
 }
@@ -527,11 +985,43 @@ export const api = {
   }) => request<User>("/auth/register", { method: "POST", body: JSON.stringify(body) }),
 
   login: (body: { email: string; password: string }) =>
-    request<User>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+    request<User | MfaRequired | CoachChoiceRequired>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  selectLoginCoach: (challengeToken: string, coachId: string) =>
+    request<User | MfaRequired>("/auth/login/select-coach", {
+      method: "POST",
+      body: JSON.stringify({ challenge_token: challengeToken, coach_id: coachId }),
+    }),
+
+  getLoginCoachChoices: (challengeToken: string) =>
+    request<CoachChoiceRequired>(
+      `/auth/login/coach-choices?challenge_token=${encodeURIComponent(challengeToken)}`
+    ),
 
   logout: () => request<void>("/auth/logout", { method: "POST" }),
 
   me: () => request<User>("/auth/me"),
+
+  exportMyData: () => request<Record<string, unknown>>("/auth/me/export"),
+
+  deleteMyAccount: () => request<void>("/auth/me/delete", { method: "POST" }),
+
+  setupMfa: () => request<MfaSetup>("/auth/mfa/setup", { method: "POST" }),
+
+  enableMfa: (code: string) =>
+    request<MfaEnableResult>("/auth/mfa/enable", { method: "POST", body: JSON.stringify({ code }) }),
+
+  disableMfa: (password: string, code: string) =>
+    request<void>("/auth/mfa/disable", { method: "POST", body: JSON.stringify({ password, code }) }),
+
+  verifyMfa: (challengeToken: string, code: string) =>
+    request<User>("/auth/mfa/verify", {
+      method: "POST",
+      body: JSON.stringify({ challenge_token: challengeToken, code }),
+    }),
 
   uploadMyAvatar: (file: File) => {
     const form = new FormData();
@@ -544,6 +1034,7 @@ export const api = {
     business_name?: string;
     niche: string;
     timezone?: string;
+    billing_country_code?: string;
   }) => request<CoachProfile>("/coach/onboarding", { method: "POST", body: JSON.stringify(body) }),
 
   myProfile: () => request<CoachProfile>("/coach/me/profile"),
@@ -551,7 +1042,20 @@ export const api = {
   updateMyProfile: (body: CoachProfileUpdate) =>
     request<CoachProfile>("/coach/me/profile", { method: "PATCH", body: JSON.stringify(body) }),
 
+  uploadGalleryImage: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return requestForm<CoachProfile>("/coach/me/gallery", form);
+  },
+
+  removeGalleryImage: (index: number) =>
+    request<CoachProfile>(`/coach/me/gallery/${index}`, { method: "DELETE" }),
+
   portalBySlug: (slug: string) => request<PortalPublic>(`/portal/${slug}`),
+
+  getPublicPackages: (slug: string) => request<ProgramTemplate[]>(`/portal/${slug}/packages`),
+
+  galleryImageUrl: (slug: string, index: number) => `${API_URL}/portal/${slug}/gallery/${index}`,
 
   // Clients
   listClients: () => request<ClientListItem[]>("/clients"),
@@ -582,10 +1086,14 @@ export const api = {
     return requestForm<ImportPreview>("/clients/import/preview", form);
   },
 
-  commitClientImport: (mapping: Record<string, string | null>, rows: Record<string, string>[]) =>
+  commitClientImport: (
+    mapping: Record<string, string | null>,
+    rows: Record<string, string>[],
+    customFieldColumns: string[] = []
+  ) =>
     request<ImportCommitResult>("/clients/import/commit", {
       method: "POST",
-      body: JSON.stringify({ mapping, rows }),
+      body: JSON.stringify({ mapping, rows, custom_field_columns: customFieldColumns }),
     }),
 
   // Goals (coach side)
@@ -646,6 +1154,14 @@ export const api = {
 
   getClientInvite: (id: string) => request<InviteInfo>(`/clients/${id}/invite`),
 
+  getClientPortalLink: (id: string) =>
+    request<{ portal_code: string; portal_path: string }>(`/clients/${id}/portal-link`),
+
+  getClientPortalPreview: (slug: string, code: string) =>
+    request<{ name: string; email: string; coach_name: string; business_name: string | null }>(
+      `/portal/${slug}/c/${code}`
+    ),
+
   getClientIntake: (id: string) => request<IntakeResponseData>(`/clients/${id}/intake`),
 
   getMyPortal: () => request<{ portal_slug: string | null }>("/clients/me/portal"),
@@ -665,6 +1181,8 @@ export const api = {
     experience?: string;
     availability?: string;
     notes?: string;
+    country_code?: string;
+    timezone?: string;
   }) => request<IntakeResponseData>("/clients/me/intake", { method: "POST", body: JSON.stringify(body) }),
 
   // Leads
@@ -676,13 +1194,28 @@ export const api = {
     email?: string;
     interested_in?: string;
     notes?: string;
+    source?: string;
   }) => request<Lead>("/leads", { method: "POST", body: JSON.stringify(body) }),
+
+  submitLandingInterest: (body: { name: string; email: string; niche?: string; note?: string }) =>
+    request<{ ok: boolean }>("/portal/landing-interest", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   updateLeadStage: (id: string, stage: LeadStage) =>
     request<Lead>(`/leads/${id}/stage`, { method: "PATCH", body: JSON.stringify({ stage }) }),
 
   convertLead: (id: string) =>
     request<ClientListItem>(`/leads/${id}/convert`, { method: "POST" }),
+
+  restoreLead: (id: string) => request<Lead>(`/leads/${id}/restore`, { method: "POST" }),
+
+  uploadClientAvatar: (clientId: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return requestForm<void>(`/clients/${clientId}/avatar`, form);
+  },
 
   // Forms
   listForms: () => request<CoachForm[]>("/forms"),
@@ -698,6 +1231,21 @@ export const api = {
   ) => request<CoachForm>(`/forms/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   deleteForm: (id: string) => request<void>(`/forms/${id}`, { method: "DELETE" }),
+
+  uploadFormImage: (id: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return requestForm<CoachForm>(`/forms/${id}/image`, form);
+  },
+
+  deleteFormImage: (id: string) =>
+    request<CoachForm>(`/forms/${id}/image`, { method: "DELETE" }),
+
+  shareForm: (id: string, clientIds: string[]) =>
+    request<{ sent: number }>(`/forms/${id}/share`, {
+      method: "POST",
+      body: JSON.stringify({ client_ids: clientIds }),
+    }),
 
   listFormSubmissions: (formId: string) =>
     request<FormSubmission[]>(`/forms/${formId}/submissions`),
@@ -762,6 +1310,21 @@ export const api = {
     return requestForm<DocumentData>(`/documents?client_id=${clientId}`, form);
   },
 
+  // A coach's own client-agnostic reference library — client_id omitted.
+  listLibraryDocuments: () => request<DocumentData[]>("/documents"),
+
+  uploadLibraryDocument: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return requestForm<DocumentData>("/documents", form);
+  },
+
+  shareDocument: (documentId: string, clientIds: string[]) =>
+    request<{ sent: number }>(`/documents/${documentId}/share`, {
+      method: "POST",
+      body: JSON.stringify({ client_ids: clientIds }),
+    }),
+
   listMyDocuments: () => request<DocumentData[]>("/documents/mine"),
 
   uploadMyDocument: (file: File) => {
@@ -824,6 +1387,8 @@ export const api = {
   disconnectIntegration: (provider: CalendarProviderKey) =>
     request<void>(`/integrations/${provider}`, { method: "DELETE" }),
 
+  listGoogleCalendarEvents: () => request<GoogleCalendarEvent[]>("/integrations/google/events"),
+
   // Check-ins
   getMyCurrentCheckins: () => request<CurrentCheckins>("/clients/me/checkins/current"),
 
@@ -842,10 +1407,17 @@ export const api = {
   // Client billing
   getClientBilling: (clientId: string) => request<ClientBilling>(`/clients/${clientId}/billing`),
 
-  updateClientSubscription: (clientId: string, subscriptionValidUntil: string | null) =>
+  updateClientSubscription: (
+    clientId: string,
+    subscriptionValidUntil: string | null,
+    subscriptionValidFrom: string | null = null
+  ) =>
     request<ClientBilling>(`/clients/${clientId}/subscription`, {
       method: "PATCH",
-      body: JSON.stringify({ subscription_valid_until: subscriptionValidUntil }),
+      body: JSON.stringify({
+        subscription_valid_until: subscriptionValidUntil,
+        subscription_valid_from: subscriptionValidFrom,
+      }),
     }),
 
   addInvoice: (clientId: string, body: { amount: number; due_date: string }) =>
@@ -857,19 +1429,52 @@ export const api = {
   toggleInvoicePaid: (invoiceId: string) =>
     request<InvoiceData>(`/invoices/${invoiceId}/paid`, { method: "PATCH" }),
 
+  // Region / provider routing
+  getRegion: () =>
+    request<{
+      country_code: string | null;
+      suggested_provider: PaymentProvider;
+      suggested_currency: string;
+      region: "global" | "india";
+      source: "declared" | "ip" | "registration_ip" | "none";
+      mismatch: boolean;
+    }>("/geo/region"),
+
   // Platform billing
   getPlatformSubscription: () => request<PlatformSubscriptionData>("/coach/subscription"),
 
-  selectPlan: (tier: SubscriptionTier) =>
-    request<PlatformSubscriptionData>("/coach/subscription/select-plan", {
+  getPaddleCheckoutToken: (
+    tier: SubscriptionTier,
+    cycle: BillingCycle,
+    region: "global" | "india" = "global",
+    confirmRegionMismatch = false
+  ) =>
+    request<{
+      price_id: string;
+      client_side_token: string;
+      environment: string;
+      customer_email: string;
+      custom_data: Record<string, string>;
+      resolved_country_code: string | null;
+      region_mismatch: boolean;
+      processor_customer_id: string | null;
+    }>("/billing/paddle/checkout-token", {
       method: "POST",
-      body: JSON.stringify({ tier }),
+      body: JSON.stringify({ tier, cycle, region, confirm_region_mismatch: confirmRegionMismatch }),
+    }),
+
+  getPaddlePortalSession: () => request<{ url: string }>("/billing/paddle/portal-session"),
+
+  cancelSubscription: () => request<{ ok: boolean }>("/billing/subscription/cancel", { method: "POST" }),
+
+  changePlan: (tier: SubscriptionTier, cycle: BillingCycle) =>
+    request<{ ok: boolean }>("/billing/subscription/plan", {
+      method: "PATCH",
+      body: JSON.stringify({ tier, cycle }),
     }),
 
   // AI
-  getBriefing: () => request<BriefingData>("/ai/briefing"),
-
-  getRiskFlags: () => request<RiskFlag[]>("/ai/risk-flags"),
+  getBriefing: (force = false) => request<BriefingData>(`/ai/briefing${force ? "?force=true" : ""}`),
 
   createSessionNote: (clientId: string, text: string) =>
     request<SessionNoteResult>("/ai/session-note", {
@@ -877,10 +1482,24 @@ export const api = {
       body: JSON.stringify({ client_id: clientId, text }),
     }),
 
-  sendFollowup: (clientId: string, draftMessage: string) =>
+  sendFollowup: (
+    clientId: string,
+    draftMessage: string,
+    options?: {
+      sessionSummary?: string;
+      acceptedGoalUpdates?: SuggestedGoalUpdate[];
+      acceptedTasks?: SuggestedTask[];
+    }
+  ) =>
     request<void>("/ai/session-note/send", {
       method: "POST",
-      body: JSON.stringify({ client_id: clientId, draft_message: draftMessage }),
+      body: JSON.stringify({
+        client_id: clientId,
+        draft_message: draftMessage,
+        session_summary: options?.sessionSummary ?? null,
+        accepted_goal_updates: options?.acceptedGoalUpdates ?? [],
+        accepted_tasks: options?.acceptedTasks ?? [],
+      }),
     }),
 
   suggestReply: (threadId: string) =>
@@ -893,6 +1512,250 @@ export const api = {
     request<ProgressInsight>(`/ai/clients/${clientId}/progress-insight`),
 
   getMyProgressInsight: () => request<ProgressInsight>("/ai/clients/me/progress-insight"),
+
+  getChurnTrend: (clientId: string) => request<ChurnTrend>(`/ai/clients/${clientId}/churn-trend`),
+
+  getPrepMyDay: () => request<PrepMyDayData>("/ai/prep-my-day"),
+
+  getOnboardingDraft: (clientId: string) =>
+    request<OnboardingDraft>(`/ai/clients/${clientId}/onboarding-draft`, { method: "POST" }),
+
+  getWeeklyDigest: (force = false) =>
+    request<WeeklyDigestData>(`/ai/weekly-digest${force ? "?force=true" : ""}`),
+
+  getInvoiceReminderDraft: (invoiceId: string) =>
+    request<InvoiceReminderDraft>(`/ai/invoices/${invoiceId}/reminder-draft`, { method: "POST" }),
+
+  getProgramDraft: (clientId: string, constraints?: string) =>
+    request<ProgramDraft>(`/ai/clients/${clientId}/program-draft`, {
+      method: "POST",
+      body: JSON.stringify({ constraints: constraints || undefined }),
+    }),
+
+  getFormAiDraft: (description: string) =>
+    request<FormAiDraft>("/forms/ai-draft", {
+      method: "POST",
+      body: JSON.stringify({ description }),
+    }),
+
+  // Programs
+  listMyPrograms: () => request<Program[]>("/clients/me/programs"),
+
+  listMyAvailablePackages: () => request<ProgramTemplate[]>("/clients/me/available-packages"),
+
+  selectMyPackage: (templateId: string) =>
+    request<Program>(`/clients/me/select-package/${templateId}`, { method: "POST" }),
+
+  listClientPrograms: (clientId: string) => request<Program[]>(`/clients/${clientId}/programs`),
+
+  createClientProgram: (clientId: string, title: string, items: ProgramItemDraft[]) =>
+    request<Program>(`/clients/${clientId}/programs`, {
+      method: "POST",
+      body: JSON.stringify({ title, items }),
+    }),
+
+  deleteClientProgram: (clientId: string, programId: string) =>
+    request<void>(`/clients/${clientId}/programs/${programId}`, { method: "DELETE" }),
+
+  updateClientProgramDates: (
+    clientId: string,
+    programId: string,
+    body: { started_at?: string | null; duration_weeks?: number | null }
+  ) =>
+    request<Program>(`/clients/${clientId}/programs/${programId}/dates`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  assignTemplateToClient: (clientId: string, templateId: string) =>
+    request<Program>(`/clients/${clientId}/programs/assign-template/${templateId}`, {
+      method: "POST",
+    }),
+
+  // Program templates & packages
+  listTemplates: () => request<ProgramTemplate[]>("/programs/templates"),
+
+  createTemplate: (body: ProgramTemplateInput) =>
+    request<ProgramTemplate>("/programs/templates", { method: "POST", body: JSON.stringify(body) }),
+
+  updateTemplate: (id: string, body: Partial<ProgramTemplateInput>) =>
+    request<ProgramTemplate>(`/programs/templates/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  deleteTemplate: (id: string) => request<void>(`/programs/templates/${id}`, { method: "DELETE" }),
+
+  getProgramTemplateDraft: (niche: string, durationWeeks?: number, hint?: string) =>
+    request<ProgramTemplateDraft>("/ai/program-template-draft", {
+      method: "POST",
+      body: JSON.stringify({ niche, duration_weeks: durationWeeks, hint: hint || undefined }),
+    }),
+
+  // Custom Fields
+  listCustomFieldGroups: () => request<CustomFieldGroup[]>("/custom-field-groups"),
+
+  createCustomFieldGroup: (body: { name: string; order?: number }) =>
+    request<CustomFieldGroup>("/custom-field-groups", { method: "POST", body: JSON.stringify(body) }),
+
+  updateCustomFieldGroup: (id: string, body: { name?: string; order?: number }) =>
+    request<CustomFieldGroup>(`/custom-field-groups/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+
+  deleteCustomFieldGroup: (id: string) =>
+    request<void>(`/custom-field-groups/${id}`, { method: "DELETE" }),
+
+  listCustomFieldDefinitions: () => request<CustomFieldDefinition[]>("/custom-field-definitions"),
+
+  createCustomFieldDefinition: (body: {
+    group_id?: string | null;
+    name: string;
+    field_type: CustomFieldType;
+    options?: string[] | null;
+    unit?: string | null;
+    required?: boolean;
+    visible_to_client?: boolean;
+    order?: number;
+  }) => request<CustomFieldDefinition>("/custom-field-definitions", { method: "POST", body: JSON.stringify(body) }),
+
+  updateCustomFieldDefinition: (
+    id: string,
+    body: Partial<{
+      group_id: string | null;
+      name: string;
+      field_type: CustomFieldType;
+      options: string[] | null;
+      unit: string | null;
+      required: boolean;
+      visible_to_client: boolean;
+      order: number;
+    }>
+  ) => request<CustomFieldDefinition>(`/custom-field-definitions/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+
+  deleteCustomFieldDefinition: (id: string) =>
+    request<void>(`/custom-field-definitions/${id}`, { method: "DELETE" }),
+
+  applyCustomFieldTemplate: () =>
+    request<ApplyTemplateResult>("/custom-field-definitions/apply-template", { method: "POST" }),
+
+  getClientCustomFields: (clientId: string) =>
+    request<ClientCustomFields>(`/clients/${clientId}/custom-fields`),
+
+  getMyCustomFields: () => request<ClientCustomFields>("/clients/me/custom-fields"),
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setClientCustomFieldValue: (clientId: string, definitionId: string, value: any) =>
+    request<void>(`/clients/${clientId}/custom-fields/${definitionId}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    }),
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setMyCustomFieldValue: (definitionId: string, value: any) =>
+    request<void>(`/clients/me/custom-fields/${definitionId}`, {
+      method: "PUT",
+      body: JSON.stringify({ value }),
+    }),
+
+  // Metrics
+  listMetricDefinitions: () => request<MetricDefinition[]>("/metric-definitions"),
+
+  listMyMetricDefinitions: () => request<MetricDefinition[]>("/clients/me/metric-definitions"),
+
+  listClientMetricEntries: (clientId: string, definitionId: string) =>
+    request<MetricEntry[]>(`/clients/${clientId}/metrics/${definitionId}/entries`),
+
+  createClientMetricEntry: (
+    clientId: string,
+    definitionId: string,
+    body: { value: number; recorded_at: string; notes?: string | null }
+  ) =>
+    request<MetricEntry>(`/clients/${clientId}/metrics/${definitionId}/entries`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  listMyMetricEntries: (definitionId: string) =>
+    request<MetricEntry[]>(`/clients/me/metrics/${definitionId}/entries`),
+
+  createMyMetricEntry: (
+    definitionId: string,
+    body: { value: number; recorded_at: string; notes?: string | null }
+  ) =>
+    request<MetricEntry>(`/clients/me/metrics/${definitionId}/entries`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  // Session notes
+  listClientSessions: (clientId: string) => request<SessionNote[]>(`/clients/${clientId}/sessions`),
+
+  listMySessions: () => request<SessionNote[]>("/clients/me/sessions"),
+
+  createClientSession: (
+    clientId: string,
+    body: {
+      session_date: string;
+      objective?: string | null;
+      discussion_notes?: string | null;
+      key_insights?: string | null;
+      wins?: string | null;
+      challenges?: string | null;
+      follow_up_date?: string | null;
+    }
+  ) =>
+    request<SessionNote>(`/clients/${clientId}/sessions`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  deleteClientSession: (clientId: string, noteId: string) =>
+    request<void>(`/clients/${clientId}/sessions/${noteId}`, { method: "DELETE" }),
+
+  // AI Client Snapshot
+  getClientSnapshot: (clientId: string) =>
+    request<ClientSnapshot>(`/ai/clients/${clientId}/snapshot`),
+
+  // Needs Attention
+  getNeedsAttention: () => request<NeedsAttention>("/coach/needs-attention"),
+
+  // Timeline
+  getClientTimeline: (clientId: string) => request<Timeline>(`/clients/${clientId}/timeline`),
+
+  getMyTimeline: () => request<Timeline>("/clients/me/timeline"),
+
+  // Client AI Assistant
+  getAssistantSettings: () => request<AssistantSettings>("/coach/ai-assistant-settings"),
+
+  updateAssistantSettings: (body: Partial<Omit<AssistantSettings, "platform_query_ceiling">>) =>
+    request<AssistantSettings>("/coach/ai-assistant-settings", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  // Automation
+  getAutomationSettings: () => request<AutomationSettings>("/coach/automation-settings"),
+
+  updateAutomationSettings: (
+    body: Partial<AutomationSettings> & { clear_template?: boolean }
+  ) =>
+    request<AutomationSettings>("/coach/automation-settings", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  listMyAssistantMessages: () => request<AssistantMessage[]>("/clients/me/assistant/messages"),
+
+  sendMyAssistantMessage: (content: string) =>
+    request<AssistantMessageSendResult>("/clients/me/assistant/messages", {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    }),
+
+  listClientAssistantMessages: (clientId: string) =>
+    request<AssistantMessage[]>(`/clients/${clientId}/assistant/messages`),
+
+  askDocuments: (question: string) =>
+    request<AskResult>("/ai/ask", { method: "POST", body: JSON.stringify({ question }) }),
 
   // Notifications
   listNotifications: () => request<NotificationData[]>("/notifications"),

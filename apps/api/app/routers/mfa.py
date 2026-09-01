@@ -118,8 +118,11 @@ async def verify_mfa(
     if user is None or not user.mfa_enabled or not user.mfa_secret:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid challenge token")
 
+    raw_coach_id = payload.get("coach_id")
+    coach_id = uuid.UUID(raw_coach_id) if raw_coach_id else None
+
     if pyotp.totp.TOTP(user.mfa_secret).verify(body.code, valid_window=1):
-        _set_auth_cookies(response, user)
+        _set_auth_cookies(response, user, coach_id=coach_id)
         return user
 
     backup_codes = user.mfa_backup_codes or []
@@ -128,7 +131,7 @@ async def verify_mfa(
             remaining = backup_codes[:i] + backup_codes[i + 1 :]
             user.mfa_backup_codes = remaining
             await db.commit()
-            _set_auth_cookies(response, user)
+            _set_auth_cookies(response, user, coach_id=coach_id)
             return user
 
     raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid code")

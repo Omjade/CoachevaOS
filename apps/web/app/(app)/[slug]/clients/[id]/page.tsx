@@ -1,11 +1,15 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   CopySimpleIcon as CopySimple,
   CheckIcon as Check,
   ChatCircleIcon as ChatCircle,
+  EnvelopeSimpleIcon as EnvelopeSimple,
+  CameraIcon as Camera,
+  FileTextIcon as FileText,
+  CheckSquareIcon as CheckSquare,
 } from "@phosphor-icons/react";
 import {
   api,
@@ -18,15 +22,27 @@ import {
   User,
 } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { buildInviteMessage } from "@/lib/inviteMessage";
 import { getNicheConfig } from "@/lib/niche";
+import { NICHES } from "@/lib/niches";
 import { Button, Card, Input } from "@/components/ui";
 import TaskList from "@/components/TaskList";
 import DocumentList from "@/components/DocumentList";
 import ClientBillingCard from "@/components/ClientBillingCard";
 import ProgressCard from "@/components/ProgressCard";
 import GoalsAndProgress from "@/components/GoalsAndProgress";
+import ChurnTrend from "@/components/ChurnTrend";
+import OnboardingAgentDialog from "@/components/OnboardingAgentDialog";
+import ProgramGenerator from "@/components/ProgramGenerator";
+import CustomFieldsCard from "@/components/CustomFieldsCard";
+import MetricsCard from "@/components/MetricsCard";
+import SessionsCard from "@/components/SessionsCard";
+import ClientSnapshotCard from "@/components/ClientSnapshotCard";
+import TimelineCard from "@/components/TimelineCard";
+import CopilotShell from "@/components/CopilotShell";
 import Avatar from "@/components/Avatar";
 import dynamic from "next/dynamic";
+import { useRoleGuard } from "@/lib/useRoleGuard";
 
 const AISessionAssistant = dynamic(() => import("@/components/AISessionAssistant"), { ssr: false });
 
@@ -56,20 +72,66 @@ export default function ClientProfilePage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { id, slug } = use(params);
+  const roleOk = useRoleGuard("coach");
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [intake, setIntake] = useState<IntakeResponseData | null | "loading">("loading");
   const [copied, setCopied] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [portalCopied, setPortalCopied] = useState(false);
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [messageCopied, setMessageCopied] = useState(false);
+  const [messageText, setMessageText] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskData[]>([]);
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [coach, setCoach] = useState<User | null>(null);
   const [profile, setProfile] = useState<CoachProfile | null>(null);
   const [notes, setNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [goalsRefreshKey, setGoalsRefreshKey] = useState(0);
   const [goalsText, setGoalsText] = useState("");
   const [programText, setProgramText] = useState("");
+  const [nicheText, setNicheText] = useState("");
+  const [phoneText, setPhoneText] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  async function changeStatus(next: ClientDetail["status"]) {
+    if (!client || next === client.status) return;
+    const previous = client.status;
+    setClient({ ...client, status: next });
+    setStatusSaving(true);
+    setStatusError(null);
+    try {
+      await api.updateClient(id, { status: next });
+    } catch (err) {
+      setClient((c) => (c ? { ...c, status: previous } : c));
+      setStatusError(err instanceof ApiError ? err.message : "Couldn't update status. Try again.");
+    } finally {
+      setStatusSaving(false);
+    }
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError(null);
+    try {
+      await api.uploadClientAvatar(id, file);
+      setAvatarVersion((v) => v + 1);
+    } catch (err) {
+      setAvatarError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Try again.");
+    } finally {
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
 
   function refreshTasks() {
     api.listClientTasks(id).then(setTasks).catch(() => {});
@@ -79,16 +141,20 @@ export default function ClientProfilePage({
     api.listClientDocuments(id).then(setDocuments).catch(() => {});
   }
 
+  function refreshClient() {
+    return api.getClient(id).then((c) => {
+      setClient(c);
+      setNotes(c.notes ?? "");
+      setGoalsText(c.goals ?? "");
+      setProgramText(c.program ?? "");
+      setNicheText(c.niche ?? "");
+      setPhoneText(c.phone ?? "");
+      return c;
+    });
+  }
+
   useEffect(() => {
-    api
-      .getClient(id)
-      .then((c) => {
-        setClient(c);
-        setNotes(c.notes ?? "");
-        setGoalsText(c.goals ?? "");
-        setProgramText(c.program ?? "");
-      })
-      .catch(() => {});
+    refreshClient().catch(() => {});
     api
       .getClientIntake(id)
       .then(setIntake)
@@ -101,54 +167,169 @@ export default function ClientProfilePage({
   }, [id]);
 
   async function saveNotes() {
-    await api.updateClientNotes(id, notes);
-    setNotesSaved(true);
-    setTimeout(() => setNotesSaved(false), 2000);
+    setNotesError(null);
+    try {
+      await api.updateClientNotes(id, notes);
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    } catch (err) {
+      setNotesError(err instanceof ApiError ? err.message : "Couldn't save. Try again.");
+    }
   }
 
   async function saveProfile() {
     setProfileSaving(true);
+    setProfileError(null);
     try {
-      const updated = await api.updateClient(id, { goals: goalsText, program: programText });
+      const updated = await api.updateClient(id, {
+        goals: goalsText,
+        program: programText,
+        niche: nicheText,
+        phone: phoneText,
+      });
       setClient(updated);
       setEditingProfile(false);
+    } catch (err) {
+      setProfileError(err instanceof ApiError ? err.message : "Couldn't save. Try again.");
     } finally {
       setProfileSaving(false);
     }
   }
 
+  // Shared by all three "copy a link" actions below — the client's
+  // invite_pending flag can go stale if they accept the invite in another
+  // tab/session while this page stays open, so a 409 here means the UI is
+  // out of date, not that anything actually went wrong. Re-fetching the
+  // client corrects invite_pending so the now-invalid button disappears
+  // instead of staying clickable and failing the same way again.
+  async function handleLinkError(err: unknown) {
+    setLinkError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+    await refreshClient().catch(() => {});
+  }
+
   async function copyInvite() {
-    const invite = await api.getClientInvite(id);
-    const url = `${window.location.origin}${invite.invite_path}`;
-    const ok = await copyText(url);
-    if (ok) {
-      setCopied(true);
-      setInviteUrl(null);
-      setTimeout(() => setCopied(false), 2000);
-    } else {
-      // Clipboard API blocked (e.g. unfocused window) — fall back to a
-      // selectable field so the link can still be copied manually.
-      setInviteUrl(url);
+    setLinkError(null);
+    try {
+      const invite = await api.getClientInvite(id);
+      const url = `${window.location.origin}${invite.invite_path}`;
+      const ok = await copyText(url);
+      if (ok) {
+        setCopied(true);
+        setInviteUrl(null);
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        // Clipboard API blocked (e.g. unfocused window) — fall back to a
+        // selectable field so the link can still be copied manually.
+        setInviteUrl(url);
+      }
+    } catch (err) {
+      await handleLinkError(err);
     }
   }
 
-  if (!client) return null;
+  async function copyInviteMessage() {
+    if (!client) return;
+    setLinkError(null);
+    try {
+      const invite = await api.getClientInvite(id);
+      const url = `${window.location.origin}${invite.invite_path}`;
+      const message = buildInviteMessage({
+        clientName: client.name,
+        clientEmail: client.email,
+        coachName: coach?.name ?? "",
+        businessName: profile?.business_name,
+        inviteUrl: url,
+      });
+      const ok = await copyText(message);
+      if (ok) {
+        setMessageCopied(true);
+        setMessageText(null);
+        setTimeout(() => setMessageCopied(false), 2000);
+      } else {
+        // Clipboard API blocked (e.g. unfocused window) — fall back to a
+        // selectable field, same pattern as copyInvite/copyPortalLink.
+        setMessageText(message);
+      }
+    } catch (err) {
+      await handleLinkError(err);
+    }
+  }
+
+  async function copyPortalLink() {
+    setLinkError(null);
+    try {
+      const link = await api.getClientPortalLink(id);
+      const url = `${window.location.origin}${link.portal_path}`;
+      const ok = await copyText(url);
+      if (ok) {
+        setPortalCopied(true);
+        setPortalUrl(null);
+        setTimeout(() => setPortalCopied(false), 2000);
+      } else {
+        setPortalUrl(url);
+      }
+    } catch (err) {
+      await handleLinkError(err);
+    }
+  }
+
+  if (!roleOk || !client) return null;
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
+    <div className="animate-fade-up flex flex-col gap-6 lg:flex-row">
       <aside className="w-full shrink-0 lg:w-70">
-        <Card className="flex flex-col items-center text-center">
-          <Avatar
-            userId={client.user_id}
-            name={client.name}
-            className="mb-4 h-35 w-35 text-3xl"
+        <Card className="flex flex-col items-center overflow-hidden text-center">
+          <div
+            className="-mx-7 -mt-7 mb-4 h-16 w-[calc(100%+3.5rem)] shrink-0"
+            style={{
+              background: profile?.brand_color
+                ? `linear-gradient(135deg, ${profile.brand_color}, var(--color-neutral-900))`
+                : "linear-gradient(135deg, var(--color-accent-600), var(--color-neutral-900))",
+            }}
           />
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            className="group relative mb-4 shrink-0"
+            aria-label="Change client photo"
+          >
+            <Avatar
+              key={avatarVersion}
+              userId={client.user_id}
+              name={client.name}
+              className="h-35 w-35 text-3xl"
+            />
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white opacity-0 transition-opacity group-hover:bg-black/40 group-hover:opacity-100">
+              <Camera className="h-6 w-6" weight="bold" />
+            </span>
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+          {avatarError && <p className="mb-2 text-xs text-red-600">{avatarError}</p>}
           <h1 className="font-heading text-xl font-semibold text-neutral-900">{client.name}</h1>
           <p className="text-sm text-neutral-600">{client.email}</p>
-          <p className="mb-3 text-xs text-neutral-500">{clientLocalTime(client.timezone)}</p>
-          <span className="mb-4 rounded-full bg-accent-100 px-2.5 py-0.5 text-xs font-medium text-accent-700">
-            {STATUS_LABEL[client.status]}
-          </span>
+          {client.phone && <p className="text-sm text-neutral-600">{client.phone}</p>}
+          <p className="mb-3 text-xs text-neutral-500">
+            {intake === null ? "Timezone not set yet" : clientLocalTime(client.timezone)}
+          </p>
+          <select
+            value={client.status}
+            onChange={(e) => changeStatus(e.target.value as ClientDetail["status"])}
+            disabled={statusSaving}
+            className="mb-4 rounded-full bg-accent-100 px-2.5 py-0.5 text-xs font-medium text-accent-700 outline-none disabled:opacity-60"
+          >
+            {(Object.keys(STATUS_LABEL) as ClientDetail["status"][]).map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+          {statusError && <p className="mb-4 text-xs text-red-600">{statusError}</p>}
           <p className="mb-4 text-xs text-neutral-500">
             Joined {new Date(client.joined_at).toLocaleDateString()}
           </p>
@@ -183,8 +364,63 @@ export default function ClientProfilePage({
                   className="mt-2 text-xs"
                 />
               )}
+              <Button variant="ghost" className="mt-2 w-full" onClick={copyInviteMessage}>
+                {messageCopied ? (
+                  <>
+                    <Check className="h-4 w-4" weight="bold" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <EnvelopeSimple className="h-4 w-4" weight="bold" />
+                    Copy message to send
+                  </>
+                )}
+              </Button>
+              {messageText && (
+                <textarea
+                  readOnly
+                  value={messageText}
+                  onFocus={(e) => e.currentTarget.select()}
+                  rows={6}
+                  className="mt-2 w-full resize-none rounded-[10px] border border-neutral-200 bg-neutral-50/60 px-3 py-2 text-xs text-neutral-900 outline-none focus:border-accent-500"
+                />
+              )}
             </div>
           )}
+          {!client.invite_pending && (
+            <div className="mt-4 w-full">
+              <Button variant="secondary" className="w-full" onClick={copyPortalLink}>
+                {portalCopied ? (
+                  <>
+                    <Check className="h-4 w-4" weight="bold" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <CopySimple className="h-4 w-4" weight="bold" />
+                    Copy portal link
+                  </>
+                )}
+              </Button>
+              {portalUrl && (
+                <Input
+                  readOnly
+                  value={portalUrl}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="mt-2 text-xs"
+                />
+              )}
+            </div>
+          )}
+          {linkError && <p className="mt-2 text-xs text-accent-600">{linkError}</p>}
+          <div className="mt-2.5 w-full">
+            <OnboardingAgentDialog
+              clientId={id}
+              threadId={client.thread_id}
+              onDone={() => setGoalsRefreshKey((k) => k + 1)}
+            />
+          </div>
         </Card>
       </aside>
 
@@ -195,7 +431,7 @@ export default function ClientProfilePage({
           </h3>
           {intake === "loading" ? null : intake === null ? (
             <p className="text-sm text-neutral-500">
-              Not submitted yet — sent with the client&apos;s invite link.
+              Not submitted yet. Sent with the client&apos;s invite link.
             </p>
           ) : (
             <div className="flex flex-col gap-2 text-sm text-neutral-900">
@@ -251,6 +487,31 @@ export default function ClientProfilePage({
                 <label className="mb-1 block text-xs font-semibold text-neutral-700">Program</label>
                 <Input value={programText} onChange={(e) => setProgramText(e.target.value)} />
               </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-neutral-700">
+                  Niche
+                </label>
+                <select
+                  value={nicheText}
+                  onChange={(e) => setNicheText(e.target.value)}
+                  className="w-full rounded-[10px] border border-neutral-200 bg-neutral-50/60 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-accent-500 focus:bg-white"
+                >
+                  <option value="">Use your default niche</option>
+                  {NICHES.map((n) => (
+                    <option key={n.value} value={n.value}>
+                      {n.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-neutral-500">
+                  Only needed if this client&apos;s coaching type differs from your own default,
+                  e.g. a nutrition client on a mostly-fitness practice.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-neutral-700">Phone</label>
+                <Input value={phoneText} onChange={(e) => setPhoneText(e.target.value)} />
+              </div>
               <div className="flex items-center gap-2">
                 <Button onClick={saveProfile} loading={profileSaving}>
                   Save
@@ -260,13 +521,16 @@ export default function ClientProfilePage({
                   type="button"
                   onClick={() => {
                     setEditingProfile(false);
+                    setProfileError(null);
                     setGoalsText(client.goals ?? "");
                     setProgramText(client.program ?? "");
+                    setPhoneText(client.phone ?? "");
                   }}
                 >
                   Cancel
                 </Button>
               </div>
+              {profileError && <p className="text-xs text-accent-600">{profileError}</p>}
             </div>
           ) : (
             <>
@@ -276,8 +540,19 @@ export default function ClientProfilePage({
           )}
         </Card>
 
+        <CustomFieldsCard
+          fetchFields={() => api.getClientCustomFields(id)}
+          onSetValue={(defId, value) => api.setClientCustomFieldValue(id, defId, value)}
+          editable
+        />
+        <MetricsCard
+          listDefinitions={() => api.listMetricDefinitions()}
+          listEntries={(defId) => api.listClientMetricEntries(id, defId)}
+          createEntry={(defId, body) => api.createClientMetricEntry(id, defId, body)}
+        />
         <ProgressCard fetchInsight={() => api.getClientProgressInsight(id)} />
         <GoalsAndProgress
+          key={goalsRefreshKey}
           listGoals={() => api.listClientGoals(id)}
           createGoal={(body) => api.createClientGoal(id, body)}
           updateGoal={(goalId, body) => api.updateClientGoal(id, goalId, body)}
@@ -285,7 +560,19 @@ export default function ClientProfilePage({
           listProgress={() => api.listClientProgress(id)}
           createProgress={(note, entryDate, file) => api.createClientProgress(id, note, entryDate, file)}
         />
-        <ClientBillingCard clientId={id} />
+        <SessionsCard
+          listSessions={() => api.listClientSessions(id)}
+          createSession={(body) => api.createClientSession(id, body)}
+          deleteSession={(noteId) => api.deleteClientSession(id, noteId)}
+        />
+        <ClientBillingCard clientId={id} threadId={client.thread_id} />
+
+        <CopilotShell title="AI insights" subtitle="Churn risk, program, and full history for this client">
+          <ChurnTrend clientId={id} />
+          <ClientSnapshotCard clientId={id} />
+          <ProgramGenerator clientId={id} />
+          <TimelineCard fetchTimeline={() => api.getClientTimeline(id)} />
+        </CopilotShell>
 
         <Card>
           <div className="mb-3 flex items-center justify-between">
@@ -305,12 +592,18 @@ export default function ClientProfilePage({
             placeholder="Private notes only you can see…"
             className="w-full rounded-[12px] border border-neutral-200 bg-neutral-50/60 px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-accent-500 focus:bg-white focus:ring-2 focus:ring-accent-100"
           />
+          {notesError && <p className="mt-1.5 text-xs text-accent-600">{notesError}</p>}
         </Card>
 
         <AISessionAssistant clientId={id} />
 
         <Card>
-          <h3 className="font-heading mb-3 text-lg font-semibold text-neutral-900">Documents</h3>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+              <FileText className="h-3.5 w-3.5" weight="fill" />
+            </span>
+            <h3 className="font-heading text-lg font-semibold text-neutral-900">Documents</h3>
+          </div>
           <DocumentList
             documents={documents}
             onUpload={async (file) => {
@@ -321,7 +614,12 @@ export default function ClientProfilePage({
         </Card>
 
         <Card>
-          <h3 className="font-heading mb-3 text-lg font-semibold text-neutral-900">Tasks</h3>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+              <CheckSquare className="h-3.5 w-3.5" weight="fill" />
+            </span>
+            <h3 className="font-heading text-lg font-semibold text-neutral-900">Tasks</h3>
+          </div>
           <TaskList
             tasks={tasks}
             viewerUserId={coach?.id ?? null}

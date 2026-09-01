@@ -19,7 +19,7 @@ export function Button({
   loading?: boolean;
 }) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 disabled:opacity-50 disabled:pointer-events-none disabled:hover:translate-y-0";
+    "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:hover:translate-y-0";
   const variants = {
     primary: "bg-neutral-900 text-white shadow-[0_14px_26px_rgba(0,0,0,0.22)] hover:bg-neutral-800",
     secondary:

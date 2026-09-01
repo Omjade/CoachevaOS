@@ -7,11 +7,13 @@ export default function Dialog({
   onClose,
   title,
   children,
+  widthClassName = "max-w-md",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  widthClassName?: string;
 }) {
   if (!open) return null;
 
@@ -22,7 +24,7 @@ export default function Dialog({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-md rounded-(--radius-lg) bg-surface p-6 shadow-lg">
+      <div className={`relative w-full ${widthClassName} rounded-(--radius-lg) bg-surface p-6 shadow-lg`}>
         <h2 className="font-heading mb-5 text-xl font-semibold">{title}</h2>
         {children}
       </div>

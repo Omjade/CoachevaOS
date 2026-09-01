@@ -7,6 +7,7 @@ import Image from "next/image";
 import { GoogleLogoIcon as GoogleLogo } from "@phosphor-icons/react";
 import { api, ApiError, API_URL, InvitePreview } from "@/lib/api";
 import { Button, Card, ErrorBanner, Eyebrow, Input, Label } from "@/components/ui";
+import { invalidateCurrentUser } from "@/lib/useCurrentUser";
 
 type PreviewState = InvitePreview | "invalid" | "already_used" | null;
 
@@ -35,7 +36,10 @@ export default function InviteAcceptPage({
     setLoading(true);
     try {
       const result = await api.acceptInvite(token, password);
-      router.push(result.portal_slug ? `/${result.portal_slug}/onboarding` : "/");
+      invalidateCurrentUser();
+      router.push(
+        result.portal_slug ? `/${result.portal_slug}/client/${result.client_id}/onboarding` : "/"
+      );
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setPreview("already_used");
@@ -67,7 +71,7 @@ export default function InviteAcceptPage({
             You&apos;re already set up
           </h1>
           <p className="mb-6 text-sm text-neutral-600">
-            This invite has already been accepted — log in to your account instead.
+            This invite has already been accepted. Log in to your account instead.
           </p>
           <Link href="/login">
             <Button className="w-full">Log in</Button>
@@ -79,7 +83,7 @@ export default function InviteAcceptPage({
 
   return (
     <div className="flex min-h-screen flex-1 bg-neutral-100 p-3 md:p-4">
-      <div className="flex flex-1 items-center justify-center px-2 py-16">
+      <div className="flex flex-1 items-center justify-center px-2 pb-8">
         <div className="w-full max-w-sm">
           <Eyebrow className="mb-4">You&apos;re invited</Eyebrow>
           <Card>
@@ -88,8 +92,10 @@ export default function InviteAcceptPage({
             </h1>
             <p className="mb-6 text-sm text-neutral-600">
               <span className="font-medium text-neutral-900">{preview.coach_name}</span> has
-              invited you to their coaching practice on CoachevaOS. Set a password to get
-              started.
+              invited you to their coaching practice on CoachevaOS.{" "}
+              {preview.existing_account
+                ? "You already have a CoachevaOS account. Confirm your password to join."
+                : "Set a password to get started."}
             </p>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
@@ -97,7 +103,9 @@ export default function InviteAcceptPage({
                 <Input id="email" value={preview.email} disabled />
               </div>
               <div>
-                <Label htmlFor="password">Create a password</Label>
+                <Label htmlFor="password">
+                  {preview.existing_account ? "Confirm your password" : "Create a password"}
+                </Label>
                 <Input
                   id="password"
                   type="password"

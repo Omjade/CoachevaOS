@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
@@ -7,26 +9,35 @@ from app.config import settings
 from app.rate_limit import limiter
 from app.routers import (
     ai,
+    ai_assistant,
     analytics,
     auth,
+    automation,
     billing,
     calendar,
     checkins,
     client_import,
     clients,
     coach,
+    custom_fields,
     documents,
     forms,
+    geo,
     goals,
     integrations,
     invite,
     leads,
+    metrics,
     mfa,
     notifications,
+    payments_paddle,
     portal,
+    programs,
     progress_entries,
+    sessions,
     tasks,
     threads,
+    timeline,
 )
 from app.scheduler import start_scheduler, stop_scheduler
 
@@ -61,10 +72,16 @@ async def security_headers(request: Request, call_next):
             "default-src 'self'; "
             "img-src 'self' data: https:; "
             "media-src 'self' https:; "
-            "script-src 'self'; "
+            "script-src 'self' https://cdn.paddle.com https://checkout.razorpay.com; "
+            "frame-src 'self' https://buy.paddle.com https://checkout.paddle.com "
+            "https://sandbox-buy.paddle.com https://sandbox-checkout.paddle.com "
+            "https://checkout.razorpay.com https://api.razorpay.com; "
             "style-src 'self' 'unsafe-inline'; "
             "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com "
-            "https://www.googleapis.com https://api.openai.com; "
+            "https://www.googleapis.com https://api.openai.com "
+            "https://api.paddle.com https://sandbox-api.paddle.com "
+            "https://checkout-service.paddle.com https://sandbox-checkout-service.paddle.com "
+            "https://api.razorpay.com https://lumberjack.razorpay.com; "
             "frame-ancestors 'none'"
         )
     if settings.environment != "development":
@@ -83,11 +100,17 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(mfa.router)
 app.include_router(coach.router)
+app.include_router(geo.router)
 app.include_router(portal.router)
 app.include_router(clients.router)
 app.include_router(client_import.router)
+app.include_router(custom_fields.router)
 app.include_router(goals.router)
+app.include_router(programs.router)
 app.include_router(progress_entries.router)
+app.include_router(metrics.router)
+app.include_router(sessions.router)
+app.include_router(timeline.router)
 app.include_router(leads.router)
 app.include_router(forms.router)
 app.include_router(invite.router)
@@ -99,7 +122,11 @@ app.include_router(calendar.router)
 app.include_router(integrations.router)
 app.include_router(checkins.router)
 app.include_router(billing.router)
+app.include_router(payments_paddle.router)
+app.include_router(payments_paddle.subscription_router)
 app.include_router(ai.router)
+app.include_router(ai_assistant.router)
+app.include_router(automation.router)
 app.include_router(notifications.router)
 app.include_router(analytics.router)
 
@@ -121,4 +148,7 @@ async def on_shutdown() -> None:
 
 @app.get("/health")
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    # No DB/external calls on purpose — Render (and any uptime pinger) hits
+    # this frequently, so it needs to stay negligible-cost and always fast,
+    # never fail because a downstream dependency is slow.
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}

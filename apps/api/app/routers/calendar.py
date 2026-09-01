@@ -24,11 +24,12 @@ from app.schemas.calendar import (
 router = APIRouter(tags=["calendar"])
 
 
-def _to_out(meeting: Meeting, client_name: str) -> MeetingOut:
+def _to_out(meeting: Meeting, client_name: str, client_timezone: str | None = None) -> MeetingOut:
     return MeetingOut(
         id=meeting.id,
         client_id=meeting.client_id,
         client_name=client_name,
+        client_timezone=client_timezone,
         starts_at=meeting.starts_at,
         ends_at=meeting.ends_at,
         status=meeting.status,
@@ -47,7 +48,7 @@ async def list_meetings(
         .where(Meeting.coach_id == coach.id)
         .order_by(Meeting.starts_at.asc())
     )
-    return [_to_out(m, u.name) for m, u in result.all()]
+    return [_to_out(m, u.name, u.timezone) for m, u in result.all()]
 
 
 @router.post("/meetings", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)

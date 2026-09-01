@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.deps import require_active_coach, require_coach
+from app.models.clients import Client
 from app.models.leads import Lead
-from app.models.enums import LeadStage
+from app.models.enums import ClientStatus, LeadStage
 from app.models.users import User
 from app.routers.clients import _to_client_out, create_client_with_user
 from app.schemas.clients import ClientOut
@@ -29,7 +30,9 @@ async def create_lead(
     coach: User = Depends(require_active_coach),
     db: AsyncSession = Depends(get_db),
 ) -> Lead:
-    lead = Lead(coach_id=coach.id, **body.model_dump())
+    # exclude_none so an unset "source" falls through to the Lead model's own
+    # NOT-NULL "manual" default instead of trying to insert an explicit NULL.
+    lead = Lead(coach_id=coach.id, **body.model_dump(exclude_none=True))
     db.add(lead)
     await db.commit()
     await db.refresh(lead)
@@ -111,8 +114,32 @@ async def convert_lead(
         goals=lead.notes,
     )
     lead.stage = LeadStage.converted
+    lead.converted_client_id = client.id
     await db.commit()
 
     user = await db.get(User, client.user_id)
     assert user is not None
     return _to_client_out(client, user)
+
+
+@router.post("/{lead_id}/restore", response_model=LeadOut)
+async def restore_lead(
+    lead_id: uuid.UUID,
+    coach: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> Lead:
+    """Undo a mistaken conversion: puts the lead back in the pipeline and
+    soft-deactivates (doesn't delete) the client record it created."""
+    lead = await _get_owned_lead(db, coach, lead_id)
+    if lead.stage != LeadStage.converted or lead.converted_client_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "This lead hasn't been converted")
+
+    client = await db.get(Client, lead.converted_client_id)
+    if client is not None and client.coach_id == coach.id:
+        client.status = ClientStatus.paused
+
+    lead.stage = LeadStage.booked
+    lead.converted_client_id = None
+    await db.commit()
+    await db.refresh(lead)
+    return lead

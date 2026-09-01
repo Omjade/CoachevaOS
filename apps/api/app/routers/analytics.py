@@ -1,4 +1,6 @@
+import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -23,6 +25,28 @@ from app.schemas.analytics import (
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 WEEKS_BACK = 12
+CACHE_TTL_SECONDS = 60
+
+# In-process TTL cache — analytics were recomputed from scratch on every request;
+# a coach's dashboard reloading/tab-switching repeatedly doesn't need fresh
+# aggregates every time. No Redis needed at this scale (consistent with the
+# rate limiter and AI-insight cache, both also in-process/DB-backed, not Redis).
+_cache: dict[tuple[str, uuid.UUID], tuple[datetime, Any]] = {}
+
+
+def _cache_get(key: tuple[str, uuid.UUID]) -> Any | None:
+    entry = _cache.get(key)
+    if entry is None:
+        return None
+    expires_at, value = entry
+    if datetime.now(timezone.utc) >= expires_at:
+        del _cache[key]
+        return None
+    return value
+
+
+def _cache_set(key: tuple[str, uuid.UUID], value: Any) -> None:
+    _cache[key] = (datetime.now(timezone.utc) + timedelta(seconds=CACHE_TTL_SECONDS), value)
 
 
 def _week_start(dt: datetime) -> datetime:
@@ -39,6 +63,11 @@ def _week_buckets(weeks: int = WEEKS_BACK) -> list[datetime]:
 async def get_analytics_summary(
     coach: User = Depends(require_coach), db: AsyncSession = Depends(get_db)
 ) -> AnalyticsSummary:
+    cache_key = ("summary", coach.id)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     clients_result = await db.execute(select(Client.status).where(Client.coach_id == coach.id))
     statuses = [row[0] for row in clients_result.all()]
 
@@ -46,6 +75,7 @@ async def get_analytics_summary(
     lead_stages = [row[0] for row in leads_result.all()]
     leads_total = len(lead_stages)
     leads_converted = sum(1 for s in lead_stages if s == LeadStage.converted)
+    leads_lost = sum(1 for s in lead_stages if s == LeadStage.lost)
 
     tasks_result = await db.execute(
         select(Task.done)
@@ -56,7 +86,7 @@ async def get_analytics_summary(
     tasks_total = len(task_done_flags)
     tasks_done = sum(1 for d in task_done_flags if d)
 
-    return AnalyticsSummary(
+    summary = AnalyticsSummary(
         active_clients=sum(1 for s in statuses if s == ClientStatus.active),
         at_risk_clients=sum(1 for s in statuses if s == ClientStatus.at_risk),
         paused_clients=sum(1 for s in statuses if s == ClientStatus.paused),
@@ -65,15 +95,23 @@ async def get_analytics_summary(
         task_completion_rate=round(tasks_done / tasks_total, 3) if tasks_total else 0.0,
         leads_total=leads_total,
         leads_converted=leads_converted,
+        leads_lost=leads_lost,
         tasks_total=tasks_total,
         tasks_done=tasks_done,
     )
+    _cache_set(cache_key, summary)
+    return summary
 
 
 @router.get("/timeseries", response_model=AnalyticsTimeseries)
 async def get_analytics_timeseries(
     coach: User = Depends(require_coach), db: AsyncSession = Depends(get_db)
 ) -> AnalyticsTimeseries:
+    cache_key = ("timeseries", coach.id)
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
     buckets = _week_buckets()
 
     joined_result = await db.execute(select(Client.joined_at).where(Client.coach_id == coach.id))
@@ -121,6 +159,8 @@ async def get_analytics_timeseries(
             )
         )
 
-    return AnalyticsTimeseries(
+    timeseries = AnalyticsTimeseries(
         client_growth=client_growth, lead_funnel=lead_funnel, checkin_rate=checkin_rate
     )
+    _cache_set(cache_key, timeseries)
+    return timeseries

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PencilSimpleIcon as PencilSimple } from "@phosphor-icons/react";
-import { TaskData, TaskPriority } from "@/lib/api";
+import { ApiError, TaskData, TaskPriority } from "@/lib/api";
 import { Button, Input } from "@/components/ui";
 
 export default function TaskList({
@@ -24,15 +24,19 @@ export default function TaskList({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDue, setEditDue] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     setAdding(true);
+    setError(null);
     try {
       await onAdd(title.trim(), dueDate || undefined);
       setTitle("");
       setDueDate("");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't add that task. Try again.");
     } finally {
       setAdding(false);
     }
@@ -45,8 +49,20 @@ export default function TaskList({
   }
 
   async function saveEdit(id: string) {
-    await onEdit(id, editTitle, editDue || undefined);
-    setEditingId(null);
+    setError(null);
+    try {
+      await onEdit(id, editTitle, editDue || undefined);
+      setEditingId(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save that task. Try again.");
+    }
+  }
+
+  function handleToggle(id: string) {
+    setError(null);
+    onToggle(id).catch((err) => {
+      setError(err instanceof ApiError ? err.message : "Couldn't update that task. Try again.");
+    });
   }
 
   return (
@@ -62,14 +78,19 @@ export default function TaskList({
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
-          className="w-40"
+          className="w-32 shrink-0"
         />
         <Button type="submit" disabled={adding}>
           Add
         </Button>
       </form>
+      {error && <p className="text-xs text-accent-600">{error}</p>}
 
-      {tasks.length === 0 && <p className="text-sm text-neutral-600">No tasks yet.</p>}
+      {tasks.length === 0 && (
+        <p className="text-sm text-neutral-600">
+          No tasks yet. Add one above. Either of you can add, check off, or edit a task here.
+        </p>
+      )}
 
       <div className="flex flex-col gap-2">
         {tasks.map((task) => (
@@ -80,7 +101,7 @@ export default function TaskList({
             <input
               type="checkbox"
               checked={task.done}
-              onChange={() => onToggle(task.id)}
+              onChange={() => handleToggle(task.id)}
               className="h-4 w-4 accent-accent-600"
             />
             {editingId === task.id ? (

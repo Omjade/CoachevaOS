@@ -1,18 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
+import dynamic from "next/dynamic";
 import {
   UserPlusIcon as UserPlus,
   NotePencilIcon as NotePencil,
@@ -27,14 +16,20 @@ import {
   CaretUpDownIcon as CaretUpDown,
 } from "@phosphor-icons/react";
 import { api, ApiError, Lead, LeadStage } from "@/lib/api";
-import { Button, Card, Eyebrow, Input, Label } from "@/components/ui";
+import { Button, Eyebrow, Input, Label } from "@/components/ui";
 import Dialog from "@/components/Dialog";
+import { useRoleGuard } from "@/lib/useRoleGuard";
+
+// @dnd-kit is only needed for the board view — dynamically imported so its JS
+// doesn't ship on every visit to this page (the list view doesn't need it at all).
+const LeadsBoard = dynamic(() => import("@/components/LeadsBoard"), { ssr: false });
 
 const STAGES: { key: LeadStage; label: string; borderClass: string }[] = [
   { key: "new", label: "New", borderClass: "border-t-neutral-300" },
   { key: "contacted", label: "Contacted", borderClass: "border-t-accent-200" },
   { key: "follow_up", label: "Follow Up", borderClass: "border-t-accent-400" },
   { key: "booked", label: "Booked", borderClass: "border-t-accent-600" },
+  { key: "lost", label: "Lost", borderClass: "border-t-neutral-200" },
 ];
 
 const STALE_DAYS = 7;
@@ -43,167 +38,51 @@ function daysSince(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function LeadCard({
-  lead,
-  onConvert,
-  converting,
-  onView,
-  dragging,
-}: {
-  lead: Lead;
-  onConvert: (lead: Lead) => void;
-  converting: boolean;
-  onView: (lead: Lead) => void;
-  dragging?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: lead.id,
-  });
-  const days = daysSince(lead.last_contacted_at ?? lead.created_at);
-  const stale = days >= STALE_DAYS;
+const SOURCE_LABELS: Record<string, string> = {
+  manual: "Manual",
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  website: "Website",
+  referral: "Referral",
+  other: "Other",
+  form: "Form",
+};
 
-  return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      style={{
-        transform: transform ? CSS.Translate.toString(transform) : undefined,
-        opacity: isDragging ? 0.3 : 1,
-      }}
-      className="touch-none"
-    >
-      <Card
-        className={`!p-4 !shadow-[0_10px_20px_rgba(28,29,31,0.05)] ${
-          dragging ? "" : "cursor-grab active:cursor-grabbing"
-        }`}
-      >
-        <div className="mb-2 flex items-start gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-xs font-semibold text-white">
-            {lead.name.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-neutral-900">{lead.name}</p>
-            {lead.interested_in && (
-              <p className="truncate text-xs text-neutral-500">{lead.interested_in}</p>
-            )}
-          </div>
-          {lead.source === "form" && (
-            <span className="flex shrink-0 items-center gap-1 rounded-full bg-accent-100 px-2 py-0.5 text-[10px] font-medium text-accent-700">
-              <NotePencil className="h-2.5 w-2.5" weight="bold" />
-              Form
-            </span>
-          )}
-        </div>
-
-        {(lead.phone || lead.email) && (
-          <div className="mb-2 flex items-center gap-3">
-            {lead.phone && (
-              <a
-                href={`tel:${lead.phone}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-xs text-neutral-500 hover:text-accent-600"
-              >
-                <Phone className="h-3 w-3" />
-                Call
-              </a>
-            )}
-            {lead.email && (
-              <a
-                href={`mailto:${lead.email}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-xs text-neutral-500 hover:text-accent-600"
-              >
-                <EnvelopeSimple className="h-3 w-3" />
-                Email
-              </a>
-            )}
-          </div>
-        )}
-
-        {lead.notes && <p className="mb-2 line-clamp-2 text-xs text-neutral-500">{lead.notes}</p>}
-
-        {lead.form_submission_id && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onView(lead);
-            }}
-            className="mb-2 text-xs font-medium text-accent-600 hover:text-accent-700"
-          >
-            View full submission
-          </button>
-        )}
-
-        <div className="flex items-center justify-between gap-2">
-          <span
-            className={`flex items-center gap-1 text-[11px] ${
-              stale ? "font-medium text-accent-600" : "text-neutral-400"
-            }`}
-          >
-            {stale ? <Warning className="h-3 w-3" weight="fill" /> : <Clock className="h-3 w-3" />}
-            {days === 0 ? "Today" : `${days}d in stage`}
-          </span>
-          {lead.stage === "booked" && (
-            <Button
-              variant="secondary"
-              className="!px-2.5 !py-1 text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                onConvert(lead);
-              }}
-              disabled={converting}
-            >
-              {converting ? "Converting…" : "Convert"}
-            </Button>
-          )}
-        </div>
-      </Card>
-    </div>
-  );
+function sourceLabel(source: string): string {
+  return SOURCE_LABELS[source] ?? (source.charAt(0).toUpperCase() + source.slice(1));
 }
 
-function StageColumn({
-  stage,
-  leads,
-  ...cardProps
-}: {
-  stage: (typeof STAGES)[number];
-  leads: Lead[];
-  onConvert: (lead: Lead) => void;
-  converting: string | null;
-  onView: (lead: Lead) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: stage.key });
+// Simple relevance score, not a search-library dependency — exact/prefix
+// matches on name rank above a substring match, which in turn ranks above a
+// match on a secondary field. 0 means "doesn't match at all" (filtered out).
+function leadMatchScore(lead: Lead, q: string): number {
+  const name = lead.name.toLowerCase();
+  if (name === q) return 100;
+  if (name.startsWith(q)) return 80;
+  if (name.includes(q)) return 60;
+  if (lead.email?.toLowerCase().includes(q)) return 40;
+  if (lead.phone?.toLowerCase().includes(q)) return 40;
+  if (lead.interested_in?.toLowerCase().includes(q)) return 30;
+  if (lead.notes?.toLowerCase().includes(q)) return 20;
+  return 0;
+}
 
+// Wraps the first matching substring in an accent-highlighted <mark> —
+// case-insensitive, leaves the text untouched when there's no query or no
+// match.
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return <>{text}</>;
   return (
-    <div>
-      <div
-        className={`mb-3 flex items-center justify-between border-t-2 pt-2 pb-1 ${stage.borderClass}`}
-      >
-        <h2 className="text-sm font-semibold text-neutral-900">{stage.label}</h2>
-        <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-xs text-neutral-600">
-          {leads.length}
-        </span>
-      </div>
-      <div
-        ref={setNodeRef}
-        className={`flex min-h-[120px] flex-col gap-3 rounded-[16px] p-1 transition-colors ${
-          isOver ? "bg-accent-100/60" : ""
-        }`}
-      >
-        {leads.map((lead) => (
-          <LeadCard
-            key={lead.id}
-            lead={lead}
-            onConvert={cardProps.onConvert}
-            converting={cardProps.converting === lead.id}
-            onView={cardProps.onView}
-          />
-        ))}
-      </div>
-    </div>
+    <>
+      {text.slice(0, idx)}
+      <mark className="rounded-[3px] bg-accent-200 px-0.5 text-inherit">
+        {text.slice(idx, idx + q.length)}
+      </mark>
+      {text.slice(idx + q.length)}
+    </>
   );
 }
 
@@ -215,12 +94,14 @@ function LeadsTable({
   onConvert,
   converting,
   onView,
+  query,
 }: {
   leads: Lead[];
   onMoveStage: (lead: Lead, stage: LeadStage) => void;
   onConvert: (lead: Lead) => void;
   converting: string | null;
   onView: (lead: Lead) => void;
+  query: string;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("days");
   const [sortAsc, setSortAsc] = useState(false);
@@ -240,6 +121,7 @@ function LeadsTable({
       follow_up: 2,
       booked: 3,
       converted: 4,
+      lost: 5,
     };
     const withDays = leads.map((l) => ({
       lead: l,
@@ -291,7 +173,9 @@ function LeadsTable({
                       {lead.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-neutral-900">{lead.name}</p>
+                      <p className="truncate font-medium text-neutral-900">
+                        <HighlightMatch text={lead.name} query={query} />
+                      </p>
                       {lead.interested_in && (
                         <p className="truncate text-xs text-neutral-500">{lead.interested_in}</p>
                       )}
@@ -321,7 +205,7 @@ function LeadsTable({
                       Form
                     </span>
                   ) : (
-                    <span className="text-xs text-neutral-400">Manual</span>
+                    <span className="text-xs text-neutral-400">{sourceLabel(lead.source)}</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -389,6 +273,7 @@ function LeadsTable({
 }
 
 export default function LeadsPage() {
+  const ok = useRoleGuard("coach");
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [view, setView] = useState<"board" | "list">("board");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -397,14 +282,16 @@ export default function LeadsPage() {
   const [phone, setPhone] = useState("");
   const [interestedIn, setInterestedIn] = useState("");
   const [notes, setNotes] = useState("");
+  const [source, setSource] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [converting, setConverting] = useState<string | null>(null);
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
   const [query, setQuery] = useState("");
-  const [activeId, setActiveId] = useState<string | null>(null);
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const [convertedToast, setConvertedToast] = useState<{ leadId: string; name: string } | null>(
+    null
+  );
+  const [restoring, setRestoring] = useState(false);
 
   function refresh() {
     api.listLeads().then(setLeads).catch(() => setLeads([]));
@@ -423,6 +310,7 @@ export default function LeadsPage() {
         phone: phone || undefined,
         interested_in: interestedIn || undefined,
         notes: notes || undefined,
+        source: source || undefined,
       });
       setDialogOpen(false);
       setName("");
@@ -430,6 +318,7 @@ export default function LeadsPage() {
       setPhone("");
       setInterestedIn("");
       setNotes("");
+      setSource("");
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
@@ -453,6 +342,8 @@ export default function LeadsPage() {
     try {
       await api.convertLead(lead.id);
       refresh();
+      setConvertedToast({ leadId: lead.id, name: lead.name });
+      setTimeout(() => setConvertedToast((t) => (t?.leadId === lead.id ? null : t)), 8000);
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Couldn't convert this lead");
     } finally {
@@ -460,33 +351,34 @@ export default function LeadsPage() {
     }
   }
 
-  function handleDragStart(e: DragStartEvent) {
-    setActiveId(String(e.active.id));
-  }
-
-  function handleDragEnd(e: DragEndEvent) {
-    setActiveId(null);
-    const { active, over } = e;
-    if (!over) return;
-    const lead = leads?.find((l) => l.id === active.id);
-    if (!lead) return;
-    moveStage(lead, over.id as LeadStage);
+  async function undoConvert(leadId: string) {
+    setRestoring(true);
+    try {
+      await api.restoreLead(leadId);
+      setConvertedToast(null);
+      refresh();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Couldn't undo. Try again.");
+    } finally {
+      setRestoring(false);
+    }
   }
 
   const filtered = useMemo(() => {
     if (!leads) return [];
     const q = query.trim().toLowerCase();
     if (!q) return leads;
-    return leads.filter(
-      (l) => l.name.toLowerCase().includes(q) || l.interested_in?.toLowerCase().includes(q)
-    );
+    return leads
+      .map((l) => ({ lead: l, score: leadMatchScore(l, q) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.lead);
   }, [leads, query]);
 
-  const byStage = (stage: LeadStage) => filtered.filter((l) => l.stage === stage);
-  const activeLead = leads?.find((l) => l.id === activeId) ?? null;
+  if (!ok) return null;
 
   return (
-    <div>
+    <div className="animate-fade-up">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <Eyebrow className="mb-2">Pipeline</Eyebrow>
@@ -533,34 +425,21 @@ export default function LeadsPage() {
         </div>
       </div>
 
+      {leads !== null && leads.length === 0 && (
+        <div className="mb-5 rounded-[14px] border border-neutral-200 bg-neutral-50/60 px-4 py-3 text-sm text-neutral-600">
+          No leads yet. Add one manually, share a lead-capture form, or import a spreadsheet of
+          existing contacts from the Clients page.
+        </div>
+      )}
+
       {view === "board" ? (
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {STAGES.map((stage) => (
-              <StageColumn
-                key={stage.key}
-                stage={stage}
-                leads={byStage(stage.key)}
-                onConvert={convert}
-                converting={converting}
-                onView={setViewingLead}
-              />
-            ))}
-          </div>
-          <DragOverlay>
-            {activeLead && (
-              <div className="w-64 rotate-2">
-                <LeadCard
-                  lead={activeLead}
-                  onConvert={() => {}}
-                  converting={false}
-                  onView={() => {}}
-                  dragging
-                />
-              </div>
-            )}
-          </DragOverlay>
-        </DndContext>
+        <LeadsBoard
+          leads={filtered}
+          onMoveStage={moveStage}
+          onConvert={convert}
+          converting={converting}
+          onView={setViewingLead}
+        />
       ) : (
         <LeadsTable
           leads={filtered}
@@ -568,7 +447,24 @@ export default function LeadsPage() {
           onConvert={convert}
           converting={converting}
           onView={setViewingLead}
+          query={query}
         />
+      )}
+
+      {convertedToast && (
+        <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-full border border-neutral-200 bg-neutral-900 px-4 py-2.5 text-sm text-white shadow-lg">
+          <span>
+            Moved <span className="font-medium">{convertedToast.name}</span> to Clients
+          </span>
+          <button
+            type="button"
+            onClick={() => undoConvert(convertedToast.leadId)}
+            disabled={restoring}
+            className="font-semibold text-accent-300 hover:text-accent-200 disabled:opacity-50"
+          >
+            {restoring ? "Undoing…" : "Undo"}
+          </button>
+        </div>
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} title="Add lead">
@@ -602,6 +498,22 @@ export default function LeadsPage() {
             <Label htmlFor="l_notes">Notes</Label>
             <Input id="l_notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
+          <div>
+            <Label htmlFor="l_source">How did they find you?</Label>
+            <select
+              id="l_source"
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              className="w-full rounded-[10px] border border-neutral-200 bg-neutral-50/60 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-accent-500 focus:bg-white"
+            >
+              <option value="manual">Not specified</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="instagram">Instagram</option>
+              <option value="website">Website</option>
+              <option value="referral">Referral</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
           {error && <p className="text-sm text-accent-700">{error}</p>}
           <div className="mt-2 flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>
@@ -617,7 +529,7 @@ export default function LeadsPage() {
       <Dialog
         open={viewingLead !== null}
         onClose={() => setViewingLead(null)}
-        title={viewingLead ? `${viewingLead.name} — form submission` : "Submission"}
+        title={viewingLead ? `${viewingLead.name}: form submission` : "Submission"}
       >
         <div className="flex flex-col gap-2.5">
           {viewingLead?.notes?.split("\n").map((line, i) => {

@@ -1,33 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api, DocumentData } from "@/lib/api";
-import { Card } from "@/components/ui";
-import DocumentList from "@/components/DocumentList";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { useViewerRole } from "@/lib/useViewerRole";
 
-export default function ClientFilesPage() {
-  const [documents, setDocuments] = useState<DocumentData[]>([]);
+// Superseded by /{slug}/client/{clientId}/files — this flat route only
+// exists to catch old links/bookmarks and bounce them to the real one.
+export default function FilesRedirectPage() {
+  const role = useViewerRole();
+  const router = useRouter();
+  const params = useParams<{ slug: string }>();
 
-  function refresh() {
-    api.listMyDocuments().then(setDocuments).catch(() => {});
-  }
+  useEffect(() => {
+    if (role === "client") {
+      api
+        .getMyClientProfile()
+        .then((p) => router.replace(`/${params.slug}/client/${p.id}/files`))
+        .catch(() => router.replace(`/${params.slug}/dashboard`));
+    } else if (role === "coach") {
+      router.replace(`/${params.slug}/dashboard`);
+    }
+  }, [role, router, params.slug]);
 
-  useEffect(refresh, []);
-
-  return (
-    <div>
-      <h1 className="font-heading mb-6 text-[26px] font-semibold tracking-tight text-neutral-900">
-        Files
-      </h1>
-      <Card>
-        <DocumentList
-          documents={documents}
-          onUpload={async (file) => {
-            await api.uploadMyDocument(file);
-            refresh();
-          }}
-        />
-      </Card>
-    </div>
-  );
+  return null;
 }

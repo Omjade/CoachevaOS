@@ -1,0 +1,31 @@
+import {
+  BarbellIcon as Barbell,
+  AppleLogoIcon as AppleLogo,
+  BriefcaseIcon as Briefcase,
+  CompassIcon as Compass,
+  HeartIcon as Heart,
+  UsersThreeIcon as UsersThree,
+  HeartbeatIcon as Heartbeat,
+  BrainIcon as Brain,
+  GraduationCapIcon as GraduationCap,
+  SoccerBallIcon as SoccerBall,
+  BabyIcon as Baby,
+  CurrencyDollarIcon as CurrencyDollar,
+  DotsThreeIcon as DotsThree,
+} from "@phosphor-icons/react";
+
+export const NICHES = [
+  { value: "fitness", label: "Fitness & personal training", Icon: Barbell },
+  { value: "nutrition", label: "Health & nutrition", Icon: AppleLogo },
+  { value: "business", label: "Business & entrepreneurship", Icon: Briefcase },
+  { value: "career", label: "Career & job search", Icon: Compass },
+  { value: "life", label: "Life coaching", Icon: Heart },
+  { value: "executive", label: "Executive & leadership", Icon: UsersThree },
+  { value: "relationship", label: "Relationship & dating", Icon: Heartbeat },
+  { value: "mindset", label: "Mindset & wellness", Icon: Brain },
+  { value: "academic", label: "Academic & study skills", Icon: GraduationCap },
+  { value: "sports", label: "Sports performance", Icon: SoccerBall },
+  { value: "parenting", label: "Parenting & family", Icon: Baby },
+  { value: "financial", label: "Financial coaching", Icon: CurrencyDollar },
+  { value: "other", label: "Other", Icon: DotsThree },
+] as const;

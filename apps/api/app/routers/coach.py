@@ -1,27 +1,39 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.deps import require_active_coach, require_coach
-from app.models.billing import PlatformSubscription
-from app.models.enums import SubscriptionStatus, SubscriptionTier
+from app.models.ai import AIInsight
+from app.models.billing import PlatformSubscription, RegionSignalLog
+from app.models.checkins import Checkin
+from app.models.clients import Client
+from app.models.enums import AIInsightType, PaymentProvider, SubscriptionStatus, SubscriptionTier
+from app.models.messaging import Thread
+from app.models.tasks import Task
 from app.models.users import CoachProfile, User
+from app.payments.geo import client_ip, lookup_country
+from app.rate_limit import limiter
+from app.schemas.attention import AttentionItem, NeedsAttentionOut
 from app.schemas.calendar import AvailabilityRules
 from app.schemas.coach import CoachProfileOut, CoachProfileUpdate, OnboardingRequest
+from app.storage import save_upload
 from app.utils.time import utcnow
 
 router = APIRouter(prefix="/coach", tags=["coach"])
+
+GALLERY_MAX_IMAGES = 6
 
 
 @router.post("/onboarding", response_model=CoachProfileOut, status_code=status.HTTP_201_CREATED)
 async def complete_onboarding(
     body: OnboardingRequest,
+    request: Request,
     user: User = Depends(require_coach),
     db: AsyncSession = Depends(get_db),
-) -> CoachProfile:
+) -> CoachProfileOut:
     existing = await db.get(CoachProfile, user.id)
     if existing is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Onboarding already completed")
@@ -32,25 +44,50 @@ async def complete_onboarding(
     if slug_taken.scalar_one_or_none() is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "That portal slug is already taken")
 
+    # The coach confirms/edits a pre-filled country at this step (frontend seeds it
+    # from GET /geo/region) rather than the old silent registration-IP-only
+    # assignment. A fresh IP lookup is still taken here for the audit trail and as
+    # a fallback when the coach left the field untouched/empty.
+    ip = client_ip(request.headers.get("x-forwarded-for"), request.client.host if request.client else None)
+    ip_country = await lookup_country(ip)
+    resolved_country = body.billing_country_code or ip_country or user.country_code
+
     profile = CoachProfile(
         user_id=user.id,
         portal_slug=body.portal_slug,
         business_name=body.business_name,
         niche=body.niche,
+        billing_country_code=resolved_country,
     )
     db.add(profile)
     user.timezone = body.timezone
+
+    db.add(
+        RegionSignalLog(
+            coach_id=user.id,
+            context="onboarding",
+            declared_country_code=body.billing_country_code,
+            ip_country_code=ip_country,
+            mismatch=bool(body.billing_country_code and ip_country and body.billing_country_code != ip_country),
+        )
+    )
+
+    is_india = resolved_country == "IN"
     db.add(
         PlatformSubscription(
             coach_id=user.id,
             tier=SubscriptionTier.trial,
             status=SubscriptionStatus.trialing,
             trial_ends_at=utcnow() + timedelta(days=14),
+            client_limit=10,
+            provider=PaymentProvider.paddle,
+            currency="inr" if is_india else "usd",
         )
     )
     await db.commit()
     await db.refresh(profile)
-    return profile
+    await db.refresh(user)
+    return _to_profile_out(profile, user)
 
 
 def _to_profile_out(profile: CoachProfile, user: User) -> CoachProfileOut:
@@ -63,6 +100,12 @@ def _to_profile_out(profile: CoachProfile, user: User) -> CoachProfileOut:
         name=user.name,
         email=user.email,
         timezone=user.timezone,
+        billing_country_code=profile.billing_country_code,
+        bio=profile.bio,
+        website_url=profile.website_url,
+        instagram_url=profile.instagram_url,
+        linkedin_url=profile.linkedin_url,
+        gallery_image_urls=profile.gallery_image_urls,
     )
 
 
@@ -78,7 +121,9 @@ async def get_my_profile(
 
 
 @router.patch("/me/profile", response_model=CoachProfileOut)
+@limiter.limit("10/minute")
 async def update_my_profile(
+    request: Request,
     body: CoachProfileUpdate,
     user: User = Depends(require_coach),
     db: AsyncSession = Depends(get_db),
@@ -94,9 +139,69 @@ async def update_my_profile(
         profile.business_name = body.business_name
     if body.niche is not None:
         profile.niche = body.niche
+    if body.bio is not None:
+        profile.bio = body.bio
+    if body.website_url is not None:
+        profile.website_url = body.website_url
+    if body.instagram_url is not None:
+        profile.instagram_url = body.instagram_url
+    if body.linkedin_url is not None:
+        profile.linkedin_url = body.linkedin_url
+    if body.billing_country_code is not None and body.billing_country_code != profile.billing_country_code:
+        ip = client_ip(request.headers.get("x-forwarded-for"), request.client.host if request.client else None)
+        ip_country = await lookup_country(ip)
+        db.add(
+            RegionSignalLog(
+                coach_id=user.id,
+                context="profile_update",
+                declared_country_code=body.billing_country_code,
+                ip_country_code=ip_country,
+                mismatch=bool(ip_country and body.billing_country_code != ip_country),
+            )
+        )
+        profile.billing_country_code = body.billing_country_code
     await db.commit()
     await db.refresh(profile)
     await db.refresh(user)
+    return _to_profile_out(profile, user)
+
+
+@router.post("/me/gallery", response_model=CoachProfileOut)
+async def upload_gallery_image(
+    file: UploadFile,
+    user: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> CoachProfileOut:
+    profile = await db.get(CoachProfile, user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
+    existing = profile.gallery_image_urls or []
+    if len(existing) >= GALLERY_MAX_IMAGES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"You can add up to {GALLERY_MAX_IMAGES} images")
+    key, file_type = await save_upload(file)
+    if file_type != "image":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Please upload an image file")
+    profile.gallery_image_urls = existing + [key]
+    await db.commit()
+    await db.refresh(profile)
+    return _to_profile_out(profile, user)
+
+
+@router.delete("/me/gallery/{index}", response_model=CoachProfileOut)
+async def remove_gallery_image(
+    index: int,
+    user: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> CoachProfileOut:
+    profile = await db.get(CoachProfile, user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
+    existing = profile.gallery_image_urls or []
+    if index < 0 or index >= len(existing):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
+    profile.gallery_image_urls = existing[:index] + existing[index + 1 :]
+    await db.commit()
+    await db.refresh(profile)
     return _to_profile_out(profile, user)
 
 
@@ -124,3 +229,136 @@ async def update_availability(
     profile.availability_rules_json = body.model_dump()
     await db.commit()
     return body
+
+
+# Turns the deterministic bucket signal into a concrete next step — no LLM
+# call, same "score in Python, AI only for narrative" posture already used by
+# compute_churn_score. This is what makes the Needs Attention panel double as
+# a real Recommendations feature instead of just a flagged-item list.
+SUGGESTED_ACTION_BY_CATEGORY: dict[str, str] = {
+    "churn": "Review their recent check-ins and consider a call",
+    "silence": "Send them a check-in message",
+    "overdue": "Nudge them about the overdue task",
+    "checkin": "Ask them for a quick check-in",
+}
+
+
+@router.get("/needs-attention", response_model=NeedsAttentionOut)
+async def get_needs_attention(
+    coach: User = Depends(require_coach), db: AsyncSession = Depends(get_db)
+) -> NeedsAttentionOut:
+    """Deterministic, no-AI-call daily worklist — buckets each client by already-
+    computed signals (churn score, thread silence, overdue tasks, stale check-ins)
+    into urgent/behind/minor, same 'score in Python, AI only for narrative
+    elsewhere' pattern already used by compute_churn_score. This is the flagship
+    'who needs me today' surface, not another data table."""
+    clients_result = await db.execute(
+        select(Client, User).join(User, User.id == Client.user_id).where(Client.coach_id == coach.id)
+    )
+    rows = clients_result.all()
+    now = utcnow()
+    today = now.date()
+    items: list[AttentionItem] = []
+
+    if not rows:
+        return NeedsAttentionOut(items=items, generated_at=now)
+
+    client_ids = [client.id for client, _ in rows]
+
+    # Four batched queries (independent of client count) replacing what was
+    # previously up to 4 awaited queries PER client inside the loop below —
+    # a real N+1 that showed up directly in dashboard load time for any coach
+    # with more than a handful of clients.
+    churn_result = await db.execute(
+        select(AIInsight)
+        .distinct(AIInsight.client_id)
+        .where(AIInsight.client_id.in_(client_ids), AIInsight.type == AIInsightType.churn_score)
+        .order_by(AIInsight.client_id, AIInsight.created_at.desc())
+    )
+    latest_churn_by_client = {insight.client_id: insight for insight in churn_result.scalars().all()}
+
+    threads_result = await db.execute(select(Thread).where(Thread.client_id.in_(client_ids)))
+    thread_by_client = {thread.client_id: thread for thread in threads_result.scalars().all()}
+
+    overdue_result = await db.execute(
+        select(Task.client_id, func.count())
+        .where(Task.client_id.in_(client_ids), Task.done.is_(False), Task.due_date < today)
+        .group_by(Task.client_id)
+    )
+    overdue_count_by_client = dict(overdue_result.all())
+
+    checkin_result = await db.execute(
+        select(Checkin.client_id, func.max(Checkin.submitted_at))
+        .where(Checkin.client_id.in_(client_ids))
+        .group_by(Checkin.client_id)
+    )
+    last_checkin_by_client = dict(checkin_result.all())
+
+    for client, user in rows:
+        # (severity, category, reason) — category drives the suggested_action
+        # below so it stays a direct lookup, not a re-parse of the reason text.
+        reasons: list[tuple[int, str, str]] = []
+
+        churn = latest_churn_by_client.get(client.id)
+        if churn:
+            score = churn.payload_json.get("score", 0)
+            if score >= 70:
+                reasons.append((90, "churn", f"Churn risk {score}/100"))
+            elif score >= 50:
+                reasons.append((60, "churn", f"Churn risk {score}/100"))
+            elif score >= 30:
+                reasons.append((30, "churn", f"Churn risk {score}/100"))
+
+        thread = thread_by_client.get(client.id)
+        thread_id = thread.id if thread else None
+        if thread and thread.last_message_at:
+            days_quiet = (now - thread.last_message_at).days
+            if days_quiet >= 7:
+                reasons.append((85, "silence", f"No reply in {days_quiet} days"))
+            elif days_quiet >= 4:
+                reasons.append((55, "silence", f"No reply in {days_quiet} days"))
+
+        overdue_count = overdue_count_by_client.get(client.id, 0)
+        if overdue_count >= 3:
+            reasons.append((80, "overdue", f"{overdue_count} overdue tasks"))
+        elif overdue_count >= 1:
+            reasons.append(
+                (45, "overdue", f"{overdue_count} overdue task" + ("s" if overdue_count > 1 else ""))
+            )
+
+        last_checkin_at = last_checkin_by_client.get(client.id)
+        if (now - client.joined_at).days >= 14:
+            if last_checkin_at is None:
+                reasons.append((50, "checkin", "No check-in yet"))
+            else:
+                days_since_checkin = (now - last_checkin_at).days
+                if days_since_checkin >= 14:
+                    reasons.append((70, "checkin", f"No check-in in {days_since_checkin} days"))
+                elif days_since_checkin >= 7:
+                    reasons.append((35, "checkin", f"No check-in in {days_since_checkin} days"))
+
+        if not reasons:
+            continue
+
+        top_severity, top_category, top_reason = max(reasons, key=lambda r: r[0])
+        if top_severity >= 75:
+            bucket = "urgent"
+        elif top_severity >= 50:
+            bucket = "behind"
+        else:
+            bucket = "minor"
+
+        items.append(
+            AttentionItem(
+                client_id=client.id,
+                client_name=user.name,
+                bucket=bucket,
+                reason=top_reason,
+                thread_id=thread_id,
+                suggested_action=SUGGESTED_ACTION_BY_CATEGORY[top_category],
+            )
+        )
+
+    order = {"urgent": 0, "behind": 1, "minor": 2}
+    items.sort(key=lambda i: order[i.bucket])
+    return NeedsAttentionOut(items=items, generated_at=now)

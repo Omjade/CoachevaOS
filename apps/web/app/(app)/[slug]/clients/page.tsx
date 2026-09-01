@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -14,6 +14,7 @@ import { copyText } from "@/lib/clipboard";
 import { Button, Card, Eyebrow, Input, Label } from "@/components/ui";
 import Dialog from "@/components/Dialog";
 import Avatar from "@/components/Avatar";
+import { useRoleGuard } from "@/lib/useRoleGuard";
 
 const STATUS_LABEL: Record<ClientListItem["status"], string> = {
   active: "Active",
@@ -37,11 +38,13 @@ function StatusTag({ status }: { status: ClientListItem["status"] }) {
 }
 
 export default function ClientsPage() {
+  const roleOk = useRoleGuard("coach");
   const params = useParams<{ slug: string }>();
   const [clients, setClients] = useState<ClientListItem[] | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [program, setProgram] = useState("");
   const [goals, setGoals] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +52,7 @@ export default function ClientsPage() {
   const [inviteBanner, setInviteBanner] = useState<{ name: string; path: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | ClientListItem["status"]>("all");
 
   function refresh() {
     api.listClients().then(setClients).catch(() => setClients([]));
@@ -64,6 +68,7 @@ export default function ClientsPage() {
       const client = await api.createClient({
         name,
         email,
+        phone: phone || undefined,
         program: program || undefined,
         goals: goals || undefined,
       });
@@ -73,6 +78,7 @@ export default function ClientsPage() {
       setDialogOpen(false);
       setName("");
       setEmail("");
+      setPhone("");
       setProgram("");
       setGoals("");
       refresh();
@@ -95,8 +101,15 @@ export default function ClientsPage() {
     }
   }
 
+  const visibleClients = useMemo(() => {
+    if (!clients) return [];
+    return statusFilter === "all" ? clients : clients.filter((c) => c.status === statusFilter);
+  }, [clients, statusFilter]);
+
+  if (!roleOk) return null;
+
   return (
-    <div>
+    <div className="animate-fade-up">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <Eyebrow className="mb-2">Roster</Eyebrow>
@@ -122,7 +135,7 @@ export default function ClientsPage() {
         <Card className="mb-6 !border-accent-200 !bg-accent-100">
           <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
             <p className="text-sm text-neutral-700">
-              <strong>{inviteBanner.name}</strong> added — share their invite link to get them
+              <strong>{inviteBanner.name}</strong> added. Share their invite link to get them
               started.
             </p>
             <Button variant="secondary" onClick={copyInvite}>
@@ -150,15 +163,41 @@ export default function ClientsPage() {
         </Card>
       )}
 
+      {clients !== null && clients.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-1.5">
+          {(["all", "active", "at_risk", "paused", "churned"] as const).map((s) => {
+            const count = s === "all" ? clients.length : clients.filter((c) => c.status === s).length;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setStatusFilter(s)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  statusFilter === s
+                    ? "bg-neutral-900 text-white"
+                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                }`}
+              >
+                {s === "all" ? "All" : STATUS_LABEL[s]} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {clients === null ? null : clients.length === 0 ? (
         <Card>
           <p className="text-sm text-neutral-600">
-            No clients yet — add your first one to get started.
+            No clients yet. Add your first one to get started.
           </p>
+        </Card>
+      ) : visibleClients.length === 0 ? (
+        <Card>
+          <p className="text-sm text-neutral-600">No clients in this status.</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {clients.map((c) => (
+          {visibleClients.map((c) => (
             <Link key={c.id} href={`/${params.slug}/clients/${c.id}`}>
               <Card className="cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_44px_rgba(28,29,31,0.12)]">
                 <div className="mb-3 flex items-center gap-3">
@@ -199,6 +238,10 @@ export default function ClientsPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+          </div>
+          <div>
+            <Label htmlFor="c_phone">Phone (optional)</Label>
+            <Input id="c_phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
           <div>
             <Label htmlFor="c_program">Program</Label>

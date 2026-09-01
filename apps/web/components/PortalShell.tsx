@@ -13,23 +13,36 @@ import {
   ClipboardTextIcon as ClipboardText,
   GearSixIcon as GearSix,
   ListIcon as ListMenu,
+  SparkleIcon as Sparkle,
+  PackageIcon as Package,
+  UserCircleIcon as UserCircle,
 } from "@phosphor-icons/react";
 import { api, PortalPublic, User } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
-import ThemeToggle from "@/components/ThemeToggle";
 import Sidebar, { NavItem } from "@/components/Sidebar";
+import { useCurrentUser } from "@/lib/useCurrentUser";
+import FullScreenLoader from "@/components/FullScreenLoader";
 
-const NAV: NavItem[] = [
-  { seg: "onboarding", label: "Onboarding", Icon: ListChecks },
-  { seg: "dashboard", label: "Dashboard", Icon: Gauge },
-  { seg: "messages", label: "Messages", Icon: ChatCircle },
-  { seg: "tasks", label: "Tasks", Icon: CheckSquare },
-  { seg: "calendar", label: "Calendar", Icon: CalendarBlank },
-  { seg: "files", label: "Files", Icon: FileText },
-  { seg: "progress", label: "Progress", Icon: ChartLineUp },
-  { seg: "checkin", label: "Check-In", Icon: ClipboardText },
-  { seg: "settings", label: "Settings", Icon: GearSix },
-];
+// Segments relative to the client's own /{slug}/client/{clientId}/ root —
+// the clientId is only known once the profile fetch below resolves, so the
+// nav array is built dynamically instead of being a static constant.
+function buildNav(clientId: string): NavItem[] {
+  const base = `client/${clientId}`;
+  return [
+    { seg: `${base}/onboarding`, label: "Onboarding", Icon: ListChecks },
+    { seg: `${base}/dashboard`, label: "Dashboard", Icon: Gauge },
+    { seg: `${base}/tasks`, label: "Tasks", Icon: CheckSquare },
+    { seg: `${base}/calendar`, label: "Calendar", Icon: CalendarBlank },
+    { seg: `${base}/files`, label: "Files", Icon: FileText },
+    { seg: `${base}/progress`, label: "Progress", Icon: ChartLineUp },
+    { seg: `${base}/packages`, label: "Packages", Icon: Package },
+    { seg: `${base}/checkin`, label: "Check-In", Icon: ClipboardText },
+    // Not nested under client/{id} — the coach's own bio/socials aren't
+    // client-specific data, same page regardless of which client views it.
+    { seg: "coach", label: "Know your coach", Icon: UserCircle },
+    { seg: `${base}/settings`, label: "Settings", Icon: GearSix },
+  ];
+}
 
 export default function PortalShell({
   slug,
@@ -40,33 +53,71 @@ export default function PortalShell({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  // Shared with the layout's useViewerRole() and any other consumer on this
+  // page — dedupes the /auth/me call instead of every shell/page fetching it
+  // independently.
+  const { user: currentUser, loading: userLoading, error: userError } = useCurrentUser();
   const [portal, setPortal] = useState<PortalPublic | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [checking, setChecking] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [assistantEnabled, setAssistantEnabled] = useState(false);
+  const [messagesUnread, setMessagesUnread] = useState(0);
+  const [myClientId, setMyClientId] = useState<string | null>(null);
 
   useEffect(() => {
+    api.portalBySlug(slug).then(setPortal).catch(() => setNotFound(true));
+  }, [slug]);
+
+  useEffect(() => {
+    if (userLoading) return;
+    if (userError || !currentUser) {
+      router.replace(`/login?redirect=/${slug}/dashboard`);
+      return;
+    }
+    if (currentUser.role !== "client") {
+      router.replace("/");
+      return;
+    }
+    setUser(currentUser);
+    // No client-safe "is enabled" check exists — the message-list endpoint
+    // itself enforces the enabled flag server-side, so a successful call is
+    // the signal to show the nav item at all.
     api
-      .portalBySlug(slug)
-      .then(setPortal)
-      .catch(() => setNotFound(true));
+      .listMyAssistantMessages()
+      .then(() => setAssistantEnabled(true))
+      .catch(() => setAssistantEnabled(false));
+    // Every nav link is built from the client's own id — resolve it before
+    // letting the shell (and its nav) render at all. The Messages nav item
+    // itself points at the static /messages page, which resolves its own
+    // thread, so no thread id needs to be pre-fetched here.
     api
-      .me()
-      .then((u) => {
-        if (u.role !== "client") {
-          router.replace("/");
-          return;
-        }
-        setUser(u);
-        setChecking(false);
-      })
-      .catch(() => router.replace(`/login?redirect=/${slug}/dashboard`));
-  }, [slug, router]);
+      .getMyClientProfile()
+      .then((p) => setMyClientId(p.id))
+      .catch(() => {});
+  }, [currentUser, userLoading, userError, slug, router]);
+
+  useEffect(() => {
+    if (myClientId) setChecking(false);
+  }, [myClientId]);
 
   useEffect(() => {
     setMobileNavOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (checking) return;
+    function refreshBadge() {
+      api
+        .getMyThread()
+        .then((t) => setMessagesUnread(t.unread_count))
+        .catch(() => {});
+    }
+    refreshBadge();
+    const interval = setInterval(refreshBadge, 30000);
+    return () => clearInterval(interval);
+  }, [checking]);
 
   if (notFound) {
     return (
@@ -76,14 +127,40 @@ export default function PortalShell({
     );
   }
 
-  if (checking || !user) return null;
+  if (checking || !user || !myClientId) return <FullScreenLoader />;
+
+  const base = buildNav(myClientId);
+  const withAssistant = assistantEnabled
+    ? [
+        ...base.slice(0, 2),
+        { seg: `client/${myClientId}/assistant`, label: "AI Assistant", Icon: Sparkle },
+        ...base.slice(2),
+      ]
+    : base;
+  // Points at the real client-only messages page (self-resolves its own
+  // thread via getMyThread()) rather than the coach-only /chat/[threadId]
+  // route — that route is guarded useRoleGuard("coach") and would silently
+  // bounce a client back to /dashboard. Spliced in right after Dashboard,
+  // same position it held in the old flat nav.
+  const messagesItem: NavItem = {
+    seg: "messages",
+    label: "Messages",
+    Icon: ChatCircle,
+    badgeCount: messagesUnread,
+  };
+  const dashboardIdx = withAssistant.findIndex((i) => i.label === "Dashboard");
+  const navItems: NavItem[] = [
+    ...withAssistant.slice(0, dashboardIdx + 1),
+    messagesItem,
+    ...withAssistant.slice(dashboardIdx + 1),
+  ];
 
   return (
     <div className="flex min-h-screen flex-1 bg-neutral-100">
       <Sidebar
         slug={slug}
         brandLabel={portal?.business_name ?? portal?.coach_name ?? "CoachevaOS"}
-        navItems={NAV}
+        navItems={navItems}
         identityUserId={user.id}
         identityName={user.name}
         identityRole="Client"
@@ -103,11 +180,10 @@ export default function PortalShell({
           </button>
           <div className="hidden md:block" />
           <div className="flex items-center gap-1">
-            <ThemeToggle />
             <NotificationBell />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-240 flex-1 px-6 py-9 md:px-9">{children}</main>
+        <main className="mx-auto w-full max-w-240 flex-1 px-6 py-5 md:px-9 md:py-6">{children}</main>
       </div>
     </div>
   );

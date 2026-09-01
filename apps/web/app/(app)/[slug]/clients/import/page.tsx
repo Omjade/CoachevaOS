@@ -11,20 +11,14 @@ import {
 } from "@phosphor-icons/react";
 import { api, ApiError, ImportCommitResult, ImportPreview } from "@/lib/api";
 import { Button, Card, ErrorBanner, Eyebrow } from "@/components/ui";
+import { useRoleGuard } from "@/lib/useRoleGuard";
 
-const TARGET_FIELDS: { value: string; label: string }[] = [
-  { value: "", label: "Don't import" },
-  { value: "name", label: "Name" },
-  { value: "email", label: "Email" },
-  { value: "goals", label: "Goals" },
-  { value: "program", label: "Program" },
-  { value: "tags", label: "Tags (comma-separated)" },
-  { value: "notes", label: "Notes" },
-];
+const FIELDS = ["name", "email", "phone", "goals", "program", "tags", "notes"];
 
 type Step = "upload" | "review" | "result";
 
 export default function ClientImportPage() {
+  const ok = useRoleGuard("coach");
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +27,7 @@ export default function ClientImportPage() {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [customFieldColumns, setCustomFieldColumns] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<ImportCommitResult | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -44,10 +39,11 @@ export default function ClientImportPage() {
       const p = await api.previewClientImport(file);
       setPreview(p);
       const initialMapping: Record<string, string> = {};
-      for (const field of ["name", "email", "goals", "program", "tags", "notes"]) {
+      for (const field of FIELDS) {
         initialMapping[field] = p.mapping[field] ?? "";
       }
       setMapping(initialMapping);
+      setCustomFieldColumns(new Set());
       setStep("review");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't read that file");
@@ -69,10 +65,15 @@ export default function ClientImportPage() {
     try {
       // mapping here is field -> source column; commit expects the same shape
       const commitMapping: Record<string, string | null> = {};
-      for (const field of ["name", "email", "goals", "program", "tags", "notes"]) {
+      for (const field of FIELDS) {
         commitMapping[field] = columnFor(field);
       }
-      const res = await api.commitClientImport(commitMapping, preview.rows);
+      const mappedColumns = new Set(Object.values(commitMapping).filter(Boolean));
+      const res = await api.commitClientImport(
+        commitMapping,
+        preview.rows,
+        Array.from(customFieldColumns).filter((c) => !mappedColumns.has(c))
+      );
       setResult(res);
       setStep("result");
     } catch (err) {
@@ -81,6 +82,8 @@ export default function ClientImportPage() {
       setLoading(false);
     }
   }
+
+  if (!ok) return null;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -100,7 +103,7 @@ export default function ClientImportPage() {
         <Card>
           <p className="mb-5 text-sm text-neutral-600">
             Upload a CSV or Excel file of clients you already work with. We&apos;ll suggest which
-            column maps to which field — you review and confirm before anything is created. No
+            column maps to which field. You review and confirm before anything is created. No
             invite emails are sent automatically.
           </p>
           <input
@@ -138,7 +141,7 @@ export default function ClientImportPage() {
             column maps to each field.
           </p>
           <div className="flex flex-col gap-3">
-            {["name", "email", "goals", "program", "tags", "notes"].map((field) => (
+            {FIELDS.map((field) => (
               <div key={field} className="flex items-center justify-between gap-3">
                 <span className="w-24 shrink-0 text-xs font-semibold text-neutral-700 capitalize">
                   {field}
@@ -158,6 +161,50 @@ export default function ClientImportPage() {
               </div>
             ))}
           </div>
+
+          {(() => {
+            const mappedColumns = new Set(Object.values(mapping).filter(Boolean));
+            const unmapped = preview.headers.filter((h) => !mappedColumns.has(h));
+            if (unmapped.length === 0) return null;
+            return (
+              <div className="mt-5 rounded-[12px] border border-neutral-200 bg-neutral-50/60 p-4">
+                <p className="mb-2 text-xs font-semibold text-neutral-700">
+                  These columns don&apos;t match a known field. Check any you&apos;d like saved as a
+                  custom field instead of dropped:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {unmapped.map((h) => {
+                    const checked = customFieldColumns.has(h);
+                    return (
+                      <label
+                        key={h}
+                        className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          checked
+                            ? "border-accent-500 bg-accent-50 text-accent-700"
+                            : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) =>
+                            setCustomFieldColumns((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(h);
+                              else next.delete(h);
+                              return next;
+                            })
+                          }
+                          className="hidden"
+                        />
+                        {h}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {preview.rows.length > 0 && (
             <div className="mt-6 overflow-x-auto rounded-[12px] border border-neutral-200">
@@ -228,7 +275,7 @@ export default function ClientImportPage() {
             <div className="mb-6 flex flex-col gap-2">
               {result.skipped.map((s, i) => (
                 <div key={i} className="rounded-[10px] bg-neutral-100 px-3 py-2 text-xs text-neutral-600">
-                  {s.row.name || s.row.email || `Row ${i + 1}`} — {s.reason}
+                  {s.row.name || s.row.email || `Row ${i + 1}`}: {s.reason}
                 </div>
               ))}
             </div>

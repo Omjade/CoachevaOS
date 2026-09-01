@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   PlusIcon as Plus,
   XIcon as X,
@@ -21,9 +21,23 @@ import {
   MeetingData,
   SchedulingLinks,
 } from "@/lib/api";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { getNicheConfig } from "@/lib/niche";
 import { useViewerRole } from "@/lib/useViewerRole";
+import { useCurrentUser } from "@/lib/useCurrentUser";
+
+// A coach's calendar reads in the coach's own local time (correct as-is) —
+// this only adds an explicit "for {client}" tag next to it using the
+// client's real stored timezone, so it's never ambiguous whose clock a
+// meeting time is shown in.
+function timeInZone(iso: string, timezone: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: timezone,
+  });
+}
 
 const PROVIDERS: { key: CalendarProviderKey; label: string; Icon: typeof VideoCamera }[] = [
   { key: "google", label: "Google Meet", Icon: VideoCamera },
@@ -71,11 +85,35 @@ function nextDatesForDay(dayIndex: number, count = 3): Date[] {
 
 export default function CalendarPage() {
   const role = useViewerRole();
+  const router = useRouter();
+  const params = useParams<{ slug: string }>();
+
+  useEffect(() => {
+    if (role !== "client") return;
+    api
+      .getMyClientProfile()
+      .then((p) => router.replace(`/${params.slug}/client/${p.id}/calendar`))
+      .catch(() => {});
+  }, [role, router, params.slug]);
+
   if (role === null) return null;
-  return role === "client" ? <ClientCalendar /> : <CoachCalendar />;
+  if (role === "client") return null; // redirecting via the effect above
+  return (
+    <Suspense fallback={null}>
+      <CoachCalendar />
+    </Suspense>
+  );
 }
 
+const PROVIDER_LABEL: Record<string, string> = {
+  google: "Google Meet",
+  zoom: "Zoom",
+  calendly: "Calendly",
+  cal_com: "Cal.com",
+};
+
 function CoachCalendar() {
+  const searchParams = useSearchParams();
   const [rules, setRules] = useState<AvailabilityRules>(DEFAULT_RULES);
   const [newSlot, setNewSlot] = useState("");
   const [saved, setSaved] = useState(false);
@@ -83,6 +121,9 @@ function CoachCalendar() {
   const [profile, setProfile] = useState<CoachProfile | null>(null);
   const [integrations, setIntegrations] = useState<IntegrationStatus[] | null>(null);
   const [disconnecting, setDisconnecting] = useState<CalendarProviderKey | null>(null);
+  const [availError, setAvailError] = useState<string | null>(null);
+  const [integrationError, setIntegrationError] = useState<string | null>(null);
+  const [justConnected, setJustConnected] = useState<string | null>(null);
 
   function refreshIntegrations() {
     api.listIntegrations().then(setIntegrations).catch(() => setIntegrations([]));
@@ -95,21 +136,49 @@ function CoachCalendar() {
     refreshIntegrations();
   }, []);
 
+  // A failed OAuth connect attempt previously landed back here with zero
+  // explanation — the provider just stayed "not connected" with no visible
+  // reason. A successful one already self-corrected via the unconditional
+  // refetch above, but had no explicit confirmation either.
+  useEffect(() => {
+    const errorProvider = searchParams.get("integration_error");
+    const connectedProvider = searchParams.get("connected");
+    if (errorProvider) {
+      setIntegrationError(
+        `Couldn't connect ${PROVIDER_LABEL[errorProvider] ?? errorProvider}. Please try again.`
+      );
+    } else if (connectedProvider) {
+      setJustConnected(PROVIDER_LABEL[connectedProvider] ?? connectedProvider);
+      setTimeout(() => setJustConnected(null), 4000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function disconnect(provider: CalendarProviderKey) {
     setDisconnecting(provider);
+    setIntegrationError(null);
     try {
       await api.disconnectIntegration(provider);
       refreshIntegrations();
+    } catch (err) {
+      setIntegrationError(err instanceof ApiError ? err.message : "Couldn't disconnect. Try again.");
     } finally {
       setDisconnecting(null);
     }
   }
 
   async function save(next: AvailabilityRules) {
+    const previous = rules;
     setRules(next);
-    await api.updateMyAvailability(next);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setAvailError(null);
+    try {
+      await api.updateMyAvailability(next);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      setRules(previous);
+      setAvailError(err instanceof ApiError ? err.message : "Couldn't save. Try again.");
+    }
   }
 
   function toggleDay(day: keyof AvailabilityRules["days"]) {
@@ -127,7 +196,7 @@ function CoachCalendar() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="animate-fade-up flex flex-col gap-6">
       <div>
         <Eyebrow className="mb-2">Calendar</Eyebrow>
         <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
@@ -141,6 +210,19 @@ function CoachCalendar() {
           Connect a video or scheduling provider so sessions booked in CoachevaOS get a real
           join link automatically.
         </p>
+        {integrations !== null &&
+          integrations.every((i) => !i.connected) && (
+            <div className="mb-4 rounded-[12px] border border-neutral-200 bg-neutral-50/60 px-3.5 py-2.5 text-xs text-neutral-600">
+              Nothing connected yet. Pick one below to start. Clients will see a real "Join"
+              link on their booked sessions once it's connected.
+            </div>
+          )}
+        {integrationError && <p className="mb-3 text-xs text-accent-600">{integrationError}</p>}
+        {justConnected && (
+          <p className="mb-3 text-xs font-medium text-green-700">
+            {justConnected} connected successfully.
+          </p>
+        )}
         <div className="flex flex-col gap-2 text-sm">
           {PROVIDERS.map(({ key, label, Icon }) => {
             const status = integrations?.find((i) => i.provider === key);
@@ -196,6 +278,7 @@ function CoachCalendar() {
             </span>
           )}
         </div>
+        {availError && <p className="mb-3 text-xs text-accent-600">{availError}</p>}
 
         <div className="mb-4 flex flex-wrap gap-4">
           <label className="text-sm text-neutral-700">
@@ -296,6 +379,12 @@ function CoachCalendar() {
                 <div className="flex items-center gap-3">
                   <span className="text-neutral-500">
                     {new Date(m.starts_at).toLocaleString()}
+                    {m.client_timezone && (
+                      <span className="text-neutral-400">
+                        {" "}
+                        ({timeInZone(m.starts_at, m.client_timezone)} for {m.client_name})
+                      </span>
+                    )}
                   </span>
                   {m.meeting_url && (
                     <a
@@ -318,7 +407,8 @@ function CoachCalendar() {
   );
 }
 
-function ClientCalendar() {
+export function ClientCalendar() {
+  const { user } = useCurrentUser();
   const [rules, setRules] = useState<AvailabilityRules | null>(null);
   const [meetings, setMeetings] = useState<MeetingData[]>([]);
   const [booking, setBooking] = useState<string | null>(null);
@@ -359,7 +449,7 @@ function ClientCalendar() {
     : [];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="animate-fade-up flex flex-col gap-6">
       <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
         Book a session
       </h1>
@@ -377,7 +467,14 @@ function ClientCalendar() {
                 key={m.id}
                 className="flex items-center justify-between rounded-[12px] border border-neutral-200 px-3.5 py-2.5 text-sm text-neutral-900"
               >
-                {new Date(m.starts_at).toLocaleString()}
+                {/* Explicit stored User.timezone rather than the ambient
+                    browser zone — keeps this in sync with the coach's own
+                    view of the same meeting, which already uses the same
+                    stored value (see the coach calendar's timeInZone tag). */}
+                {new Date(m.starts_at).toLocaleString(
+                  undefined,
+                  user?.timezone ? { timeZone: user.timezone } : undefined
+                )}
                 {m.meeting_url && (
                   <a
                     href={m.meeting_url}

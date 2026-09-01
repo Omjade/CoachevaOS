@@ -17,4 +17,9 @@ export const RESERVED_SLUGS = [
   "progress",
   "tasks",
   "forms",
+  "client",
+  "assistant",
+  "programs",
+  "packages",
+  "coach",
 ];

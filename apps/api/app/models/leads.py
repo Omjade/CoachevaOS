@@ -29,3 +29,8 @@ class Lead(Base, UUIDPk, TimestampMixin):
     form_submission_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("form_submissions.id"), index=True
     )
+    # Set when this lead is converted to a client; lets a mistaken conversion
+    # be undone (see POST /leads/{id}/restore) without losing the link.
+    converted_client_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("clients.id")
+    )

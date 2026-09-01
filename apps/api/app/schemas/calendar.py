@@ -42,6 +42,7 @@ class MeetingOut(BaseModel):
     id: uuid.UUID
     client_id: uuid.UUID
     client_name: str
+    client_timezone: str | None = None
     starts_at: datetime
     ends_at: datetime
     status: MeetingStatus

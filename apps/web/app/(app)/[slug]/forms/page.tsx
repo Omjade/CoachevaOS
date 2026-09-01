@@ -10,14 +10,17 @@ import {
   PencilSimpleIcon as PencilSimple,
   ListChecksIcon as ListChecks,
 } from "@phosphor-icons/react";
-import { api, CoachForm } from "@/lib/api";
+import { api, ApiError, CoachForm } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { Button, Card, Eyebrow } from "@/components/ui";
+import { useRoleGuard } from "@/lib/useRoleGuard";
 
 export default function FormsPage() {
+  const ok = useRoleGuard("coach");
   const params = useParams<{ slug: string }>();
   const [forms, setForms] = useState<CoachForm[] | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function refresh() {
     api.listForms().then(setForms).catch(() => setForms([]));
@@ -26,11 +29,22 @@ export default function FormsPage() {
   useEffect(refresh, []);
 
   async function toggleActive(form: CoachForm) {
+    setError(null);
     setForms(
       (prev) =>
         prev?.map((f) => (f.id === form.id ? { ...f, is_active: !f.is_active } : f)) ?? prev
     );
-    await api.updateForm(form.id, { is_active: !form.is_active });
+    try {
+      await api.updateForm(form.id, { is_active: !form.is_active });
+    } catch (err) {
+      // Revert the optimistic toggle — a failed save shouldn't leave the
+      // form looking active/inactive when the server never confirmed it.
+      setForms(
+        (prev) =>
+          prev?.map((f) => (f.id === form.id ? { ...f, is_active: form.is_active } : f)) ?? prev
+      );
+      setError(err instanceof ApiError ? err.message : "Couldn't update that form. Try again.");
+    }
   }
 
   async function copyLink(form: CoachForm) {
@@ -42,8 +56,10 @@ export default function FormsPage() {
     }
   }
 
+  if (!ok) return null;
+
   return (
-    <div>
+    <div className="animate-fade-up">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <Eyebrow className="mb-2">Lead capture</Eyebrow>
@@ -59,11 +75,20 @@ export default function FormsPage() {
         </Link>
       </div>
 
+      {error && <p className="mb-4 text-xs text-accent-600">{error}</p>}
+
       {forms === null ? null : forms.length === 0 ? (
         <Card>
-          <p className="text-sm text-neutral-600">
-            No forms yet — create one to start capturing leads with a shareable link.
+          <p className="mb-4 text-sm text-neutral-600">
+            Create a form in seconds with AI: describe what you need, adjust the fields if you
+            want, then share the link with a client to fill it out.
           </p>
+          <Link href={`/${params.slug}/forms/new`}>
+            <Button variant="secondary">
+              <Plus className="h-4 w-4" weight="bold" />
+              Create your first form
+            </Button>
+          </Link>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

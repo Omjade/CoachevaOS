@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { CheckCircleIcon as CheckCircle } from "@phosphor-icons/react";
-import { api, ApiError, PublicForm } from "@/lib/api";
+import { api, ApiError, PublicForm, publicFormImageUrl } from "@/lib/api";
 import { Button, Card, ErrorBanner, Eyebrow, Input, Label } from "@/components/ui";
 
 export default function PublicFormPage({
@@ -46,7 +46,7 @@ export default function PublicFormPage({
       await api.submitPublicForm(slug, formSlug, answers);
       setSubmitted(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong — please try again.");
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -72,7 +72,7 @@ export default function PublicFormPage({
             <CheckCircle className="h-6 w-6" weight="fill" />
           </span>
           <h1 className="font-heading mb-1.5 text-xl font-semibold text-neutral-900">
-            Thanks — you&apos;re all set
+            Thanks, you&apos;re all set
           </h1>
           <p className="text-sm text-neutral-600">
             {form.coach_name} will be in touch soon.
@@ -87,6 +87,14 @@ export default function PublicFormPage({
       <div className="w-full max-w-md">
         <Eyebrow className="mb-4">{form.business_name ?? form.coach_name}</Eyebrow>
         <Card>
+          <div className="mb-5 -mx-7 -mt-7 aspect-[3/1] overflow-hidden rounded-t-[22px]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={form.has_image ? publicFormImageUrl(slug, formSlug) : "/5N22TgsC5COekVNfTUPjl3WiMQ.png"}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          </div>
           <h1 className="font-heading mb-1.5 text-2xl font-semibold tracking-tight text-neutral-900">
             {form.title}
           </h1>

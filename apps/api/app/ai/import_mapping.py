@@ -2,11 +2,12 @@ import re
 
 from app.ai.client import generate_json
 
-TARGET_FIELDS = ["name", "email", "goals", "program", "tags", "notes"]
+TARGET_FIELDS = ["name", "email", "phone", "goals", "program", "tags", "notes"]
 
 _HEURISTICS: dict[str, list[str]] = {
     "name": ["name", "full name", "client name", "client"],
     "email": ["email", "e-mail", "email address"],
+    "phone": ["phone", "phone number", "mobile", "mobile number", "contact number", "cell"],
     "goals": ["goal", "goals", "objective", "why"],
     "program": ["program", "package", "plan"],
     "tags": ["tags", "tag", "category", "categories"],
@@ -43,8 +44,8 @@ async def suggest_column_mapping(headers: list[str]) -> dict[str, str | None]:
     system_prompt = (
         "You map spreadsheet column headers to a fixed set of client-record fields for a "
         "coaching platform. Given a list of column headers, return a JSON object whose keys "
-        "are exactly: name, email, goals, program, tags, notes. Each value must be either one "
-        "of the given headers (verbatim) or null if no column matches that field. Only match "
+        "are exactly: name, email, phone, goals, program, tags, notes. Each value must be either "
+        "one of the given headers (verbatim) or null if no column matches that field. Only match "
         "columns you are reasonably confident about; leave uncertain fields null."
     )
     user_prompt = f"Column headers: {headers}"

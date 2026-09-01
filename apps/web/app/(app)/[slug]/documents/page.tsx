@@ -5,17 +5,22 @@ import { CaretDownIcon as CaretDown } from "@phosphor-icons/react";
 import { api, ClientListItem, DocumentData } from "@/lib/api";
 import { Card, Eyebrow } from "@/components/ui";
 import DocumentList from "@/components/DocumentList";
+import AskDocuments from "@/components/AskDocuments";
+import { useRoleGuard } from "@/lib/useRoleGuard";
 
 export default function DocumentsPage() {
+  const ok = useRoleGuard("coach");
   const [clients, setClients] = useState<ClientListItem[]>([]);
   const [selected, setSelected] = useState<string>("");
   const [documents, setDocuments] = useState<DocumentData[]>([]);
+  const [libraryDocs, setLibraryDocs] = useState<DocumentData[]>([]);
 
   useEffect(() => {
     api.listClients().then((list) => {
       setClients(list);
       if (list.length > 0) setSelected(list[0].id);
     });
+    refreshLibrary();
   }, []);
 
   function refresh(clientId: string) {
@@ -23,18 +28,47 @@ export default function DocumentsPage() {
     api.listClientDocuments(clientId).then(setDocuments).catch(() => {});
   }
 
+  function refreshLibrary() {
+    api.listLibraryDocuments().then(setLibraryDocs).catch(() => {});
+  }
+
   useEffect(() => {
     if (selected) refresh(selected);
   }, [selected]);
 
+  if (!ok) return null;
+
+  const shareableClients = clients.map((c) => ({ id: c.id, name: c.name }));
+
   return (
-    <div>
+    <div className="animate-fade-up">
       <div className="mb-6">
         <Eyebrow className="mb-2">Documents</Eyebrow>
         <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
           Files
         </h1>
       </div>
+
+      <AskDocuments />
+
+      <Card className="mb-6">
+        <h2 className="font-heading mb-1 text-sm font-semibold text-neutral-900">My documents</h2>
+        <p className="mb-4 text-xs text-neutral-500">
+          Your own reference library, kept in one place and never visible to any client until you
+          share it.
+        </p>
+        <DocumentList
+          documents={libraryDocs}
+          onUpload={async (file) => {
+            await api.uploadLibraryDocument(file);
+            refreshLibrary();
+          }}
+          shareableClients={shareableClients}
+          onShare={async (documentId, clientIds) => {
+            await api.shareDocument(documentId, clientIds);
+          }}
+        />
+      </Card>
 
       {clients.length === 0 ? (
         <Card>
@@ -61,6 +95,10 @@ export default function DocumentsPage() {
             onUpload={async (file) => {
               await api.uploadClientDocument(selected, file);
               refresh(selected);
+            }}
+            shareableClients={shareableClients}
+            onShare={async (documentId, clientIds) => {
+              await api.shareDocument(documentId, clientIds);
             }}
           />
         </Card>

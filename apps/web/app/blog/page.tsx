@@ -1,37 +1,30 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  CircleWavyCheckIcon as CircleWavyCheck,
-  ArrowRightIcon as ArrowRight,
-} from "@phosphor-icons/react/dist/ssr";
+import { ArrowRightIcon as ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import { Eyebrow } from "@/components/ui";
 import { blogPosts } from "@/lib/blog-posts";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Blog",
   description:
-    "Practical guidance for independent coaches — pricing, onboarding, retention, lead follow-up, and running a sustainable practice.",
+    "Practical guidance for independent coaches: pricing, onboarding, retention, lead follow-up, and running a sustainable practice.",
 };
 
 export default function BlogIndexPage() {
   return (
     <div className="flex flex-1 flex-col bg-neutral-100">
-      <div className="p-3 md:p-4">
-        <div className="mx-auto w-full max-w-4xl px-3 py-16 md:px-4">
-          <Link href="/" className="mb-8 inline-flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-900 text-neutral-100">
-              <CircleWavyCheck className="h-3.5 w-3.5" weight="fill" />
-            </span>
-            <span className="font-heading text-sm font-bold text-neutral-900">CoachevaOS</span>
-          </Link>
-
+      <SiteHeader variant="static" />
+      <main className="p-3 md:p-4">
+        <div className="mx-auto w-full max-w-4xl px-3 py-10 md:px-4">
           <Eyebrow className="mb-4">The blog</Eyebrow>
           <h1 className="font-heading mb-3 text-[36px] font-semibold tracking-tight text-neutral-900 md:text-[44px]">
             Practical guidance for independent coaches
           </h1>
           <p className="mb-12 max-w-lg text-sm leading-relaxed text-neutral-600">
             Pricing, onboarding, retention, and the operational habits that keep a solo coaching
-            practice steady — no fluff, no gated &ldquo;free&rdquo; ebook required.
+            practice steady, with no fluff and no gated &ldquo;free&rdquo; ebook required.
           </p>
 
           <div className="flex flex-col gap-4">
@@ -53,7 +46,8 @@ export default function BlogIndexPage() {
             ))}
           </div>
         </div>
-      </div>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

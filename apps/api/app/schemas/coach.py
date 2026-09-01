@@ -10,6 +10,7 @@ class OnboardingRequest(BaseModel):
     business_name: str | None = None
     niche: str
     timezone: str = "UTC"
+    billing_country_code: str | None = None
 
     @field_validator("portal_slug")
     @classmethod
@@ -22,6 +23,25 @@ class OnboardingRequest(BaseModel):
             )
         return v
 
+    @field_validator("billing_country_code")
+    @classmethod
+    def validate_billing_country(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip().upper()
+        if len(v) != 2:
+            raise ValueError("Country code must be a 2-letter ISO code")
+        return v
+
+
+def _validate_profile_url(v: str | None) -> str | None:
+    if v is None or v == "":
+        return None
+    v = v.strip()
+    if not (v.startswith("http://") or v.startswith("https://")):
+        raise ValueError("Must be a full URL starting with http:// or https://")
+    return v
+
 
 class CoachProfileOut(BaseModel):
     portal_slug: str
@@ -32,6 +52,12 @@ class CoachProfileOut(BaseModel):
     name: str
     email: str
     timezone: str
+    billing_country_code: str | None = None
+    bio: str | None = None
+    website_url: str | None = None
+    instagram_url: str | None = None
+    linkedin_url: str | None = None
+    gallery_image_urls: list[str] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -41,6 +67,36 @@ class CoachProfileUpdate(BaseModel):
     timezone: str | None = None
     business_name: str | None = None
     niche: str | None = None
+    billing_country_code: str | None = None
+    bio: str | None = None
+    website_url: str | None = None
+    instagram_url: str | None = None
+    linkedin_url: str | None = None
+
+    @field_validator("billing_country_code")
+    @classmethod
+    def validate_billing_country(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip().upper()
+        if len(v) != 2:
+            raise ValueError("Country code must be a 2-letter ISO code")
+        return v
+
+    @field_validator("bio")
+    @classmethod
+    def validate_bio(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if len(v) > 500:
+            raise ValueError("Bio must be 500 characters or fewer")
+        return v or None
+
+    @field_validator("website_url", "instagram_url", "linkedin_url")
+    @classmethod
+    def validate_profile_urls(cls, v: str | None) -> str | None:
+        return _validate_profile_url(v)
 
 
 class PortalPublicOut(BaseModel):
@@ -49,3 +105,8 @@ class PortalPublicOut(BaseModel):
     brand_color: str | None
     logo_url: str | None
     coach_name: str
+    bio: str | None = None
+    website_url: str | None = None
+    instagram_url: str | None = None
+    linkedin_url: str | None = None
+    gallery_image_urls: list[str] | None = None
