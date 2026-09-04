@@ -40,6 +40,7 @@ import { Sparkline } from "@/components/DashboardCharts";
 import NeedsAttentionPanel from "@/components/NeedsAttentionPanel";
 import NewCoachChecklist from "@/components/NewCoachChecklist";
 import AboutCoachCard from "@/components/AboutCoachCard";
+import NewClientChecklist from "@/components/NewClientChecklist";
 import ProgressCard from "@/components/ProgressCard";
 
 const ClientGrowthChart = dynamic(() => import("@/components/DashboardCharts").then((m) => m.ClientGrowthChart), {
@@ -426,6 +427,8 @@ export function ClientDashboard() {
         {greetingForHour(new Date().getHours())}
         {user ? `, ${user.name.split(" ")[0]}` : ""}
       </h1>
+
+      <NewClientChecklist />
 
       <ProgressCard fetchInsight={api.getMyProgressInsight} summaryLabel="Your coach's AI summary" />
 

@@ -26,6 +26,7 @@ class FormUpdate(BaseModel):
     description: str | None = None
     fields: list[FormFieldSchema] | None = None
     is_active: bool | None = None
+    featured_on_public_profile: bool | None = None
 
 
 class FormOut(BaseModel):
@@ -38,6 +39,7 @@ class FormOut(BaseModel):
     created_at: datetime
     submission_count: int = 0
     has_image: bool = False
+    featured_on_public_profile: bool = False
 
 
 class PublicFormOut(BaseModel):

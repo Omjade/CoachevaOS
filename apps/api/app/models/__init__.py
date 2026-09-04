@@ -16,6 +16,7 @@ from app.models.meetings import Meeting
 from app.models.messaging import Message, Thread
 from app.models.metrics import MetricDefinition, MetricEntry
 from app.models.notifications import Notification
+from app.models.pending_imports import PendingImportRow
 from app.models.programs import Program, ProgramItem
 from app.models.progress import ProgressEntry
 from app.models.sessions import SessionNote

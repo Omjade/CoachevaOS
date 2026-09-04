@@ -160,6 +160,7 @@ export default function PortalShell({
       <Sidebar
         slug={slug}
         brandLabel={portal?.business_name ?? portal?.coach_name ?? "CoachevaOS"}
+        logoUrl={portal?.logo_url ? api.coachLogoUrl(slug) : null}
         navItems={navItems}
         identityUserId={user.id}
         identityName={user.name}

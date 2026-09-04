@@ -43,10 +43,17 @@ def client_snapshot_prompt(client_name: str, context_json: str) -> tuple[str, st
     return system, context_json
 
 
-def smart_reply_prompt(client_name: str, context_json: str) -> tuple[str, str]:
+def smart_reply_prompt(client_name: str, context_json: str, requester_role: str = "coach") -> tuple[str, str]:
+    speaker = (
+        f"the coach replying to {client_name}"
+        if requester_role == "coach"
+        else f"{client_name} replying to their coach"
+    )
     system = (
         f"Given the last messages in this thread and {client_name}'s current progress/program, "
-        "draft one reply the coach could send as-is or edit. Return JSON: {\"draft\": string}."
+        f"draft one reply written from the perspective of {speaker} — first person, in that "
+        "person's own voice, never signed off as or impersonating the other party. "
+        "Return JSON: {\"draft\": string}."
     )
     return system, context_json
 
@@ -98,9 +105,10 @@ def onboarding_draft_prompt(client_name: str, coach_name: str, context_json: str
 def weekly_digest_prompt(coach_name: str, context_json: str) -> tuple[str, str]:
     system = (
         f"Given the change between this week and last week across {coach_name}'s client "
-        "growth, lead pipeline, and check-in engagement, write a 3-5 bullet digest "
-        "highlighting what changed and why it matters — not a restatement of the raw "
-        "numbers. Return plain text, one bullet per line starting with '- '."
+        "growth, lead pipeline, and check-in engagement, write a 3-4 bullet digest "
+        "highlighting what changed and why it matters, not a restatement of the raw "
+        "numbers. Each bullet must be ONE short sentence, no more than about 18 words, "
+        "never a paragraph. Return plain text, one bullet per line starting with '- '."
     )
     return system, context_json
 

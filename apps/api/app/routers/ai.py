@@ -114,6 +114,25 @@ async def _latest_checkin_at(db: AsyncSession, client_id: uuid.UUID):
     )
 
 
+async def _latest_progress_signal_at(db: AsyncSession, client_id: uuid.UUID):
+    """Latest of: check-in submission, task creation, goal creation — the
+    cache-invalidation signal for progress-insight. Task/ClientGoal have no
+    updated_at column today, so an edit to an existing one won't bust the
+    cache, but a genuinely new task/goal (the common case) does."""
+    from app.models.checkins import Checkin
+    from app.models.goals import ClientGoal
+
+    checkin_at = await _latest_checkin_at(db, client_id)
+    task_at = await db.scalar(
+        select(func.max(Task.created_at)).where(Task.client_id == client_id)
+    )
+    goal_at = await db.scalar(
+        select(func.max(ClientGoal.created_at)).where(ClientGoal.client_id == client_id)
+    )
+    candidates = [t for t in (checkin_at, task_at, goal_at) if t is not None]
+    return max(candidates) if candidates else None
+
+
 @router.get("/briefing", response_model=BriefingOut)
 async def get_briefing(
     force: bool = False, coach: User = Depends(require_coach), db: AsyncSession = Depends(get_db)
@@ -155,7 +174,7 @@ async def create_session_note(
     fallback = {
         "summary": body.text,
         "action_items": [],
-        "draft_message": "AI unavailable — draft this follow-up manually.",
+        "draft_message": "AI unavailable. Draft this follow-up manually.",
         "suggested_goal_updates": [],
         "suggested_tasks": [],
     }
@@ -257,12 +276,14 @@ async def suggest_reply(
     assert other_user is not None
 
     history = await build_thread_context(db, thread.id)
-    system, user_prompt = smart_reply_prompt(other_user.name, history)
+    system, user_prompt = smart_reply_prompt(other_user.name, history, requester_role=viewer.role.value)
     payload = await generate_json(system, user_prompt, {"draft": ""})
     return SuggestReplyOut(draft=payload.get("draft", ""))
 
 
-async def _progress_insight_for(db: AsyncSession, coach_id: uuid.UUID | None, client: Client) -> ProgressInsightOut:
+async def _progress_insight_for(
+    db: AsyncSession, coach_id: uuid.UUID | None, client: Client, force: bool = False
+) -> ProgressInsightOut:
     user = await db.get(User, client.user_id)
     assert user is not None
 
@@ -271,8 +292,8 @@ async def _progress_insight_for(db: AsyncSession, coach_id: uuid.UUID | None, cl
     done = sum(1 for t in tasks if t.done)
 
     cached = None
-    if coach_id is not None:
-        min_data_at = await _latest_checkin_at(db, client.id)
+    if coach_id is not None and not force:
+        min_data_at = await _latest_progress_signal_at(db, client.id)
         cached = await _get_cached(db, coach_id, client.id, AIInsightType.progress, min_data_at)
     if cached:
         return ProgressInsightOut(insight=cached.payload_json["insight"], tasks_done=done, tasks_total=len(tasks))
@@ -293,21 +314,24 @@ async def _progress_insight_for(db: AsyncSession, coach_id: uuid.UUID | None, cl
 
 @router.get("/clients/me/progress-insight", response_model=ProgressInsightOut)
 async def get_my_progress_insight(
-    client: Client = Depends(get_current_client), db: AsyncSession = Depends(get_db)
+    force: bool = False,
+    client: Client = Depends(get_current_client),
+    db: AsyncSession = Depends(get_db),
 ) -> ProgressInsightOut:
-    return await _progress_insight_for(db, client.coach_id, client)
+    return await _progress_insight_for(db, client.coach_id, client, force=force)
 
 
 @router.get("/clients/{client_id}/progress-insight", response_model=ProgressInsightOut)
 async def get_client_progress_insight(
     client_id: uuid.UUID,
+    force: bool = False,
     coach: User = Depends(require_coach),
     db: AsyncSession = Depends(get_db),
 ) -> ProgressInsightOut:
     client = await db.get(Client, client_id)
     if client is None or client.coach_id != coach.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Client not found")
-    return await _progress_insight_for(db, coach.id, client)
+    return await _progress_insight_for(db, coach.id, client, force=force)
 
 
 @router.get("/clients/{client_id}/churn-trend", response_model=ChurnTrendOut)
@@ -559,7 +583,7 @@ async def ask_documents(
     query_embedding = await embed_text(body.question)
     if query_embedding is None:
         return AskOut(
-            answer="AI features aren't active yet — add OPENAI_API_KEY in apps/api/.env to enable this.",
+            answer="AI features aren't active yet. Add OPENAI_API_KEY in apps/api/.env to enable this.",
             sources=[],
         )
 
@@ -577,7 +601,7 @@ async def ask_documents(
     rows = result.all()
     if not rows:
         return AskOut(
-            answer="You haven't uploaded any documents yet — upload one on the Documents page first.",
+            answer="You haven't uploaded any documents yet. Upload one on the Documents page first.",
             sources=[],
         )
 

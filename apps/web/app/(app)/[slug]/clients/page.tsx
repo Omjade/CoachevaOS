@@ -21,6 +21,7 @@ const STATUS_LABEL: Record<ClientListItem["status"], string> = {
   at_risk: "At risk",
   paused: "Paused",
   churned: "Churned",
+  deleted: "Deleted",
 };
 
 function StatusTag({ status }: { status: ClientListItem["status"] }) {
@@ -53,12 +54,39 @@ export default function ClientsPage() {
   const [copied, setCopied] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | ClientListItem["status"]>("all");
+  const [sortBy, setSortBy] = useState<"joined_desc" | "joined_asc" | "name" | "program">(
+    "joined_desc"
+  );
+  const [pendingCount, setPendingCount] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
 
   function refresh() {
     api.listClients().then(setClients).catch(() => setClients([]));
   }
 
   useEffect(refresh, []);
+  useEffect(() => {
+    api.getPendingImportCount().then((r) => setPendingCount(r.count)).catch(() => {});
+  }, []);
+
+  async function retryPendingImport() {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      const result = await api.retryPendingClientImport();
+      refresh();
+      const remaining = await api.getPendingImportCount();
+      setPendingCount(remaining.count);
+      if (result.created === 0 && remaining.count > 0) {
+        setRetryError("Still at your plan's client limit. Upgrade to add the rest.");
+      }
+    } catch (err) {
+      setRetryError(err instanceof ApiError ? err.message : "Couldn't retry. Try again.");
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -103,8 +131,25 @@ export default function ClientsPage() {
 
   const visibleClients = useMemo(() => {
     if (!clients) return [];
-    return statusFilter === "all" ? clients : clients.filter((c) => c.status === statusFilter);
-  }, [clients, statusFilter]);
+    const filtered =
+      statusFilter === "all" ? clients : clients.filter((c) => c.status === statusFilter);
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case "joined_desc":
+        sorted.sort((a, b) => b.joined_at.localeCompare(a.joined_at));
+        break;
+      case "joined_asc":
+        sorted.sort((a, b) => a.joined_at.localeCompare(b.joined_at));
+        break;
+      case "name":
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "program":
+        sorted.sort((a, b) => (a.program ?? "").localeCompare(b.program ?? ""));
+        break;
+    }
+    return sorted;
+  }, [clients, statusFilter, sortBy]);
 
   if (!roleOk) return null;
 
@@ -130,6 +175,36 @@ export default function ClientsPage() {
           </Button>
         </div>
       </div>
+
+      {pendingCount > 0 && (
+        <Card className="mb-6 !border-accent-200 !bg-accent-100">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <p className="text-sm text-neutral-700">
+              <strong>
+                {pendingCount} client{pendingCount === 1 ? "" : "s"} waiting
+              </strong>{" "}
+              from an import that hit your plan&apos;s client limit. Upgrade your plan to add them,
+              or retry now if you&apos;ve freed up space.
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link href={`/${params.slug}/billing`}>
+                <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
+                  Upgrade plan
+                </Button>
+              </Link>
+              <Button
+                variant="secondary"
+                className="!px-3 !py-1.5 text-xs"
+                loading={retrying}
+                onClick={retryPendingImport}
+              >
+                Retry now
+              </Button>
+            </div>
+          </div>
+          {retryError && <p className="mt-2 text-xs text-red-700">{retryError}</p>}
+        </Card>
+      )}
 
       {inviteBanner && (
         <Card className="mb-6 !border-accent-200 !bg-accent-100">
@@ -164,24 +239,36 @@ export default function ClientsPage() {
       )}
 
       {clients !== null && clients.length > 0 && (
-        <div className="mb-5 flex flex-wrap items-center gap-1.5">
-          {(["all", "active", "at_risk", "paused", "churned"] as const).map((s) => {
-            const count = s === "all" ? clients.length : clients.filter((c) => c.status === s).length;
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setStatusFilter(s)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                  statusFilter === s
-                    ? "bg-neutral-900 text-white"
-                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                }`}
-              >
-                {s === "all" ? "All" : STATUS_LABEL[s]} ({count})
-              </button>
-            );
-          })}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(["all", "active", "at_risk", "paused", "churned"] as const).map((s) => {
+              const count = s === "all" ? clients.length : clients.filter((c) => c.status === s).length;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatusFilter(s)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    statusFilter === s
+                      ? "bg-neutral-900 text-white"
+                      : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                  }`}
+                >
+                  {s === "all" ? "All" : STATUS_LABEL[s]} ({count})
+                </button>
+              );
+            })}
+          </div>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 outline-none"
+          >
+            <option value="joined_desc">Newest first</option>
+            <option value="joined_asc">Oldest first</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="program">Program (A-Z)</option>
+          </select>
         </div>
       )}
 

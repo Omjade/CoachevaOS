@@ -10,6 +10,7 @@ import { Button, Card, ErrorBanner, Input, Label } from "@/components/ui";
 import AuthLayout from "@/components/AuthLayout";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { invalidateCurrentUser } from "@/lib/useCurrentUser";
+import { invalidateOwnSlug } from "@/lib/useOwnSlug";
 
 function SignupForm() {
   const router = useRouter();
@@ -45,6 +46,7 @@ function SignupForm() {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       invalidateCurrentUser();
+      invalidateOwnSlug();
       setRedirecting(true);
       router.push("/onboarding");
     } catch (err) {

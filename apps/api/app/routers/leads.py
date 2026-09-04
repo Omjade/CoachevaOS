@@ -111,7 +111,11 @@ async def convert_lead(
         email=lead.email,
         phone=lead.phone,
         program=lead.interested_in,
-        goals=lead.notes,
+        # lead.notes is the raw form Q&A dump for form-sourced leads — keep it
+        # in the coach-only notes field, never in goals (a short, deliberately
+        # authored line the client is meant to see, not auto-filled intake data).
+        goals=None,
+        notes=lead.notes,
     )
     lead.stage = LeadStage.converted
     lead.converted_client_id = client.id

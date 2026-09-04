@@ -4,7 +4,7 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import DBAPIError
 
 from app.ai.import_mapping import TARGET_FIELDS, suggest_column_mapping
@@ -12,10 +12,17 @@ from app.db import get_db
 from app.deps import require_active_coach
 from app.models.custom_fields import CustomFieldDefinition, CustomFieldValue
 from app.models.enums import CustomFieldType
+from app.models.pending_imports import PendingImportRow
 from app.models.users import User
 from app.rate_limit import limiter
 from app.routers.clients import create_client_with_user
-from app.schemas.client_import import ImportCommitOut, ImportCommitRequest, ImportPreviewOut, ImportSkip
+from app.schemas.client_import import (
+    ImportCommitOut,
+    ImportCommitRequest,
+    ImportPreviewOut,
+    ImportSkip,
+    PendingImportCountOut,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -130,6 +137,7 @@ async def commit_import(
         custom_field_defs[column] = definition.id
 
     created = 0
+    pending_saved = 0
     skipped: list[ImportSkip] = []
     seen_emails: set[str] = set()
 
@@ -170,6 +178,24 @@ async def commit_import(
                         )
         except HTTPException as exc:
             skipped.append(ImportSkip(row=row, reason=str(exc.detail)))
+            if exc.status_code == status.HTTP_402_PAYMENT_REQUIRED:
+                # The cap is full for the rest of this batch too, not just
+                # this row — save every remaining not-yet-attempted row for
+                # automatic retry instead of trying (and failing) each one
+                # individually, then stop.
+                remaining = body.rows[row_index:]
+                for r in remaining:
+                    db.add(
+                        PendingImportRow(
+                            coach_id=coach.id,
+                            mapping_json=body.mapping,
+                            row_json=r,
+                            custom_field_columns_json=body.custom_field_columns,
+                        )
+                    )
+                    pending_saved += 1
+                await db.commit()
+                break
             continue
         except DBAPIError:
             # The DB connection itself dropped mid-request (e.g. Neon's serverless
@@ -180,7 +206,7 @@ async def commit_import(
             logger.exception("Database connection lost during client import commit")
             remaining = body.rows[row_index:]
             skipped.extend(
-                ImportSkip(row=r, reason="Not attempted — connection interrupted, please retry")
+                ImportSkip(row=r, reason="Not attempted. Connection interrupted, please retry.")
                 for r in remaining
             )
             break
@@ -189,4 +215,113 @@ async def commit_import(
         created += 1
 
     await db.commit()
-    return ImportCommitOut(created=created, skipped=skipped)
+    return ImportCommitOut(created=created, skipped=skipped, pending_saved=pending_saved)
+
+
+@router.get("/pending-count", response_model=PendingImportCountOut)
+async def get_pending_import_count(
+    coach: User = Depends(require_active_coach), db: AsyncSession = Depends(get_db)
+) -> PendingImportCountOut:
+    count = await db.scalar(
+        select(func.count()).select_from(PendingImportRow).where(PendingImportRow.coach_id == coach.id)
+    )
+    return PendingImportCountOut(count=count or 0)
+
+
+async def retry_pending_rows_for_coach(db: AsyncSession, coach: User) -> ImportCommitOut:
+    """Re-attempts every row this coach has pending (saved earlier for
+    hitting their plan's client cap) -- called from the retry-pending
+    endpoint (manual, from a banner) and from the nightly cap-sweep job
+    (automatic, once a coach is no longer over-limit). Each row still goes
+    through the exact same cap check, so if the coach is STILL over limit
+    (added more clients since, or the cap dropped), it's left pending
+    rather than lost."""
+    result = await db.execute(
+        select(PendingImportRow).where(PendingImportRow.coach_id == coach.id).order_by(PendingImportRow.created_at)
+    )
+    pending_rows = list(result.scalars().all())
+
+    created = 0
+    skipped: list[ImportSkip] = []
+    seen_emails: set[str] = set()
+
+    for pending in pending_rows:
+        mapping = pending.mapping_json
+        row = pending.row_json
+        name_col = mapping.get("name")
+        email_col = mapping.get("email")
+        phone_col = mapping.get("phone")
+        goals_col = mapping.get("goals")
+        program_col = mapping.get("program")
+        tags_col = mapping.get("tags")
+        notes_col = mapping.get("notes")
+
+        name = row.get(name_col, "").strip() if name_col else ""
+        email = row.get(email_col, "").strip().lower() if email_col else ""
+        if not name or not email or email in seen_emails:
+            await db.delete(pending)
+            continue
+
+        tags_raw = row.get(tags_col, "") if tags_col else ""
+        tags = [t.strip() for t in tags_raw.split(",") if t.strip()] or None
+
+        try:
+            async with db.begin_nested():
+                client = await create_client_with_user(
+                    db,
+                    coach,
+                    name=name,
+                    email=email,
+                    phone=(row.get(phone_col, "").strip() or None) if phone_col else None,
+                    program=(row.get(program_col, "").strip() or None) if program_col else None,
+                    goals=(row.get(goals_col, "").strip() or None) if goals_col else None,
+                    tags=tags,
+                    notes=(row.get(notes_col, "").strip() or None) if notes_col else None,
+                )
+                for column in pending.custom_field_columns_json:
+                    raw_value = (row.get(column) or "").strip()
+                    if not raw_value:
+                        continue
+                    existing = await db.execute(
+                        select(CustomFieldDefinition).where(
+                            CustomFieldDefinition.coach_id == coach.id,
+                            CustomFieldDefinition.name == column,
+                        )
+                    )
+                    definition = existing.scalar_one_or_none()
+                    if definition is None:
+                        definition = CustomFieldDefinition(
+                            coach_id=coach.id, name=column, field_type=CustomFieldType.text
+                        )
+                        db.add(definition)
+                        await db.flush()
+                    db.add(
+                        CustomFieldValue(
+                            definition_id=definition.id, client_id=client.id, value=raw_value
+                        )
+                    )
+        except HTTPException as exc:
+            skipped.append(ImportSkip(row=row, reason=str(exc.detail)))
+            if exc.status_code == status.HTTP_402_PAYMENT_REQUIRED:
+                # Still over the cap -- leave this row (and the rest) pending
+                # rather than losing it, and stop trying further rows this pass.
+                break
+            await db.delete(pending)
+            continue
+
+        seen_emails.add(email)
+        created += 1
+        await db.delete(pending)
+
+    await db.commit()
+    return ImportCommitOut(created=created, skipped=skipped, pending_saved=0)
+
+
+@router.post("/retry-pending", response_model=ImportCommitOut)
+@limiter.limit("10/minute")
+async def retry_pending_import(
+    request: Request,
+    coach: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> ImportCommitOut:
+    return await retry_pending_rows_for_coach(db, coach)

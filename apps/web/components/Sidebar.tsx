@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  CircleWavyCheckIcon as CircleWavyCheck,
   CaretLeftIcon as CaretLeft,
   CaretRightIcon as CaretRight,
   XIcon as X,
@@ -22,6 +21,7 @@ export interface NavItem {
 export default function Sidebar({
   slug,
   brandLabel,
+  logoUrl,
   navItems,
   identityUserId,
   identityName,
@@ -32,6 +32,8 @@ export default function Sidebar({
 }: {
   slug: string;
   brandLabel: string;
+  /** Coach's own uploaded logo, if set — falls back to the platform mark. */
+  logoUrl?: string | null;
   navItems: NavItem[];
   identityUserId: string;
   identityName: string;
@@ -74,11 +76,20 @@ export default function Sidebar({
   const navContent = (isCollapsed: boolean) => (
     <>
       <div className={`mb-8 flex items-center gap-2 px-2 ${isCollapsed ? "justify-center px-0" : ""}`}>
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-neutral-900">
-          <CircleWavyCheck className="h-4 w-4" weight="fill" />
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element -- same reasoning as Avatar.tsx: backend-served URL with an unpredictable host, needs onError fallback next/image can't give us */}
+          <img
+            src={logoUrl || "/coachevaos-logo.png"}
+            alt=""
+            onError={(e) => {
+              if (e.currentTarget.src.endsWith("/coachevaos-logo.png")) return;
+              e.currentTarget.src = "/coachevaos-logo.png";
+            }}
+            className="h-full w-full object-cover"
+          />
         </span>
         {!isCollapsed && (
-          <span className="font-heading truncate text-sm font-bold">{brandLabel}</span>
+          <span className="font-heading truncate text-sm font-bold text-white">{brandLabel}</span>
         )}
       </div>
       <nav className="scrollbar-thin flex flex-1 flex-col gap-1 overflow-y-auto">

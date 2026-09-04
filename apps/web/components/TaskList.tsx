@@ -67,20 +67,20 @@ export default function TaskList({
 
   return (
     <div className="flex flex-col gap-3">
-      <form onSubmit={handleAdd} className="flex gap-2">
+      <form onSubmit={handleAdd} className="flex flex-wrap gap-2">
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="New task title"
-          className="flex-1"
+          className="min-w-0 flex-1 basis-40"
         />
         <Input
           type="date"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
-          className="w-32 shrink-0"
+          className="w-24 shrink-0 sm:w-32"
         />
-        <Button type="submit" disabled={adding}>
+        <Button type="submit" disabled={adding} className="shrink-0">
           Add
         </Button>
       </form>
@@ -105,21 +105,21 @@ export default function TaskList({
               className="h-4 w-4 accent-accent-600"
             />
             {editingId === task.id ? (
-              <div className="flex flex-1 items-center gap-2">
+              <div className="flex flex-1 flex-wrap items-center gap-2">
                 <Input
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="flex-1"
+                  className="min-w-0 flex-1 basis-40"
                 />
                 <Input
                   type="date"
                   value={editDue}
                   onChange={(e) => setEditDue(e.target.value)}
-                  className="w-36"
+                  className="w-24 shrink-0 sm:w-32"
                 />
                 <Button
                   type="button"
-                  className="px-2.5 py-1 text-xs"
+                  className="shrink-0 px-2.5 py-1 text-xs"
                   onClick={() => saveEdit(task.id)}
                 >
                   Save

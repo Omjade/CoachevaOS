@@ -47,6 +47,27 @@ export default function FormsPage() {
     }
   }
 
+  async function toggleFeatured(form: CoachForm) {
+    setError(null);
+    const next = !form.featured_on_public_profile;
+    // Setting one featured form unsets any other — mirror that locally too,
+    // matching what update_form actually does server-side.
+    const prevState = forms;
+    setForms(
+      (prev) =>
+        prev?.map((f) => ({
+          ...f,
+          featured_on_public_profile: f.id === form.id ? next : false,
+        })) ?? prev
+    );
+    try {
+      await api.updateForm(form.id, { featured_on_public_profile: next });
+    } catch (err) {
+      setForms(prevState);
+      setError(err instanceof ApiError ? err.message : "Couldn't update that form. Try again.");
+    }
+  }
+
   async function copyLink(form: CoachForm) {
     const url = `${window.location.origin}/${params.slug}/${form.slug}`;
     const ok = await copyText(url);
@@ -108,9 +129,21 @@ export default function FormsPage() {
                   {form.is_active ? "Active" : "Inactive"}
                 </button>
               </div>
-              <p className="mb-4 text-xs text-neutral-500">
+              <p className="mb-2 text-xs text-neutral-500">
                 {form.submission_count} submission{form.submission_count === 1 ? "" : "s"}
               </p>
+              <button
+                type="button"
+                onClick={() => toggleFeatured(form)}
+                title="Show this form's link instead of the built-in contact card on your public profile"
+                className={`mb-4 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                  form.featured_on_public_profile
+                    ? "bg-accent-600 text-white"
+                    : "bg-neutral-100 text-neutral-500 hover:bg-neutral-200"
+                }`}
+              >
+                {form.featured_on_public_profile ? "Featured on public profile" : "Feature on public profile"}
+              </button>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"

@@ -3,7 +3,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { CircleWavyCheckIcon as CircleWavyCheck } from "@phosphor-icons/react";
 import { Eyebrow } from "@/components/ui";
 import { TESTIMONIALS } from "@/lib/testimonials";
 import FloatingToolIcons from "@/components/FloatingToolIcons";
@@ -26,8 +25,8 @@ export default function AuthLayout({
     <div className="flex min-h-screen flex-1 bg-neutral-100 p-3 md:p-4">
       <div className="flex flex-1 flex-col">
         <Link href="/" className="mb-3 flex items-center gap-2 md:mb-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-900 text-neutral-100">
-            <CircleWavyCheck className="h-4 w-4" weight="fill" />
+          <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-neutral-900">
+            <img src="/coachevaos-logo.png" alt="" className="h-full w-full object-cover" />
           </span>
           <span className="font-heading text-sm font-bold text-neutral-900">CoachevaOS</span>
         </Link>
@@ -81,9 +80,18 @@ export default function AuthLayout({
                   <p className="font-heading text-2xl leading-snug font-medium text-white">
                     &ldquo;{TESTIMONIALS[slide].quote}&rdquo;
                   </p>
-                  <p className="mt-4 text-sm text-neutral-400">
-                    {TESTIMONIALS[slide].name}, {TESTIMONIALS[slide].role}
-                  </p>
+                  <div className="mt-4 flex items-center gap-2.5">
+                    {TESTIMONIALS[slide].photoUrl && (
+                      <img
+                        src={TESTIMONIALS[slide].photoUrl}
+                        alt=""
+                        className="h-8 w-8 shrink-0 rounded-full object-cover"
+                      />
+                    )}
+                    <p className="text-sm text-neutral-400">
+                      {TESTIMONIALS[slide].name}, {TESTIMONIALS[slide].role}
+                    </p>
+                  </div>
                 </motion.div>
               </AnimatePresence>
 

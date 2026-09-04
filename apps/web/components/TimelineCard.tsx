@@ -28,8 +28,11 @@ const TYPE_META: Partial<Record<TimelineEvent["type"], { Icon: typeof Target; la
   risk: { Icon: Warning, label: "Risk alert" },
 };
 
+const COLLAPSED_COUNT = 6;
+
 export default function TimelineCard({ fetchTimeline }: { fetchTimeline: () => Promise<Timeline> }) {
   const [timeline, setTimeline] = useState<Timeline | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     fetchTimeline()
@@ -39,6 +42,9 @@ export default function TimelineCard({ fetchTimeline }: { fetchTimeline: () => P
   }, []);
 
   if (!timeline) return null;
+
+  const visibleEvents = expanded ? timeline.events : timeline.events.slice(0, COLLAPSED_COUNT);
+  const hiddenCount = timeline.events.length - visibleEvents.length;
 
   return (
     <Card>
@@ -50,7 +56,7 @@ export default function TimelineCard({ fetchTimeline }: { fetchTimeline: () => P
         <p className="text-xs text-neutral-500">Nothing logged yet.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {timeline.events.map((event, i) => {
+          {visibleEvents.map((event, i) => {
             const meta = TYPE_META[event.type] ?? { Icon: ClockCounterClockwise, label: event.type };
             const Icon = meta.Icon;
             return (
@@ -76,6 +82,15 @@ export default function TimelineCard({ fetchTimeline }: { fetchTimeline: () => P
               </div>
             );
           })}
+          {(hiddenCount > 0 || expanded) && timeline.events.length > COLLAPSED_COUNT && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="self-start text-xs font-medium text-accent-600 hover:underline"
+            >
+              {expanded ? "Show less" : `See ${hiddenCount} more`}
+            </button>
+          )}
         </div>
       )}
     </Card>

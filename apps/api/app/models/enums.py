@@ -11,6 +11,11 @@ class ClientStatus(str, enum.Enum):
     at_risk = "at_risk"
     paused = "paused"
     churned = "churned"
+    # Coach-initiated "delete" — archives, never a real cascade delete.
+    # Underlying messages/documents/invoices are left intact (same reasoning
+    # as the existing account-anonymize pattern), just hidden from every
+    # client-list query by default.
+    deleted = "deleted"
 
 
 class LeadStage(str, enum.Enum):

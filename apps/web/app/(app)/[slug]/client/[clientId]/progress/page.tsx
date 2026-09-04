@@ -32,7 +32,7 @@ export default function ClientProgressPage({
         <>
           <ChurnTrend clientId={clientId} />
           <ClientSnapshotCard clientId={clientId} />
-          <ProgressCard fetchInsight={() => api.getClientProgressInsight(clientId)} />
+          <ProgressCard fetchInsight={(force) => api.getClientProgressInsight(clientId, force)} />
           <CustomFieldsCard
             fetchFields={() => api.getClientCustomFields(clientId)}
             onSetValue={(defId, value) => api.setClientCustomFieldValue(clientId, defId, value)}
@@ -63,7 +63,11 @@ export default function ClientProgressPage({
       ) : (
         <>
           <ProgressCard fetchInsight={api.getMyProgressInsight} summaryLabel="Your coach's AI summary" />
-          <CustomFieldsCard fetchFields={api.getMyCustomFields} editable={false} />
+          <CustomFieldsCard
+            fetchFields={api.getMyCustomFields}
+            onSetValue={api.setMyCustomFieldValue}
+            editable
+          />
           <MetricsCard
             listDefinitions={api.listMyMetricDefinitions}
             listEntries={api.listMyMetricEntries}

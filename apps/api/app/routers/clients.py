@@ -22,6 +22,7 @@ from app.schemas.clients import (
     ClientSelfProfileOut,
     ClientSelfProfileUpdate,
     ClientUpdate,
+    CoachingDatesUpdate,
     InviteInfoOut,
 )
 from app.schemas.intake import IntakeCreate, IntakeOut
@@ -39,7 +40,7 @@ async def _generate_unique_invite_code(db: AsyncSession) -> str:
         existing = await db.execute(select(Client.id).where(Client.invite_code == code))
         if existing.scalar_one_or_none() is None:
             return code
-    raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Could not generate an invite link — try again")
+    raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Could not generate an invite link. Try again.")
 
 
 async def _generate_unique_portal_code(db: AsyncSession) -> str:
@@ -48,7 +49,7 @@ async def _generate_unique_portal_code(db: AsyncSession) -> str:
         existing = await db.execute(select(Client.id).where(Client.portal_code == code))
         if existing.scalar_one_or_none() is None:
             return code
-    raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Could not generate a portal link — try again")
+    raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Could not generate a portal link. Try again.")
 
 
 async def create_client_with_user(
@@ -168,7 +169,7 @@ async def list_clients(
     result = await db.execute(
         select(Client, User)
         .join(User, User.id == Client.user_id)
-        .where(Client.coach_id == coach.id)
+        .where(Client.coach_id == coach.id, Client.status != ClientStatus.deleted)
         .order_by(Client.joined_at.desc())
         .limit(min(limit, 500))
         .offset(offset)
@@ -208,6 +209,8 @@ async def get_my_client_profile(
         phone=client.phone,
         status=client.status,
         billing_currency=client.billing_currency,
+        coaching_start_date=client.coaching_start_date,
+        coaching_end_date=client.coaching_end_date,
     )
 
 
@@ -244,6 +247,8 @@ async def update_my_client_profile(
         phone=client.phone,
         status=client.status,
         billing_currency=client.billing_currency,
+        coaching_start_date=client.coaching_start_date,
+        coaching_end_date=client.coaching_end_date,
     )
 
 
@@ -324,6 +329,8 @@ async def get_client(
         timezone=user.timezone,
         niche=client.niche,
         billing_currency=client.billing_currency,
+        coaching_start_date=client.coaching_start_date,
+        coaching_end_date=client.coaching_end_date,
     )
 
 
@@ -365,6 +372,8 @@ async def update_client(
         timezone=user.timezone,
         niche=client.niche,
         billing_currency=client.billing_currency,
+        coaching_start_date=client.coaching_start_date,
+        coaching_end_date=client.coaching_end_date,
     )
 
 
@@ -389,6 +398,8 @@ async def update_client_notes(
         timezone=user.timezone,
         niche=client.niche,
         billing_currency=client.billing_currency,
+        coaching_start_date=client.coaching_start_date,
+        coaching_end_date=client.coaching_end_date,
     )
 
 
@@ -424,7 +435,7 @@ async def get_client_portal_link(
     client, user = await _get_owned_client(db, coach, client_id)
     if client.invite_accepted_at is None:
         raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "Share the invite link first — this client hasn't joined yet"
+            status.HTTP_400_BAD_REQUEST, "Share the invite link first. This client hasn't joined yet."
         )
     if client.portal_code is None:
         client.portal_code = await _generate_unique_portal_code(db)
@@ -466,3 +477,47 @@ async def get_client_intake(
     if intake is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not submitted yet")
     return intake
+
+
+@router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_client(
+    client_id: uuid.UUID,
+    coach: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Archives, never a real cascade delete -- sets status=deleted, which
+    every client-list query already excludes. Messages/documents/invoices
+    are left intact, same reasoning as the existing account-anonymize
+    pattern (preserves the coach's own history)."""
+    client, _user = await _get_owned_client(db, coach, client_id)
+    client.status = ClientStatus.deleted
+    await db.commit()
+
+
+@router.patch("/{client_id}/coaching-dates", response_model=ClientDetailOut)
+async def update_coaching_dates(
+    client_id: uuid.UUID,
+    body: CoachingDatesUpdate,
+    coach: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> ClientDetailOut:
+    """Always assigns both dates (never skips None) so either can be
+    cleared once set -- mirrors billing.py's update_client_subscription."""
+    client, user = await _get_owned_client(db, coach, client_id)
+    client.coaching_start_date = body.coaching_start_date
+    client.coaching_end_date = body.coaching_end_date
+    await db.commit()
+    base = _to_client_out(client, user)
+    return ClientDetailOut(
+        **base.model_dump(),
+        goals=client.goals,
+        subscription_valid_until=client.subscription_valid_until,
+        tags=client.tags,
+        notes=client.notes,
+        thread_id=await _thread_id_for_client(db, client.id),
+        timezone=user.timezone,
+        niche=client.niche,
+        billing_currency=client.billing_currency,
+        coaching_start_date=client.coaching_start_date,
+        coaching_end_date=client.coaching_end_date,
+    )

@@ -11,7 +11,7 @@ from app.deps import require_active_coach, require_coach
 from app.models.billing import Invoice
 from app.models.clients import Client
 from app.models.enums import ClientStatus, SubscriptionStatus, SubscriptionTier
-from app.models.users import User
+from app.models.users import CoachProfile, User
 from app.schemas.billing import (
     ClientBillingOut,
     InvoiceCreate,
@@ -59,6 +59,16 @@ async def _get_owned_client(db: AsyncSession, coach: User, client_id: uuid.UUID)
     return client
 
 
+async def _effective_currency(db: AsyncSession, coach: User, client: Client) -> str:
+    """The client's own override if set, else the coach's own declared
+    billing currency (CoachProfile.currency, defaults 'usd' at onboarding),
+    never a hardcoded literal."""
+    if client.billing_currency:
+        return client.billing_currency
+    profile = await db.get(CoachProfile, coach.id)
+    return (profile.currency if profile else "usd").upper()
+
+
 @router.get("/clients/{client_id}/billing", response_model=ClientBillingOut)
 async def get_client_billing(
     client_id: uuid.UUID,
@@ -74,7 +84,7 @@ async def get_client_billing(
         subscription_valid_from=client.subscription_valid_from,
         subscription_valid_until=client.subscription_valid_until,
         status=_compute_status(client.subscription_valid_until),
-        billing_currency=client.billing_currency,
+        billing_currency=await _effective_currency(db, coach, client),
         invoices=invoices,
     )
 
@@ -99,7 +109,7 @@ async def update_client_subscription(
         subscription_valid_from=client.subscription_valid_from,
         subscription_valid_until=client.subscription_valid_until,
         status=_compute_status(client.subscription_valid_until),
-        billing_currency=client.billing_currency,
+        billing_currency=await _effective_currency(db, coach, client),
         invoices=invoices,
     )
 
@@ -117,7 +127,7 @@ async def add_invoice(
     invoice = Invoice(
         client_id=client_id,
         amount=body.amount,
-        currency=body.currency or client.billing_currency or "USD",
+        currency=body.currency or await _effective_currency(db, coach, client),
         due_date=body.due_date,
         paid=False,
     )

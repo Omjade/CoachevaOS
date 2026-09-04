@@ -13,6 +13,7 @@ from app.models.ai import AIInsight
 from app.models.billing import PlatformSubscription
 from app.models.clients import Client
 from app.models.enums import AIInsightType, ClientStatus, SubscriptionStatus
+from app.models.pending_imports import PendingImportRow
 from app.models.users import CoachProfile, User
 from app.notifications import _create_if_new, generate_coach_notifications
 from app.utils.time import utcnow
@@ -119,19 +120,26 @@ async def generate_all_coach_notifications() -> None:
 
 async def auto_transition_client_status() -> None:
     """Runs nightly: flips an active client to at_risk once their
-    subscription_valid_until date has passed — a lapsed date is a signal to
-    check in, not an automatic assumption the relationship ended, so this
-    never jumps straight to paused/churned. Self-limiting: once flipped, the
-    client is no longer `active` so the WHERE clause won't re-select them the
-    next night — a coach extending the date and manually setting status back
-    to active is the only way back, no silent auto-reactivation."""
+    subscription_valid_until OR coaching_end_date has passed. A lapsed date
+    is a signal to check in, not an automatic assumption the relationship
+    ended, so this never jumps straight to paused/churned. Self-limiting:
+    once flipped, the client is no longer `active` so the WHERE clause
+    won't re-select them the next night. A coach extending the date and
+    manually setting status back to active is the only way back, no
+    silent auto-reactivation."""
     async with async_session() as db:
         today = utcnow().date()
         result = await db.execute(
             select(Client).where(
                 Client.status == ClientStatus.active,
-                Client.subscription_valid_until.is_not(None),
-                Client.subscription_valid_until < today,
+                (
+                    (Client.subscription_valid_until.is_not(None))
+                    & (Client.subscription_valid_until < today)
+                )
+                | (
+                    (Client.coaching_end_date.is_not(None))
+                    & (Client.coaching_end_date < today)
+                ),
             )
         )
         clients = list(result.scalars().all())
@@ -141,13 +149,17 @@ async def auto_transition_client_status() -> None:
                 client.status = ClientStatus.at_risk
                 client_user = await db.get(User, client.user_id) if client.user_id else None
                 name = client_user.name if client_user else "A client"
+                lapsed_subscription = (
+                    client.subscription_valid_until is not None and client.subscription_valid_until < today
+                )
+                reason = "subscription date" if lapsed_subscription else "coaching end date"
                 await _create_if_new(
                     db,
                     client.coach_id,
                     "client_subscription_lapsed",
                     str(client.id),
                     {
-                        "message": f"{name}'s subscription date passed — check in or extend it.",
+                        "message": f"{name}'s {reason} passed. Check in or extend it.",
                         "client_id": str(client.id),
                     },
                 )
@@ -236,6 +248,30 @@ async def check_client_cap_overages() -> None:
                 await db.rollback()
 
 
+async def retry_pending_client_imports() -> None:
+    """Runs nightly: for every coach with rows saved via the CSV/XLSX import
+    cap-overflow path, re-attempts them once there's real room again -- a
+    coach who upgrades their plan never has to manually click retry or
+    re-upload the file. Deferred import to avoid a circular cycle
+    (client_import.py imports app.routers.clients, which this module
+    doesn't otherwise need)."""
+    from app.routers.client_import import retry_pending_rows_for_coach
+
+    async with async_session() as db:
+        coach_ids_result = await db.execute(select(PendingImportRow.coach_id).distinct())
+        coach_ids = [row[0] for row in coach_ids_result.all()]
+
+        for coach_id in coach_ids:
+            try:
+                coach = await db.get(User, coach_id)
+                if coach is None:
+                    continue
+                await retry_pending_rows_for_coach(db, coach)
+            except Exception:
+                logger.exception("Pending-import retry failed for coach %s", coach_id)
+                await db.rollback()
+
+
 def start_scheduler() -> None:
     if not scheduler.running:
         scheduler.add_job(
@@ -282,6 +318,14 @@ def start_scheduler() -> None:
             hour=4,
             minute=30,
             id="send_subscription_reminders",
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            retry_pending_client_imports,
+            "cron",
+            hour=4,
+            minute=45,
+            id="retry_pending_client_imports",
             replace_existing=True,
         )
         scheduler.start()

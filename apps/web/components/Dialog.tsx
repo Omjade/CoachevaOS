@@ -24,9 +24,11 @@ export default function Dialog({
         onClick={onClose}
         aria-hidden
       />
-      <div className={`relative w-full ${widthClassName} rounded-(--radius-lg) bg-surface p-6 shadow-lg`}>
-        <h2 className="font-heading mb-5 text-xl font-semibold">{title}</h2>
-        {children}
+      <div
+        className={`relative flex max-h-[85vh] w-full flex-col ${widthClassName} rounded-(--radius-lg) bg-surface p-6 shadow-lg`}
+      >
+        <h2 className="font-heading mb-5 shrink-0 text-xl font-semibold">{title}</h2>
+        <div className="overflow-y-auto">{children}</div>
       </div>
     </div>
   );

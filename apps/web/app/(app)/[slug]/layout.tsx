@@ -6,6 +6,7 @@ import CoachShell from "@/components/CoachShell";
 import PortalShell from "@/components/PortalShell";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { useViewerRole } from "@/lib/useViewerRole";
+import { useOwnSlug } from "@/lib/useOwnSlug";
 import { RESERVED_SLUGS } from "@/lib/reservedSlugs";
 
 export default function SlugLayout({
@@ -17,6 +18,7 @@ export default function SlugLayout({
 }) {
   const { slug } = use(params);
   const role = useViewerRole();
+  const ownSlug = useOwnSlug(role);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -27,6 +29,11 @@ export default function SlugLayout({
   // (Phase 52), same "anonymous renders children with no shell" treatment
   // already given to public form pages below.
   const isRealAppRoute = nextSegment !== undefined && RESERVED_SLUGS.includes(nextSegment);
+  // A bare /{slug} that ISN'T the logged-in viewer's own slug is the public
+  // portfolio too, even though someone happens to be logged in — a coach
+  // browsing another coach's public link must see the real page, not their
+  // own dashboard's shell wrapped around it.
+  const isOwnSlug = ownSlug === undefined ? undefined : ownSlug === slug;
 
   useEffect(() => {
     if (role === "anonymous" && isRealAppRoute) {
@@ -43,6 +50,13 @@ export default function SlugLayout({
 
   if (role === null) return <FullScreenLoader />;
   if (role === "anonymous") return isRealAppRoute ? <FullScreenLoader /> : keyedChildren;
+  // A real app route (dashboard, tasks, etc.) always gets the shell — the
+  // bare-slug public-profile case is the only one that can ever render bare
+  // while logged in, and only when it isn't the viewer's own slug.
+  if (!isRealAppRoute) {
+    if (isOwnSlug === undefined) return <FullScreenLoader />;
+    if (!isOwnSlug) return keyedChildren;
+  }
   if (role === "client") return <PortalShell slug={slug}>{keyedChildren}</PortalShell>;
   return <CoachShell>{keyedChildren}</CoachShell>;
 }

@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Card, Eyebrow } from "@/components/ui";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { SOLUTIONS } from "@/lib/solutions-data";
+import { nicheDisplayLabel } from "@/lib/niche";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -51,6 +54,25 @@ export default function ServicesPage() {
               <h2 className="font-heading mb-2 text-lg font-semibold text-neutral-900">{s.title}</h2>
               <p className="text-sm leading-relaxed text-neutral-600">{s.body}</p>
             </Card>
+          ))}
+        </div>
+
+        <h2 className="font-heading mt-12 mb-4 text-2xl font-semibold tracking-tight text-neutral-900">
+          Built for your coaching niche
+        </h2>
+        <p className="mb-6 max-w-lg text-sm leading-relaxed text-neutral-600">
+          Every niche below gets its own pre-loaded fields, metrics, and AI context, no generic
+          one-size-fits-all setup.
+        </p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {SOLUTIONS.map((s) => (
+            <Link
+              key={s.value}
+              href={`/solutions/${s.value}`}
+              className="rounded-[12px] border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition-colors hover:border-accent-300 hover:text-accent-700"
+            >
+              {nicheDisplayLabel(s.value)}
+            </Link>
           ))}
         </div>
       </main>

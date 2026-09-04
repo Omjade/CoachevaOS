@@ -1,6 +1,7 @@
 import mimetypes
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,9 +20,9 @@ from app.routers.programs import _to_template_out
 from app.schemas.clients import ClientPortalPreviewOut
 from app.schemas.coach import PortalPublicOut
 from app.schemas.forms import FormFieldSchema, FormSubmitRequest, PublicFormOut
-from app.schemas.landing_interest import LandingInterestCreate
+from app.schemas.landing_interest import LandingInterestCreate, PortalContactRequest
 from app.schemas.programs import ProgramTemplateOut
-from app.storage import read_file
+from app.storage import get_presigned_url, read_file
 from app.utils.time import utcnow
 
 router = APIRouter(prefix="/portal", tags=["portal"])
@@ -42,6 +43,13 @@ async def _get_coach_by_slug(db: AsyncSession, slug: str) -> tuple[CoachProfile,
 @router.get("/{slug}", response_model=PortalPublicOut)
 async def get_portal_by_slug(slug: str, db: AsyncSession = Depends(get_db)) -> PortalPublicOut:
     profile, user = await _get_coach_by_slug(db, slug)
+    featured_form_slug = await db.scalar(
+        select(Form.slug).where(
+            Form.coach_id == profile.user_id,
+            Form.featured_on_public_profile.is_(True),
+            Form.is_active.is_(True),
+        )
+    )
     return PortalPublicOut(
         business_name=profile.business_name,
         niche=profile.niche,
@@ -53,6 +61,7 @@ async def get_portal_by_slug(slug: str, db: AsyncSession = Depends(get_db)) -> P
         instagram_url=profile.instagram_url,
         linkedin_url=profile.linkedin_url,
         gallery_image_urls=profile.gallery_image_urls,
+        featured_form_slug=featured_form_slug,
     )
 
 
@@ -65,12 +74,34 @@ async def get_public_gallery_image(slug: str, index: int, db: AsyncSession = Dep
     if index < 0 or index >= len(images):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
     key = images[index]
+    presigned = get_presigned_url(key)
+    if presigned:
+        return RedirectResponse(presigned)
     content = await read_file(key)
     if content is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
     content_type, _ = mimetypes.guess_type(key)
     return Response(
         content=content, media_type=content_type or "image/jpeg", headers={"Content-Disposition": "inline"}
+    )
+
+
+@router.get("/{slug}/logo")
+async def get_public_logo(slug: str, db: AsyncSession = Depends(get_db)):
+    """Mirrors get_public_gallery_image's exact pattern for the coach's own
+    logo — serves the stored key rather than exposing it directly."""
+    profile, _user = await _get_coach_by_slug(db, slug)
+    if not profile.logo_url:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No logo set")
+    presigned = get_presigned_url(profile.logo_url)
+    if presigned:
+        return RedirectResponse(presigned)
+    content = await read_file(profile.logo_url)
+    if content is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No logo set")
+    content_type, _ = mimetypes.guess_type(profile.logo_url)
+    return Response(
+        content=content, media_type=content_type or "image/png", headers={"Content-Disposition": "inline"}
     )
 
 
@@ -150,6 +181,9 @@ async def get_public_form_image(slug: str, form_slug: str, db: AsyncSession = De
     form = result.scalar_one_or_none()
     if form is None or not form.image_key:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No cover image set")
+    presigned = get_presigned_url(form.image_key)
+    if presigned:
+        return RedirectResponse(presigned)
     content = await read_file(form.image_key)
     if content is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No cover image set")
@@ -234,6 +268,36 @@ async def submit_public_form(
             "message": f'New submission: "{form.title}" from {lead.name}',
             "form_id": str(form.id),
         },
+    )
+    db.add(notification)
+    await db.commit()
+    await db.refresh(notification)
+    await broadcast_notification(notification)
+    return {"ok": True}
+
+
+@router.post("/{slug}/contact", status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+async def submit_portal_contact(
+    request: Request, slug: str, body: PortalContactRequest, db: AsyncSession = Depends(get_db)
+) -> dict:
+    """The public profile's built-in 'get in touch' card — creates a real
+    Lead for that coach (source="public_profile"), same pipeline a manually-
+    added or form-submitted lead lands in."""
+    profile, _user = await _get_coach_by_slug(db, slug)
+    lead = Lead(
+        coach_id=profile.user_id,
+        name=body.name,
+        email=body.email,
+        stage=LeadStage.new,
+        notes=body.message,
+        source="public_profile",
+    )
+    db.add(lead)
+    notification = Notification(
+        user_id=profile.user_id,
+        type="new_lead",
+        payload_json={"message": f"New lead from your public profile: {body.name}"},
     )
     db.add(notification)
     await db.commit()

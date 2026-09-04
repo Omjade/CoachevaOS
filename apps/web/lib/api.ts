@@ -188,6 +188,7 @@ export interface CoachProfile {
   email: string;
   timezone: string;
   billing_country_code: string | null;
+  currency: string;
   bio: string | null;
   website_url: string | null;
   instagram_url: string | null;
@@ -201,6 +202,7 @@ export interface CoachProfileUpdate {
   business_name?: string;
   niche?: string;
   billing_country_code?: string;
+  currency?: string;
   bio?: string;
   website_url?: string;
   instagram_url?: string;
@@ -223,6 +225,8 @@ export interface ClientSelfProfile {
   phone: string | null;
   status: ClientStatus;
   billing_currency: string | null;
+  coaching_start_date: string | null;
+  coaching_end_date: string | null;
 }
 
 export interface ClientSelfProfileUpdate {
@@ -241,9 +245,10 @@ export interface PortalPublic {
   instagram_url: string | null;
   linkedin_url: string | null;
   gallery_image_urls: string[] | null;
+  featured_form_slug: string | null;
 }
 
-export type ClientStatus = "active" | "at_risk" | "paused" | "churned";
+export type ClientStatus = "active" | "at_risk" | "paused" | "churned" | "deleted";
 
 export interface ClientListItem {
   id: string;
@@ -266,6 +271,8 @@ export interface ClientDetail extends ClientListItem {
   timezone: string;
   niche: string | null;
   billing_currency: string | null;
+  coaching_start_date: string | null;
+  coaching_end_date: string | null;
 }
 
 export interface InviteInfo {
@@ -300,6 +307,7 @@ export interface ImportSkip {
 export interface ImportCommitResult {
   created: number;
   skipped: ImportSkip[];
+  pending_saved: number;
 }
 
 // Goals
@@ -382,6 +390,7 @@ export interface CoachForm {
   created_at: string;
   submission_count: number;
   has_image: boolean;
+  featured_on_public_profile: boolean;
 }
 
 export interface PublicForm {
@@ -1051,11 +1060,21 @@ export const api = {
   removeGalleryImage: (index: number) =>
     request<CoachProfile>(`/coach/me/gallery/${index}`, { method: "DELETE" }),
 
+  uploadLogo: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return requestForm<CoachProfile>("/coach/me/logo", form);
+  },
+
+  removeLogo: () => request<CoachProfile>("/coach/me/logo", { method: "DELETE" }),
+
   portalBySlug: (slug: string) => request<PortalPublic>(`/portal/${slug}`),
 
   getPublicPackages: (slug: string) => request<ProgramTemplate[]>(`/portal/${slug}/packages`),
 
   galleryImageUrl: (slug: string, index: number) => `${API_URL}/portal/${slug}/gallery/${index}`,
+
+  coachLogoUrl: (slug: string) => `${API_URL}/portal/${slug}/logo`,
 
   // Clients
   listClients: () => request<ClientListItem[]>("/clients"),
@@ -1079,6 +1098,17 @@ export const api = {
   updateClient: (id: string, body: ClientUpdate) =>
     request<ClientDetail>(`/clients/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
+  deleteClient: (id: string) => request<void>(`/clients/${id}`, { method: "DELETE" }),
+
+  updateCoachingDates: (
+    id: string,
+    body: { coaching_start_date: string | null; coaching_end_date: string | null }
+  ) =>
+    request<ClientDetail>(`/clients/${id}/coaching-dates`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
   // Client import
   previewClientImport: (file: File) => {
     const form = new FormData();
@@ -1095,6 +1125,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ mapping, rows, custom_field_columns: customFieldColumns }),
     }),
+
+  getPendingImportCount: () => request<{ count: number }>("/clients/import/pending-count"),
+
+  retryPendingClientImport: () =>
+    request<ImportCommitResult>("/clients/import/retry-pending", { method: "POST" }),
 
   // Goals (coach side)
   listClientGoals: (clientId: string) => request<ClientGoal[]>(`/clients/${clientId}/goals`),
@@ -1203,6 +1238,12 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  submitPortalContact: (slug: string, body: { name: string; email: string; message?: string }) =>
+    request<{ ok: boolean }>(`/portal/${slug}/contact`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
   updateLeadStage: (id: string, stage: LeadStage) =>
     request<Lead>(`/leads/${id}/stage`, { method: "PATCH", body: JSON.stringify({ stage }) }),
 
@@ -1227,7 +1268,13 @@ export const api = {
 
   updateForm: (
     id: string,
-    body: { title?: string; description?: string; fields?: FormField[]; is_active?: boolean }
+    body: {
+      title?: string;
+      description?: string;
+      fields?: FormField[];
+      is_active?: boolean;
+      featured_on_public_profile?: boolean;
+    }
   ) => request<CoachForm>(`/forms/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
 
   deleteForm: (id: string) => request<void>(`/forms/${id}`, { method: "DELETE" }),
@@ -1508,10 +1555,11 @@ export const api = {
       body: JSON.stringify({ thread_id: threadId }),
     }),
 
-  getClientProgressInsight: (clientId: string) =>
-    request<ProgressInsight>(`/ai/clients/${clientId}/progress-insight`),
+  getClientProgressInsight: (clientId: string, force = false) =>
+    request<ProgressInsight>(`/ai/clients/${clientId}/progress-insight${force ? "?force=true" : ""}`),
 
-  getMyProgressInsight: () => request<ProgressInsight>("/ai/clients/me/progress-insight"),
+  getMyProgressInsight: (force = false) =>
+    request<ProgressInsight>(`/ai/clients/me/progress-insight${force ? "?force=true" : ""}`),
 
   getChurnTrend: (clientId: string) => request<ChurnTrend>(`/ai/clients/${clientId}/churn-trend`),
 

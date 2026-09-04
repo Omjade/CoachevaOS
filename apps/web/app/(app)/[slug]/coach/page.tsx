@@ -7,7 +7,7 @@ import {
   InstagramLogoIcon as InstagramLogo,
   LinkedinLogoIcon as LinkedinLogo,
 } from "@phosphor-icons/react";
-import { api, PortalPublic } from "@/lib/api";
+import { api, PortalPublic, ProgramTemplate } from "@/lib/api";
 import { Card, Eyebrow } from "@/components/ui";
 import { useRoleGuard } from "@/lib/useRoleGuard";
 import FullScreenLoader from "@/components/FullScreenLoader";
@@ -19,6 +19,7 @@ export default function KnowYourCoachPage() {
   const ok = useRoleGuard("client");
   const params = useParams<{ slug: string }>();
   const [portal, setPortal] = useState<PortalPublic | null>(null);
+  const [packages, setPackages] = useState<ProgramTemplate[]>([]);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export default function KnowYourCoachPage() {
       .portalBySlug(params.slug)
       .then(setPortal)
       .catch(() => setLoadError(true));
+    api.getPublicPackages(params.slug).then(setPackages).catch(() => {});
   }, [ok, params.slug]);
 
   if (!ok) return null;
@@ -64,6 +66,12 @@ export default function KnowYourCoachPage() {
   return (
     <div className="animate-fade-up">
       <div className="mb-6">
+        {portal.logo_url && (
+          <div className="mb-4 h-14 w-14 overflow-hidden rounded-full border border-neutral-200 bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={api.coachLogoUrl(params.slug)} alt="" className="h-full w-full object-cover" />
+          </div>
+        )}
         <Eyebrow className="mb-2">Know your coach</Eyebrow>
         <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
           {portal.business_name ?? portal.coach_name}
@@ -73,7 +81,7 @@ export default function KnowYourCoachPage() {
         )}
       </div>
 
-      {!portal.bio && !gallery.length && links.length === 0 ? (
+      {!portal.bio && !gallery.length && links.length === 0 && packages.length === 0 ? (
         <Card>
           <p className="text-sm text-neutral-600">
             {portal.coach_name} hasn&apos;t added a bio or links yet.
@@ -104,7 +112,7 @@ export default function KnowYourCoachPage() {
           )}
 
           {gallery.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {gallery.map((_key, i) => (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -114,6 +122,35 @@ export default function KnowYourCoachPage() {
                   className="aspect-square w-full rounded-[14px] object-cover"
                 />
               ))}
+            </div>
+          )}
+
+          {packages.length > 0 && (
+            <div>
+              <h2 className="font-heading mb-3 text-lg font-semibold text-neutral-900">
+                Programs offered
+              </h2>
+              <div className="flex flex-col gap-3">
+                {packages.map((p) => (
+                  <Card key={p.id}>
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-neutral-900">{p.title}</h3>
+                      {p.price_amount != null && (
+                        <span className="rounded-full bg-accent-100 px-2.5 py-0.5 text-xs font-medium text-accent-700">
+                          {p.price_currency ?? ""} {p.price_amount}
+                          {p.billing_cadence && p.billing_cadence !== "one_time"
+                            ? ` / ${p.billing_cadence}`
+                            : ""}
+                        </span>
+                      )}
+                    </div>
+                    {p.description && <p className="text-sm text-neutral-600">{p.description}</p>}
+                    {p.duration_weeks && (
+                      <p className="mt-1 text-xs text-neutral-500">{p.duration_weeks}-week program</p>
+                    )}
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </>

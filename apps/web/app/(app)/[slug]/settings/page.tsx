@@ -21,17 +21,18 @@ import {
   CheckIcon as Check,
   CameraIcon as Camera,
   CreditCardIcon as CreditCard,
-  SquaresFourIcon as SquaresFour,
   SignOutIcon as SignOut,
 } from "@phosphor-icons/react";
 import { api, ApiError, ClientSelfProfile, CoachProfile, User } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { COUNTRIES } from "@/lib/countries";
+import { CURRENCIES } from "@/lib/currencies";
 import { listTimezones, timezoneLabel } from "@/lib/timezones";
 import { performLogout } from "@/lib/logout";
 import { Button, Card, ErrorBanner, Eyebrow, Input, Label } from "@/components/ui";
 import { useViewerRole } from "@/lib/useViewerRole";
 import { useSubscription } from "@/lib/useSubscription";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import Avatar from "@/components/Avatar";
 import SecurityPrivacyCard from "@/components/SecurityPrivacyCard";
 import AssistantSettingsCard from "@/components/AssistantSettingsCard";
@@ -45,6 +46,7 @@ const CLIENT_STATUS_LABEL: Record<ClientSelfProfile["status"], string> = {
   at_risk: "At risk",
   paused: "Paused",
   churned: "Churned",
+  deleted: "Deleted",
 };
 
 const NICHES = [
@@ -86,9 +88,10 @@ export default function SettingsPage() {
 function CoachSettings() {
   const params = useParams<{ slug: string }>();
   const { subscription } = useSubscription();
+  const { user: cachedUser } = useCurrentUser();
   const [profile, setProfile] = useState<CoachProfile | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const userId = user?.id ?? null;
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -96,6 +99,7 @@ function CoachSettings() {
   const [otherNiche, setOtherNiche] = useState("");
   const [timezone, setTimezone] = useState("");
   const [billingCountry, setBillingCountry] = useState("");
+  const [currency, setCurrency] = useState("usd");
   const [bio, setBio] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
@@ -106,17 +110,17 @@ function CoachSettings() {
   const [copied, setCopied] = useState(false);
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [galleryError, setGalleryError] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    api
-      .me()
-      .then((u) => {
-        setUserId(u.id);
-        setUser(u);
-      })
-      .catch(() => {});
+    if (cachedUser) setUser(cachedUser);
+  }, [cachedUser]);
+
+  useEffect(() => {
     api
       .myProfile()
       .then((p) => {
@@ -131,6 +135,7 @@ function CoachSettings() {
         }
         setTimezone(p.timezone);
         setBillingCountry(p.billing_country_code ?? "");
+        setCurrency(p.currency);
         setBio(p.bio ?? "");
         setWebsiteUrl(p.website_url ?? "");
         setInstagramUrl(p.instagram_url ?? "");
@@ -164,6 +169,7 @@ function CoachSettings() {
         niche: (niche === "other" ? otherNiche : niche) || undefined,
         timezone,
         billing_country_code: billingCountry || undefined,
+        currency,
         bio: bio || undefined,
         website_url: websiteUrl || undefined,
         instagram_url: instagramUrl || undefined,
@@ -205,6 +211,32 @@ function CoachSettings() {
     }
   }
 
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError(null);
+    setLogoUploading(true);
+    try {
+      const updated = await api.uploadLogo(file);
+      setProfile(updated);
+    } catch (err) {
+      setLogoError(err instanceof ApiError ? err.message : "Couldn't upload that logo. Try again.");
+    } finally {
+      setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  }
+
+  async function removeLogo() {
+    setLogoError(null);
+    try {
+      const updated = await api.removeLogo();
+      setProfile(updated);
+    } catch (err) {
+      setLogoError(err instanceof ApiError ? err.message : "Couldn't remove that logo. Try again.");
+    }
+  }
+
   async function copyPortalLink() {
     if (!profile) return;
     const url = `${window.location.origin}/${profile.portal_slug}`;
@@ -218,7 +250,7 @@ function CoachSettings() {
   if (!profile) return null;
 
   return (
-    <div className="animate-fade-up mx-auto max-w-2xl">
+    <div className="animate-fade-up mx-auto max-w-4xl">
       <div className="mb-6">
         <Eyebrow className="mb-2">Your profile</Eyebrow>
         <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
@@ -384,6 +416,55 @@ function CoachSettings() {
 
           <div>
             <div className="mb-1.5 flex items-center justify-between">
+              <Label htmlFor="logo" className="mb-0">
+                Your own logo
+              </Label>
+              <div className="flex items-center gap-3 text-xs font-medium">
+                {profile.logo_url && (
+                  <button
+                    type="button"
+                    onClick={removeLogo}
+                    className="text-neutral-500 hover:underline"
+                  >
+                    Remove
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={logoUploading}
+                  className="text-accent-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {logoUploading ? "Uploading…" : profile.logo_url ? "Change logo" : "+ Add logo"}
+                </button>
+              </div>
+              <input
+                ref={logoInputRef}
+                id="logo"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
+            </div>
+            <p className="mb-2 text-xs text-neutral-500">
+              Replaces the CoachevaOS mark with your own in your portal and public profile.
+            </p>
+            {logoError && <p className="mb-2 text-xs text-red-600">{logoError}</p>}
+            {profile.logo_url && (
+              <div className="h-16 w-16 overflow-hidden rounded-full border border-neutral-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={api.coachLogoUrl(profile.portal_slug)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
               <Label htmlFor="gallery" className="mb-0">
                 Photos ({(profile.gallery_image_urls ?? []).length}/6)
               </Label>
@@ -464,8 +545,28 @@ function CoachSettings() {
               ))}
             </select>
             <p className="mt-1.5 text-xs text-neutral-500">
-              Drives which pricing/currency you see. Changing this won&apos;t affect an active paid
+              Drives your CoachevaOS plan pricing. Changing this won&apos;t affect an active paid
               subscription. Contact support to move an existing subscription between currencies.
+            </p>
+          </div>
+
+          <div>
+            <Label htmlFor="currency">Client billing currency</Label>
+            <select
+              id="currency"
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="w-full rounded-[10px] border border-neutral-200 bg-neutral-50/60 px-3 py-2.5 text-sm text-neutral-900 outline-none focus:border-accent-500 focus:bg-white"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs text-neutral-500">
+              Used everywhere you bill your own clients: invoices, dashboard amounts, and program
+              pricing. Separate from your CoachevaOS plan pricing above.
             </p>
           </div>
 
@@ -509,27 +610,6 @@ function CoachSettings() {
         </Card>
       )}
 
-      <Card className="mt-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-100 text-accent-600">
-              <SquaresFour className="h-4.5 w-4.5" weight="fill" />
-            </span>
-            <div>
-              <h3 className="font-heading text-sm font-semibold text-neutral-900">
-                Custom fields
-              </h3>
-              <p className="text-xs text-neutral-500">
-                Track whatever matters for your niche: body fat %, revenue, applications sent.
-              </p>
-            </div>
-          </div>
-          <Link href={`/${params.slug}/settings/custom-fields`}>
-            <Button variant="secondary">Manage fields</Button>
-          </Link>
-        </div>
-      </Card>
-
       <GoogleCalendarCard />
 
       <AssistantSettingsCard />
@@ -563,9 +643,10 @@ function LogoutCard() {
 }
 
 export function ClientSettings() {
+  const { user: cachedUser } = useCurrentUser();
   const [profile, setProfile] = useState<ClientSelfProfile | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const userId = user?.id ?? null;
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [name, setName] = useState("");
   const [timezone, setTimezone] = useState("");
@@ -575,13 +656,10 @@ export function ClientSettings() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    api
-      .me()
-      .then((u) => {
-        setUserId(u.id);
-        setUser(u);
-      })
-      .catch(() => {});
+    if (cachedUser) setUser(cachedUser);
+  }, [cachedUser]);
+
+  useEffect(() => {
     api
       .getMyClientProfile()
       .then((p) => {
@@ -625,7 +703,7 @@ export function ClientSettings() {
   if (!profile) return null;
 
   return (
-    <div className="animate-fade-up mx-auto max-w-lg">
+    <div className="animate-fade-up mx-auto max-w-2xl">
       <div className="mb-6">
         <Eyebrow className="mb-2">Your profile</Eyebrow>
         <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">

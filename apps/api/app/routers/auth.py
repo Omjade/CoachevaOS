@@ -39,7 +39,7 @@ from app.security import (
     hash_password,
     verify_password,
 )
-from app.storage import read_file, save_upload
+from app.storage import get_presigned_url, read_file, save_upload
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -365,6 +365,13 @@ async def get_user_avatar(
     target = await db.get(User, user_id)
     if target is None or not target.avatar_url:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No avatar set")
+
+    # Redirect straight to S3 when configured -- the browser fetches the
+    # image directly instead of round-tripping through this backend. Falls
+    # through to the proxied read below on local disk or any presign failure.
+    presigned = get_presigned_url(target.avatar_url)
+    if presigned:
+        return RedirectResponse(presigned)
 
     content = await read_file(target.avatar_url)
     if content is None:

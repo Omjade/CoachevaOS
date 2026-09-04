@@ -74,12 +74,24 @@ export default function ChatThread({
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingSentRef = useRef(false);
+  // Tracks the optimistic local message waiting to be reconciled with the
+  // real one, whichever arrives first — the POST response or the websocket
+  // echo — so the send never has to wait for a round-trip to appear.
+  const pendingTempIdRef = useRef<string | null>(null);
 
   function refresh() {
     api.listMessages(threadId).then(setMessages).catch(() => {});
   }
 
   useEffect(() => {
+    // Switching threads (no remount, per the fix in ChatInbox.tsx) — reset
+    // per-thread local state explicitly so an unsent draft or a stale error
+    // for the previous conversation doesn't carry over into this one.
+    setText("");
+    setSendError(null);
+    setTyping(false);
+    setMessages([]);
+    pendingTempIdRef.current = null;
     refresh();
     api
       .getThreadPresence(threadId)
@@ -96,7 +108,13 @@ export default function ChatThread({
   const { state: socketState, send } = useChatSocket({
     onMessage: (message) => {
       if (message.thread_id !== threadId) return;
-      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === message.id)) return prev;
+        const tempId = message.sender_id === meId ? pendingTempIdRef.current : null;
+        const withoutTemp = tempId ? prev.filter((m) => m.id !== tempId) : prev;
+        return [...withoutTemp, message];
+      });
+      if (message.sender_id === meId) pendingTempIdRef.current = null;
       if (message.sender_id !== meId) {
         api.markThreadRead(threadId).catch(() => {});
       }
@@ -134,10 +152,31 @@ export default function ChatThread({
     const body = text.trim();
     setText("");
     setSendError(null);
+
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    pendingTempIdRef.current = tempId;
+    const optimistic: MessageData = {
+      id: tempId,
+      thread_id: threadId,
+      sender_id: meId,
+      type: "text",
+      body,
+      media_url: null,
+      created_at: new Date().toISOString(),
+      read_at: null,
+    };
+    setMessages((prev) => [...prev, optimistic]);
+
     try {
       const message = await api.sendMessage(threadId, body);
-      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+      if (pendingTempIdRef.current === tempId) pendingTempIdRef.current = null;
+      setMessages((prev) => {
+        const withoutTemp = prev.filter((m) => m.id !== tempId);
+        return withoutTemp.some((m) => m.id === message.id) ? withoutTemp : [...withoutTemp, message];
+      });
     } catch (err) {
+      if (pendingTempIdRef.current === tempId) pendingTempIdRef.current = null;
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       // Restore what they typed — a failed send shouldn't silently lose it.
       setText(body);
       setSendError(err instanceof ApiError ? err.message : "Couldn't send. Try again.");
@@ -218,13 +257,14 @@ export default function ChatThread({
       <div className="flex-1 space-y-2 overflow-y-auto p-4">
         {messages.map((m) => {
           const mine = m.sender_id === meId;
+          const pending = m.id.startsWith("temp-");
           const Icon = MEDIA_ICON[m.type];
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-xs rounded-2xl px-3.5 py-2.5 text-sm ${
+                className={`max-w-xs rounded-2xl px-3.5 py-2.5 text-sm transition-opacity ${
                   mine ? "bg-accent-600 text-white" : "bg-neutral-100 text-neutral-900"
-                }`}
+                } ${pending ? "opacity-60" : ""}`}
               >
                 {m.type === "text" && <p>{m.body}</p>}
 
@@ -257,7 +297,7 @@ export default function ChatThread({
                 )}
 
                 <p className={`mt-1 text-right text-[10px] ${mine ? "text-white/70" : "text-neutral-400"}`}>
-                  {formatTime(m.created_at)}
+                  {pending ? "Sending…" : formatTime(m.created_at)}
                 </p>
               </div>
             </div>

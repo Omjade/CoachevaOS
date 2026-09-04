@@ -1,8 +1,6 @@
 import Link from "next/link";
 import {
-  CircleWavyCheckIcon as CircleWavyCheck,
   XLogoIcon as XLogo,
-  FacebookLogoIcon as FacebookLogo,
   InstagramLogoIcon as InstagramLogo,
   LinkedinLogoIcon as LinkedinLogo,
   ArrowUpIcon as ArrowUp,
@@ -18,10 +16,9 @@ const FOOTER_LINKS = [
 ];
 
 const SOCIALS = [
-  { icon: XLogo, label: "Twitter / X" },
-  { icon: FacebookLogo, label: "Facebook" },
-  { icon: InstagramLogo, label: "Instagram" },
-  { icon: LinkedinLogo, label: "LinkedIn" },
+  { icon: InstagramLogo, label: "Instagram", href: "https://www.instagram.com/coachevaos" },
+  { icon: LinkedinLogo, label: "LinkedIn", href: "https://www.linkedin.com/company/coachevaos" },
+  { icon: XLogo, label: "Twitter / X", href: "https://www.x.com/coachevaos" },
 ];
 
 export default function SiteFooter() {
@@ -33,8 +30,8 @@ export default function SiteFooter() {
         </span>
 
         <div className="relative z-10 flex flex-col items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-(--radius-sm) bg-neutral-900 text-neutral-100">
-            <CircleWavyCheck className="h-4.5 w-4.5" weight="fill" />
+          <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-(--radius-sm) bg-neutral-900">
+            <img src="/coachevaos-logo.png" alt="" className="h-full w-full object-cover" />
           </span>
           <p className="font-heading max-w-[220px] text-[16px] leading-snug font-semibold text-neutral-900 md:text-[17px]">
             Run your coaching practice with more clarity.
@@ -46,10 +43,12 @@ export default function SiteFooter() {
         </div>
 
         <div className="relative z-10 flex flex-wrap items-center justify-center gap-2.5">
-          {SOCIALS.map(({ icon: Icon, label }) => (
+          {SOCIALS.map(({ icon: Icon, label, href }) => (
             <a
               key={label}
-              href="#"
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
               className="group flex w-[92px] items-center justify-between rounded-[11px] bg-white px-3 py-2 text-[11px] font-medium text-neutral-800 shadow-[0_8px_16px_rgba(28,29,31,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_22px_rgba(28,29,31,0.12)]"
             >
               {label}

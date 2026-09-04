@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
 import { invalidateCurrentUser } from "@/lib/useCurrentUser";
+import { invalidateOwnSlug } from "@/lib/useOwnSlug";
 
 // Shared by both settings pages (CoachSettings/ClientSettings) — logout
 // moved here from the sidebar identity block per the "logout belongs in
@@ -12,5 +13,6 @@ export async function performLogout() {
     // shouldn't strand the user unable to leave the app.
   }
   invalidateCurrentUser();
+  invalidateOwnSlug();
   window.location.href = "/login";
 }

@@ -37,6 +37,8 @@ class ClientDetailOut(ClientOut):
     timezone: str = "UTC"
     niche: str | None = None
     billing_currency: str | None = None
+    coaching_start_date: date | None = None
+    coaching_end_date: date | None = None
 
 
 class InviteInfoOut(BaseModel):
@@ -71,6 +73,13 @@ class ClientUpdate(BaseModel):
     billing_currency: str | None = None
 
 
+class CoachingDatesUpdate(BaseModel):
+    # Always assigned (never skipped on None) so either date can be cleared
+    # once set — same shape as billing.py's SubscriptionUpdate.
+    coaching_start_date: date | None
+    coaching_end_date: date | None
+
+
 class ClientSelfProfileOut(BaseModel):
     id: uuid.UUID
     name: str
@@ -88,6 +97,8 @@ class ClientSelfProfileOut(BaseModel):
     # show a falsely-reassuring "Active" on the client's own side while the
     # coach's side correctly shows "Overdue".
     billing_status: str = "not_set"
+    coaching_start_date: date | None = None
+    coaching_end_date: date | None = None
     # Coach-managed, client-visible-but-not-editable — the coach edits these
     # via PATCH /clients/{id}; the client should be able to SEE their own
     # niche/phone/status, not change them, so there's no matching field on

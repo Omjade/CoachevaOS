@@ -8,6 +8,7 @@ import { useViewerRole } from "@/lib/useViewerRole";
 import { COUNTRIES } from "@/lib/countries";
 import { listTimezones, timezoneLabel } from "@/lib/timezones";
 import CustomFieldsCard from "@/components/CustomFieldsCard";
+import Confetti from "@/components/Confetti";
 
 const TIMEZONES = listTimezones();
 
@@ -133,6 +134,7 @@ function ClientOnboardingForm({ slug }: { slug: string }) {
   if (submitted) {
     return (
       <Card>
+        <Confetti />
         <h1 className="font-heading mb-1 text-xl font-semibold text-neutral-900">Thanks, you&apos;re all set!</h1>
         <p className="mb-4 text-sm text-neutral-600">
           Your coach can now see your goals and get started.

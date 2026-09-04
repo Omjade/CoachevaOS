@@ -1,14 +1,97 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   GlobeIcon as Globe,
   InstagramLogoIcon as InstagramLogo,
   LinkedinLogoIcon as LinkedinLogo,
 } from "@phosphor-icons/react";
-import { api, PortalPublic, ProgramTemplate } from "@/lib/api";
-import { Card, Eyebrow } from "@/components/ui";
+import { api, ApiError, PortalPublic, ProgramTemplate } from "@/lib/api";
+import { Card, Eyebrow, Button, Input, Label } from "@/components/ui";
 import { nicheDisplayLabel } from "@/lib/niche";
+
+function ContactCard({ slug, coachName }: { slug: string; coachName: string }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.submitPortalContact(slug, { name, email, message: message || undefined });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't send that. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <Card className="bg-neutral-900 text-center">
+        <p className="text-sm text-white">
+          Thanks, {name.split(" ")[0]}. {coachName} will be in touch.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="bg-neutral-900">
+      <p className="mb-4 text-sm text-white">
+        Want to work with {coachName}? Get in touch to get started.
+      </p>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div>
+          <Label htmlFor="contact-name" className="text-neutral-300!">
+            Your name
+          </Label>
+          <Input
+            id="contact-name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="contact-email" className="text-neutral-300!">
+            Email
+          </Label>
+          <Input
+            id="contact-email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="contact-message" className="text-neutral-300!">
+            Message (optional)
+          </Label>
+          <textarea
+            id="contact-message"
+            rows={3}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full resize-none rounded-(--radius-sm) border border-white/15 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-neutral-500 focus:border-accent-500"
+          />
+        </div>
+        {error && <p className="text-xs text-accent-400">{error}</p>}
+        <Button type="submit" disabled={submitting} className="w-full">
+          {submitting ? "Sending…" : "Get in touch"}
+        </Button>
+      </form>
+    </Card>
+  );
+}
 
 // The truly public, no-login-required equivalent of AboutCoachCard — a real
 // standalone page (not an embedded card) at a coach's own /{slug}, meant to
@@ -51,6 +134,12 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
   return (
     <div className="flex flex-1 justify-center bg-neutral-100 px-6 py-16">
       <div className="w-full max-w-2xl">
+        {portal.logo_url && (
+          <div className="mb-5 h-14 w-14 overflow-hidden rounded-full border border-neutral-200 bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={api.coachLogoUrl(slug)} alt="" className="h-full w-full object-cover" />
+          </div>
+        )}
         <Eyebrow className="mb-4">{nicheDisplayLabel(portal.niche)}</Eyebrow>
         <h1 className="font-heading mb-2 text-3xl font-semibold tracking-tight text-neutral-900">
           {displayName}
@@ -124,11 +213,18 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
           </div>
         )}
 
-        <Card className="bg-neutral-900 text-center">
-          <p className="text-sm text-white">
-            Want to work with {portal.coach_name}? Reach out directly to get started.
-          </p>
-        </Card>
+        {portal.featured_form_slug ? (
+          <Card className="bg-neutral-900 text-center">
+            <p className="mb-4 text-sm text-white">
+              Want to work with {portal.coach_name}? Get started below.
+            </p>
+            <Link href={`/${slug}/${portal.featured_form_slug}`}>
+              <Button className="w-full">Get in touch</Button>
+            </Link>
+          </Card>
+        ) : (
+          <ContactCard slug={slug} coachName={portal.coach_name} />
+        )}
       </div>
     </div>
   );

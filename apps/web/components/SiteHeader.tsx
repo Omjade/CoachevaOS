@@ -2,11 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  CircleWavyCheckIcon as CircleWavyCheck,
-  ListIcon as ListMenu,
-  XIcon as X,
-} from "@phosphor-icons/react";
+import { ListIcon as ListMenu, XIcon as X } from "@phosphor-icons/react";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -25,8 +21,8 @@ export default function SiteHeader({ variant = "static" }: { variant?: "hero" | 
       }`}
     >
       <Link href="/" className="flex shrink-0 items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-900 text-neutral-100">
-          <CircleWavyCheck className="h-3.5 w-3.5" weight="fill" />
+        <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-neutral-900">
+          <img src="/coachevaos-logo.png" alt="" className="h-full w-full object-cover" />
         </span>
         <span className="font-heading text-sm font-bold text-neutral-900">CoachevaOS</span>
       </Link>

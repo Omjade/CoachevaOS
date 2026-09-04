@@ -80,7 +80,7 @@ async def get_analytics_summary(
     tasks_result = await db.execute(
         select(Task.done)
         .join(Client, Client.id == Task.client_id)
-        .where(Client.coach_id == coach.id)
+        .where(Client.coach_id == coach.id, Client.status != ClientStatus.deleted)
     )
     task_done_flags = [row[0] for row in tasks_result.all()]
     tasks_total = len(task_done_flags)

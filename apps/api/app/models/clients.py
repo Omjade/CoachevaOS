@@ -49,9 +49,16 @@ class Client(Base, UUIDPk):
     # What this client is billed in (invoices, program pricing shown on their
     # pages) — distinct from the coach's own platform-subscription currency.
     # Nullable: unset means "not chosen yet," and every amount display falls
-    # back to USD, matching today's implicit behavior exactly (zero visual
-    # change for a coach who never touches this).
+    # back to the coach's own CoachProfile.currency (see billing.py's
+    # _effective_currency), not a hardcoded literal.
     billing_currency: Mapped[str | None] = mapped_column(String(3))
+    # A flexible coaching-engagement window, separate from the billing-
+    # subscription dates above — this is "when are we working together,"
+    # editable anytime by the coach. The nightly status-sweep flips a client
+    # to at_risk once coaching_end_date passes, same non-destructive pattern
+    # already used for subscription expiry.
+    coaching_start_date: Mapped[date | None] = mapped_column(Date)
+    coaching_end_date: Mapped[date | None] = mapped_column(Date)
     # Short opaque invite code (e.g. "aB3dEfGh") replacing a self-contained
     # signed JWT as the /invite/{code} link's identifier — same 14-day expiry
     # semantics, just a DB lookup instead of a decode, and a much shorter URL

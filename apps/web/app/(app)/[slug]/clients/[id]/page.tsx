@@ -2,6 +2,7 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CopySimpleIcon as CopySimple,
   CheckIcon as Check,
@@ -22,10 +23,12 @@ import {
   User,
 } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import { buildInviteMessage } from "@/lib/inviteMessage";
 import { getNicheConfig } from "@/lib/niche";
 import { NICHES } from "@/lib/niches";
 import { Button, Card, Input } from "@/components/ui";
+import Dialog from "@/components/Dialog";
 import TaskList from "@/components/TaskList";
 import DocumentList from "@/components/DocumentList";
 import ClientBillingCard from "@/components/ClientBillingCard";
@@ -64,7 +67,14 @@ const STATUS_LABEL: Record<ClientDetail["status"], string> = {
   at_risk: "At risk",
   paused: "Paused",
   churned: "Churned",
+  deleted: "Deleted",
 };
+// "deleted" is a real, coach-facing status flip (see delete_client on the
+// backend) but never a manual dropdown option — it only happens through the
+// dedicated delete action below, with its own confirmation.
+const SELECTABLE_STATUSES = (Object.keys(STATUS_LABEL) as ClientDetail["status"][]).filter(
+  (s) => s !== "deleted"
+);
 
 export default function ClientProfilePage({
   params,
@@ -72,8 +82,19 @@ export default function ClientProfilePage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const { id, slug } = use(params);
+  const router = useRouter();
   const roleOk = useRoleGuard("coach");
+  const { user: coach } = useCurrentUser();
   const [client, setClient] = useState<ClientDetail | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirmName, setConfirmName] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [coachingStart, setCoachingStart] = useState("");
+  const [coachingEnd, setCoachingEnd] = useState("");
+  const [coachingDatesSaving, setCoachingDatesSaving] = useState(false);
+  const [coachingDatesSaved, setCoachingDatesSaved] = useState(false);
+  const [coachingDatesError, setCoachingDatesError] = useState<string | null>(null);
   const [intake, setIntake] = useState<IntakeResponseData | null | "loading">("loading");
   const [copied, setCopied] = useState(false);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
@@ -83,7 +104,6 @@ export default function ClientProfilePage({
   const [messageText, setMessageText] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskData[]>([]);
   const [documents, setDocuments] = useState<DocumentData[]>([]);
-  const [coach, setCoach] = useState<User | null>(null);
   const [profile, setProfile] = useState<CoachProfile | null>(null);
   const [notes, setNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
@@ -119,6 +139,39 @@ export default function ClientProfilePage({
     }
   }
 
+  async function saveCoachingDates() {
+    setCoachingDatesSaving(true);
+    setCoachingDatesError(null);
+    try {
+      const updated = await api.updateCoachingDates(id, {
+        coaching_start_date: coachingStart || null,
+        coaching_end_date: coachingEnd || null,
+      });
+      setClient(updated);
+      setCoachingDatesSaved(true);
+      setTimeout(() => setCoachingDatesSaved(false), 2000);
+    } catch (err) {
+      setCoachingDatesError(
+        err instanceof ApiError ? err.message : "Couldn't save. Try again."
+      );
+    } finally {
+      setCoachingDatesSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!client || confirmName !== client.name) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.deleteClient(id);
+      router.push(`/${slug}/clients`);
+    } catch (err) {
+      setDeleteError(err instanceof ApiError ? err.message : "Couldn't delete this client. Try again.");
+      setDeleting(false);
+    }
+  }
+
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -149,6 +202,8 @@ export default function ClientProfilePage({
       setProgramText(c.program ?? "");
       setNicheText(c.niche ?? "");
       setPhoneText(c.phone ?? "");
+      setCoachingStart(c.coaching_start_date ?? "");
+      setCoachingEnd(c.coaching_end_date ?? "");
       return c;
     });
   }
@@ -159,7 +214,6 @@ export default function ClientProfilePage({
       .getClientIntake(id)
       .then(setIntake)
       .catch((err) => setIntake(err instanceof ApiError && err.status === 404 ? null : null));
-    api.me().then(setCoach).catch(() => {});
     api.myProfile().then(setProfile).catch(() => {});
     refreshTasks();
     refreshDocuments();
@@ -323,7 +377,7 @@ export default function ClientProfilePage({
             disabled={statusSaving}
             className="mb-4 rounded-full bg-accent-100 px-2.5 py-0.5 text-xs font-medium text-accent-700 outline-none disabled:opacity-60"
           >
-            {(Object.keys(STATUS_LABEL) as ClientDetail["status"][]).map((s) => (
+            {SELECTABLE_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {STATUS_LABEL[s]}
               </option>
@@ -421,8 +475,69 @@ export default function ClientProfilePage({
               onDone={() => setGoalsRefreshKey((k) => k + 1)}
             />
           </div>
+          <div className="mt-3 w-full border-t border-neutral-100 pt-3">
+            <p className="mb-1.5 text-xs font-medium text-neutral-500">Coaching period</p>
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={coachingStart}
+                onChange={(e) => setCoachingStart(e.target.value)}
+                className="text-xs"
+              />
+              <span className="text-xs text-neutral-400">to</span>
+              <Input
+                type="date"
+                value={coachingEnd}
+                onChange={(e) => setCoachingEnd(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Button
+                variant="secondary"
+                className="!px-3 !py-1.5 text-xs"
+                loading={coachingDatesSaving}
+                onClick={saveCoachingDates}
+              >
+                {coachingDatesSaved ? "Saved" : "Save"}
+              </Button>
+            </div>
+            {coachingDatesError && (
+              <p className="mt-1.5 text-xs text-red-600">{coachingDatesError}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className="mt-3 text-xs font-medium text-neutral-400 hover:text-red-600"
+          >
+            Delete client
+          </button>
         </Card>
       </aside>
+
+      <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete this client">
+        <p className="mb-4 text-sm text-neutral-600">
+          This archives {client.name}. They&apos;ll disappear from your client list, but their
+          messages, documents, and invoices are kept. This can&apos;t be undone from here. Type{" "}
+          <span className="font-semibold">{client.name}</span> to confirm.
+        </p>
+        <Input
+          className="mb-4"
+          value={confirmName}
+          onChange={(e) => setConfirmName(e.target.value)}
+          placeholder={client.name}
+        />
+        {deleteError && <p className="mb-3 text-xs text-red-600">{deleteError}</p>}
+        <Button
+          variant="secondary"
+          disabled={confirmName !== client.name}
+          loading={deleting}
+          onClick={handleDelete}
+        >
+          Delete {client.name}
+        </Button>
+      </Dialog>
 
       <div className="flex flex-1 flex-col gap-6">
         <Card>
@@ -550,7 +665,7 @@ export default function ClientProfilePage({
           listEntries={(defId) => api.listClientMetricEntries(id, defId)}
           createEntry={(defId, body) => api.createClientMetricEntry(id, defId, body)}
         />
-        <ProgressCard fetchInsight={() => api.getClientProgressInsight(id)} />
+        <ProgressCard fetchInsight={(force) => api.getClientProgressInsight(id, force)} />
         <GoalsAndProgress
           key={goalsRefreshKey}
           listGoals={() => api.listClientGoals(id)}

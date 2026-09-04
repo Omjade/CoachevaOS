@@ -7,6 +7,8 @@ export interface Testimonial {
   /** 0-100 percent position over /Black WOrld.png, used by CoachMapCarousel's pin. */
   mapX: number;
   mapY: number;
+  /** Path under /public. Optional — falls back to an initials circle when unset. */
+  photoUrl?: string;
 }
 
 export const TESTIMONIALS: Testimonial[] = [
@@ -18,15 +20,17 @@ export const TESTIMONIALS: Testimonial[] = [
     location: "Austin, TX",
     mapX: 24,
     mapY: 46,
+    photoUrl: "/Professional Fitness Portrait Card.png",
   },
   {
     id: "daniel",
-    quote: "My clients feel the difference — everything's in one place now.",
+    quote: "My clients feel the difference, everything's in one place now.",
     name: "Daniel Osei",
     role: "Business coach",
     location: "Toronto, ON",
     mapX: 27,
     mapY: 34,
+    photoUrl: "/daniel-osei-business-coach.png",
   },
   {
     id: "priya",
@@ -36,6 +40,7 @@ export const TESTIMONIALS: Testimonial[] = [
     location: "London, UK",
     mapX: 48,
     mapY: 30,
+    photoUrl: "/career-coach-priya-nair.png",
   },
   {
     id: "leo",
@@ -45,5 +50,6 @@ export const TESTIMONIALS: Testimonial[] = [
     location: "Sydney, AU",
     mapX: 87,
     mapY: 78,
+    photoUrl: "/leo-whitfield-executive-coach.png",
   },
 ];

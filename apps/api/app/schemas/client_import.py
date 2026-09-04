@@ -25,3 +25,11 @@ class ImportSkip(BaseModel):
 class ImportCommitOut(BaseModel):
     created: int
     skipped: list[ImportSkip]
+    # Of the skipped rows above, how many were saved for automatic retry
+    # (over-plan-limit only, never other validation failures) — the coach
+    # never has to re-upload the file once they upgrade.
+    pending_saved: int = 0
+
+
+class PendingImportCountOut(BaseModel):
+    count: int

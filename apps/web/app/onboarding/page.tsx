@@ -7,11 +7,13 @@ import { api, ApiError, User } from "@/lib/api";
 import { Button, Card, ErrorBanner, Eyebrow, Input, Label } from "@/components/ui";
 import { NICHES } from "@/lib/niches";
 import { COUNTRIES } from "@/lib/countries";
+import Confetti from "@/components/Confetti";
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
+  const [celebrating, setCelebrating] = useState(false);
   const [slug, setSlug] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [niche, setNiche] = useState<(typeof NICHES)[number]["value"]>("fitness");
@@ -64,7 +66,8 @@ export default function OnboardingPage() {
       // triggers api.ts's existing refresh-on-401 retry proactively, rather
       // than the coach first discovering an expired token on the next page.
       await api.me().catch(() => {});
-      router.push(`/${profile.portal_slug}/dashboard`);
+      setCelebrating(true);
+      setTimeout(() => router.push(`/${profile.portal_slug}/dashboard`), 900);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
@@ -76,6 +79,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex flex-1 items-center justify-center bg-neutral-100 px-6 py-16">
+      {celebrating && <Confetti />}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

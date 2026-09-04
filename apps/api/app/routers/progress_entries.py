@@ -3,7 +3,7 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +14,7 @@ from app.models.progress import ProgressEntry
 from app.models.users import User
 from app.routers.clients import _get_owned_client
 from app.schemas.progress import ProgressEntryOut
-from app.storage import read_file, save_upload
+from app.storage import get_presigned_url, read_file, save_upload
 from app.utils.time import utcnow
 
 router = APIRouter(tags=["progress"])
@@ -157,6 +157,10 @@ async def get_progress_media(
     is_owning_client = client is not None and client.user_id == user.id
     if not (is_owning_coach or is_owning_client):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
+
+    presigned = get_presigned_url(entry.media_key)
+    if presigned:
+        return RedirectResponse(presigned)
 
     content = await read_file(entry.media_key)
     if content is None:

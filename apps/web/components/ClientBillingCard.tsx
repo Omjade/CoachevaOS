@@ -5,6 +5,7 @@ import { CheckIcon as Check, SparkleIcon as Sparkle } from "@phosphor-icons/reac
 import { api, ApiError, ClientBilling, ClientBillingStatus, Program } from "@/lib/api";
 import { Button, Card, ErrorBanner, Input } from "@/components/ui";
 import Dialog from "@/components/Dialog";
+import { formatMoney } from "@/lib/currency";
 
 function isOverdue(dueDate: string, paid: boolean): boolean {
   return !paid && dueDate < new Date().toISOString().slice(0, 10);
@@ -33,6 +34,10 @@ export default function ClientBillingCard({
 }) {
   const [billing, setBilling] = useState<ClientBilling | null>(null);
   const [program, setProgram] = useState<Program | null>(null);
+  // The coach's effective billing currency for this client (their own
+  // override if set, else the coach's own declared default) — the backend
+  // already resolves this correctly, no separate profile fetch needed here.
+  const currency = billing?.billing_currency ?? "usd";
   const [validFrom, setValidFrom] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [amount, setAmount] = useState("");
@@ -241,7 +246,7 @@ export default function ClientBillingCard({
               className="flex items-center justify-between rounded-sm border border-divider px-3 py-2.5 text-sm"
             >
               <span>
-                ${inv.amount.toFixed(2)} · due {inv.due_date}
+                {formatMoney(inv.amount, inv.currency)} · due {inv.due_date}
               </span>
               <div className="flex items-center gap-2">
                 {isOverdue(inv.due_date, inv.paid) && (
@@ -282,7 +287,7 @@ export default function ClientBillingCard({
                   : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
               }`}
             >
-              ${preset.toFixed(preset % 1 === 0 ? 0 : 2)}
+              {formatMoney(preset, currency)}
             </button>
           ))}
         </div>

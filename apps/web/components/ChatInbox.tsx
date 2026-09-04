@@ -125,7 +125,6 @@ export default function ChatInbox({ activeThreadId }: { activeThreadId?: string 
       <div className="flex-1">
         {activeThreadId && user ? (
           <ChatThread
-            key={activeThreadId}
             threadId={activeThreadId}
             meId={user.id}
             otherName={activeMeta?.client_name ?? "..."}

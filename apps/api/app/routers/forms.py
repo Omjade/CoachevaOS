@@ -3,7 +3,8 @@ import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, status
-from sqlalchemy import func, select
+from fastapi.responses import RedirectResponse
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.client import generate_json
@@ -27,7 +28,7 @@ from app.schemas.forms import (
     FormSubmissionOut,
     FormUpdate,
 )
-from app.storage import read_file, save_upload
+from app.storage import get_presigned_url, read_file, save_upload
 
 router = APIRouter(prefix="/forms", tags=["forms"])
 
@@ -86,6 +87,7 @@ def _to_form_out(form: Form, submission_count: int = 0) -> FormOut:
         created_at=form.created_at,
         submission_count=submission_count,
         has_image=form.image_key is not None,
+        featured_on_public_profile=form.featured_on_public_profile,
     )
 
 
@@ -188,6 +190,16 @@ async def update_form(
         form.fields_json = [f.model_dump(mode="json") for f in body.fields]
     if body.is_active is not None:
         form.is_active = body.is_active
+    if body.featured_on_public_profile is not None:
+        if body.featured_on_public_profile:
+            # At most one featured form per coach — unset any other form's
+            # flag rather than enforcing it as a DB constraint.
+            await db.execute(
+                update(Form)
+                .where(Form.coach_id == coach.id, Form.id != form.id)
+                .values(featured_on_public_profile=False)
+            )
+        form.featured_on_public_profile = body.featured_on_public_profile
     await db.commit()
     await db.refresh(form)
     return _to_form_out(form)
@@ -230,6 +242,9 @@ async def get_form_image(
     form = await _get_owned_form(db, coach, form_id)
     if not form.image_key:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No cover image set")
+    presigned = get_presigned_url(form.image_key)
+    if presigned:
+        return RedirectResponse(presigned)
     content = await read_file(form.image_key)
     if content is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No cover image set")
@@ -288,7 +303,7 @@ async def delete_form(
     if (result.scalar_one() or 0) > 0:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            "This form has submissions — deactivate it instead of deleting.",
+            "This form has submissions. Deactivate it instead of deleting.",
         )
     await db.delete(form)
     await db.commit()
@@ -419,7 +434,7 @@ async def export_submissions_pdf(
     styles = getSampleStyleSheet()
     elements = [
         Paragraph(brand_name, styles["Normal"]),
-        Paragraph(f"{form.title} — submissions", styles["Title"]),
+        Paragraph(f"{form.title}: submissions", styles["Title"]),
         Spacer(1, 6),
     ]
 

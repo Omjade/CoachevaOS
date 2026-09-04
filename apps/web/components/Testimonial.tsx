@@ -23,8 +23,13 @@ export default function Testimonial({ niche }: { niche?: string }) {
       <blockquote className="mb-4 text-[15px] leading-relaxed text-neutral-800">
         &ldquo;{t.quote}&rdquo;
       </blockquote>
-      <figcaption className="text-xs text-neutral-500">
-        <span className="font-medium text-neutral-700">{t.name}</span> · {t.role} · {t.location}
+      <figcaption className="flex items-center gap-2.5 text-xs text-neutral-500">
+        {t.photoUrl && (
+          <img src={t.photoUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+        )}
+        <span>
+          <span className="font-medium text-neutral-700">{t.name}</span> · {t.role} · {t.location}
+        </span>
       </figcaption>
     </figure>
   );

@@ -8,6 +8,7 @@ import { GoogleLogoIcon as GoogleLogo } from "@phosphor-icons/react";
 import { api, ApiError, API_URL, InvitePreview } from "@/lib/api";
 import { Button, Card, ErrorBanner, Eyebrow, Input, Label } from "@/components/ui";
 import { invalidateCurrentUser } from "@/lib/useCurrentUser";
+import { invalidateOwnSlug } from "@/lib/useOwnSlug";
 
 type PreviewState = InvitePreview | "invalid" | "already_used" | null;
 
@@ -37,6 +38,7 @@ export default function InviteAcceptPage({
     try {
       const result = await api.acceptInvite(token, password);
       invalidateCurrentUser();
+      invalidateOwnSlug();
       router.push(
         result.portal_slug ? `/${result.portal_slug}/client/${result.client_id}/onboarding` : "/"
       );

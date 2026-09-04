@@ -82,6 +82,30 @@ def resolve_path(key: str) -> Path:
     return path
 
 
+def get_presigned_url(
+    key: str, expires_in: int = 900, content_disposition: str | None = None
+) -> str | None:
+    """A short-lived (default 15 min) direct-to-S3 GET URL — lets the browser
+    fetch the object straight from S3/CloudFront instead of round-tripping
+    through this backend (save_upload/read_file's proxy path), which was the
+    real, sitewide root cause of "images take time to load" (every avatar,
+    gallery image, document, progress photo). Returns None when S3 isn't
+    configured (local-disk dev) or on any presigning error — callers must
+    fall back to the existing proxy-read path in that case, never treat a
+    None as an error."""
+    client = _get_s3_client()
+    if client is None:
+        return None
+    try:
+        params = {"Bucket": settings.s3_bucket, "Key": _s3_key(key)}
+        if content_disposition:
+            params["ResponseContentDisposition"] = content_disposition
+        return client.generate_presigned_url("get_object", Params=params, ExpiresIn=expires_in)
+    except Exception:
+        logger.exception("Failed to presign S3 URL, falling back to proxied read")
+        return None
+
+
 async def read_file(key: str) -> bytes | None:
     """Reads file content regardless of backend. Returns None if not found anywhere."""
     client = _get_s3_client()

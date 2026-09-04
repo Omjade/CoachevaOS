@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +15,7 @@ from app.models.messaging import Thread
 from app.models.users import User
 from app.routers.threads import _create_and_broadcast
 from app.schemas.documents import DocumentOut, DocumentShareOut, DocumentShareRequest
-from app.storage import read_file, save_upload
+from app.storage import get_presigned_url, read_file, save_upload
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -135,9 +135,24 @@ async def share_document_with_clients(
             db.add(shared_doc)
             await db.flush()
 
-        message_body = f'{coach.name} shared a document with you: "{doc.name}"\n/documents/{shared_doc.id}/download'
+        # Send it as a real attachment message (same MessageType/media_url
+        # shape threads.py's direct-upload path already uses correctly),
+        # not a plain-text link — media_url is the storage key, matching
+        # get_message_media's expectations.
+        type_map = {
+            "image": MessageType.image,
+            "pdf": MessageType.pdf,
+            "video": MessageType.video,
+            "voice": MessageType.voice,
+            "file": MessageType.pdf,
+        }
         await _create_and_broadcast(
-            db, thread, coach, type_=MessageType.text, body=message_body, media_url=None
+            db,
+            thread,
+            coach,
+            type_=type_map.get(doc.type, MessageType.pdf),
+            body=doc.name,
+            media_url=shared_doc.s3_key,
         )
         sent += 1
     return DocumentShareOut(sent=sent)
@@ -199,6 +214,12 @@ async def download_document(
 
     if not (is_owning_coach or is_owning_client):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not authorized")
+
+    presigned = get_presigned_url(
+        doc.s3_key, content_disposition=f'attachment; filename="{doc.name}"'
+    )
+    if presigned:
+        return RedirectResponse(presigned)
 
     content = await read_file(doc.s3_key)
     if content is None:

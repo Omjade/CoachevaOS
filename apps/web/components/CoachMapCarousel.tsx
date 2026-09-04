@@ -93,10 +93,19 @@ export default function CoachMapCarousel() {
             <p className="relative text-[17px] leading-snug font-medium text-neutral-900">
               {testimonial.quote}
             </p>
-            <p className="mt-4 text-[12px] text-neutral-500">
-              <span className="font-medium text-neutral-700">{testimonial.name}</span> ·{" "}
-              {testimonial.role}
-            </p>
+            <div className="mt-4 flex items-center gap-2">
+              {testimonial.photoUrl && (
+                <img
+                  src={testimonial.photoUrl}
+                  alt=""
+                  className="h-7 w-7 shrink-0 rounded-full object-cover"
+                />
+              )}
+              <p className="text-[12px] text-neutral-500">
+                <span className="font-medium text-neutral-700">{testimonial.name}</span> ·{" "}
+                {testimonial.role}
+              </p>
+            </div>
           </motion.div>
         </AnimatePresence>
 

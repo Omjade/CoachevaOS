@@ -1,24 +1,31 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Spinner } from "@/components/ui";
 
 // Replaces a bare `return null` during an auth/session check — on this dev
 // machine's slow first-compile (a separate, already-flagged filesystem/AV
 // issue, not fixed by this component), the gap between "page requested" and
 // "content painted" can run several seconds to minutes; a `null` render
 // during that gap shows as a flat, jarring background (near-black in dark
-// mode, per globals.css's --color-bg) with zero feedback. This at least
-// shows a spinner once JS has actually started running.
+// mode, per globals.css's --color-bg) with zero feedback. A pulsing version
+// of the real logo mark reads as more intentional/branded than a bare
+// spinner, at the same visual cost.
 //
 // `message` is used specifically for the moment right after login/signup
 // (the login/signup pages pass it while their own post-auth profile-resolve
 // calls run) — ordinary in-app navigation never sets it and gets the plain
-// spinner as before.
+// mark by itself.
 export default function FullScreenLoader({ message }: { message?: string }) {
   return (
     <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-4 bg-neutral-100">
-      <Spinner />
+      <motion.span
+        animate={{ scale: [1, 1.08, 1], opacity: [0.85, 1, 0.85] }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+        className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-neutral-900 shadow-[0_8px_24px_rgba(28,29,31,0.18)]"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/coachevaos-logo.png" alt="" className="h-full w-full object-cover" />
+      </motion.span>
       {message && (
         <motion.p
           key={message}

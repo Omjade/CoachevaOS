@@ -271,6 +271,15 @@ export default function ClientImportPage() {
             </div>
           </div>
 
+          {result.pending_saved > 0 && (
+            <div className="mb-6 rounded-[10px] bg-accent-50 px-3.5 py-3 text-xs text-accent-800">
+              {result.pending_saved} client{result.pending_saved === 1 ? "" : "s"} couldn&apos;t be
+              added because you&apos;re at your plan&apos;s client limit. They&apos;re saved. Once you
+              upgrade, they&apos;ll be added automatically, no need to re-upload this file. You can also
+              retry from the Clients page after upgrading.
+            </div>
+          )}
+
           {result.skipped.length > 0 && (
             <div className="mb-6 flex flex-col gap-2">
               {result.skipped.map((s, i) => (

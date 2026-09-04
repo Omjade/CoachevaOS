@@ -18,6 +18,7 @@ import AuthLayout from "@/components/AuthLayout";
 import FullScreenLoader from "@/components/FullScreenLoader";
 import { RESERVED_SLUGS } from "@/lib/reservedSlugs";
 import { invalidateCurrentUser } from "@/lib/useCurrentUser";
+import { invalidateOwnSlug } from "@/lib/useOwnSlug";
 
 function LoginForm() {
   const router = useRouter();
@@ -68,6 +69,7 @@ function LoginForm() {
 
   async function afterLogin(user: { role: string; name?: string }) {
     invalidateCurrentUser();
+    invalidateOwnSlug();
     setRedirecting(user.name ? `Welcome back, ${user.name.split(" ")[0]}!` : "Welcome back!");
     if (user.role === "coach") {
       if (redirect) {

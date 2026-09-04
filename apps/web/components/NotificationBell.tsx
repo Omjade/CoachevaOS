@@ -15,6 +15,7 @@ const TYPE_LABEL: Record<string, string> = {
   new_message: "New message",
   form_submitted: "New form submission",
   lead_followup: "Lead follow-up",
+  new_lead: "New lead",
   invoice_overdue: "Invoice overdue",
   client_onboarded: "Client onboarded",
   package_selected: "Package selected",
@@ -49,6 +50,7 @@ function buildHref(
       if (role === "coach") return p.thread_id ? `/${slug}/chat/${p.thread_id}` : `/${slug}/chat`;
       return `/${slug}/messages`;
     case "lead_followup":
+    case "new_lead":
       return `/${slug}/leads`;
     case "form_submitted":
       return p.form_id ? `/${slug}/forms/${p.form_id}/submissions` : `/${slug}/forms`;
@@ -104,17 +106,20 @@ export default function NotificationBell() {
     setOpen((v) => !v);
   }
 
-  async function handleItemClick(n: NotificationData) {
-    if (!n.read_at) {
-      // Low-stakes action — on failure the notification just stays unread,
-      // so this silently no-ops rather than surfacing an error UI, matching
-      // refresh()'s own silent-catch above. It must not crash the page.
-      await api.markNotificationRead(n.id).catch(() => {});
-      refresh();
-    }
+  function handleItemClick(n: NotificationData) {
     setOpen(false);
     const href = buildHref(n, params.slug, role);
     if (href) router.push(href);
+    if (!n.read_at) {
+      // Navigate first, mark-read in the background — clicking a
+      // notification shouldn't wait on two sequential network round-trips
+      // before it moves. Low-stakes action: on failure it just stays
+      // unread, so this silently no-ops rather than surfacing an error UI.
+      api
+        .markNotificationRead(n.id)
+        .then(refresh)
+        .catch(() => {});
+    }
   }
 
   async function handleMarkAll() {

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import {
   CalendarBlankIcon as CalendarBlank,
-  LinkIcon as LinkIconGlyph,
   VideoCameraIcon as VideoCamera,
   ArrowSquareOutIcon as ArrowSquareOut,
 } from "@phosphor-icons/react";
-import { api, API_URL, ApiError, GoogleCalendarEvent } from "@/lib/api";
+import { api, ApiError, GoogleCalendarEvent } from "@/lib/api";
 import { Button, Card } from "@/components/ui";
 
 function formatEventTime(e: GoogleCalendarEvent): string {
@@ -35,6 +36,7 @@ function formatEventTime(e: GoogleCalendarEvent): string {
 // too. Never rendered on any client-facing or public page: real event
 // titles/times are private to the coach.
 export default function GoogleCalendarCard() {
+  const params = useParams<{ slug: string }>();
   const [connected, setConnected] = useState<boolean | null>(null);
   const [events, setEvents] = useState<GoogleCalendarEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -80,21 +82,20 @@ export default function GoogleCalendarCard() {
       {connected === null ? null : !connected ? (
         <div className="flex items-center justify-between gap-3 rounded-[12px] border border-neutral-200 bg-neutral-50/60 px-3.5 py-2.5">
           <p className="text-xs text-neutral-600">Not connected yet.</p>
-          <a href={`${API_URL}/integrations/google/connect`}>
+          <Link href={`/${params.slug}/calendar`}>
             <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
-              <LinkIconGlyph className="h-3.5 w-3.5" />
-              Connect
+              Connect from Calendar
             </Button>
-          </a>
+          </Link>
         </div>
       ) : needsReconnect ? (
         <div className="flex items-center justify-between gap-3 rounded-[12px] border border-accent-200 bg-accent-100 px-3.5 py-2.5">
           <p className="text-xs text-neutral-700">Access expired. Reconnect to keep seeing your events.</p>
-          <a href={`${API_URL}/integrations/google/connect`}>
+          <Link href={`/${params.slug}/calendar`}>
             <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
-              Reconnect
+              Reconnect from Calendar
             </Button>
-          </a>
+          </Link>
         </div>
       ) : error ? (
         <p className="text-xs text-accent-600">

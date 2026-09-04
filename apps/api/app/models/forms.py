@@ -22,6 +22,11 @@ class Form(Base, UUIDPk, TimestampMixin):
     fields_json: Mapped[list] = mapped_column(JSONB, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     image_key: Mapped[str | None] = mapped_column(String(512))
+    # At most one True per coach, enforced in the router (not a DB constraint
+    # — a partial unique index would work too, but the check is cheap and
+    # this keeps the migration simple). When set, the public profile's "Get
+    # in touch" links to this form instead of the built-in contact card.
+    featured_on_public_profile: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class FormSubmission(Base, UUIDPk):

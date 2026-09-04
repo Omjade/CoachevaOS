@@ -10,7 +10,13 @@ from app.models.ai import AIInsight
 from app.models.billing import PlatformSubscription, RegionSignalLog
 from app.models.checkins import Checkin
 from app.models.clients import Client
-from app.models.enums import AIInsightType, PaymentProvider, SubscriptionStatus, SubscriptionTier
+from app.models.enums import (
+    AIInsightType,
+    ClientStatus,
+    PaymentProvider,
+    SubscriptionStatus,
+    SubscriptionTier,
+)
 from app.models.messaging import Thread
 from app.models.tasks import Task
 from app.models.users import CoachProfile, User
@@ -52,12 +58,14 @@ async def complete_onboarding(
     ip_country = await lookup_country(ip)
     resolved_country = body.billing_country_code or ip_country or user.country_code
 
+    is_india = resolved_country == "IN"
     profile = CoachProfile(
         user_id=user.id,
         portal_slug=body.portal_slug,
         business_name=body.business_name,
         niche=body.niche,
         billing_country_code=resolved_country,
+        currency="inr" if is_india else "usd",
     )
     db.add(profile)
     user.timezone = body.timezone
@@ -72,7 +80,6 @@ async def complete_onboarding(
         )
     )
 
-    is_india = resolved_country == "IN"
     db.add(
         PlatformSubscription(
             coach_id=user.id,
@@ -101,6 +108,7 @@ def _to_profile_out(profile: CoachProfile, user: User) -> CoachProfileOut:
         email=user.email,
         timezone=user.timezone,
         billing_country_code=profile.billing_country_code,
+        currency=profile.currency,
         bio=profile.bio,
         website_url=profile.website_url,
         instagram_url=profile.instagram_url,
@@ -160,6 +168,8 @@ async def update_my_profile(
             )
         )
         profile.billing_country_code = body.billing_country_code
+    if body.currency is not None:
+        profile.currency = body.currency
     await db.commit()
     await db.refresh(profile)
     await db.refresh(user)
@@ -200,6 +210,38 @@ async def remove_gallery_image(
     if index < 0 or index >= len(existing):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
     profile.gallery_image_urls = existing[:index] + existing[index + 1 :]
+    await db.commit()
+    await db.refresh(profile)
+    return _to_profile_out(profile, user)
+
+
+@router.post("/me/logo", response_model=CoachProfileOut)
+async def upload_logo(
+    file: UploadFile,
+    user: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> CoachProfileOut:
+    profile = await db.get(CoachProfile, user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
+    key, file_type = await save_upload(file)
+    if file_type != "image":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Please upload an image file")
+    profile.logo_url = key
+    await db.commit()
+    await db.refresh(profile)
+    return _to_profile_out(profile, user)
+
+
+@router.delete("/me/logo", response_model=CoachProfileOut)
+async def remove_logo(
+    user: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> CoachProfileOut:
+    profile = await db.get(CoachProfile, user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
+    profile.logo_url = None
     await db.commit()
     await db.refresh(profile)
     return _to_profile_out(profile, user)
@@ -253,7 +295,9 @@ async def get_needs_attention(
     elsewhere' pattern already used by compute_churn_score. This is the flagship
     'who needs me today' surface, not another data table."""
     clients_result = await db.execute(
-        select(Client, User).join(User, User.id == Client.user_id).where(Client.coach_id == coach.id)
+        select(Client, User)
+        .join(User, User.id == Client.user_id)
+        .where(Client.coach_id == coach.id, Client.status != ClientStatus.deleted)
     )
     rows = clients_result.all()
     now = utcnow()

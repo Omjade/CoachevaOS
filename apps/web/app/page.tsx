@@ -413,21 +413,31 @@ export default function LandingPage() {
 
           <CoachMapCarousel />
 
-          <p className="mt-10 text-center text-[11px] text-neutral-500">
-            Built for independent coaches managing 200 clients.
-          </p>
-          <div className="relative mt-4 overflow-hidden">
-            <div className="animate-marquee flex w-max items-center gap-8 opacity-40 grayscale">
-              {[...Array(2)].flatMap((_, dup) =>
-                ["Logoipsum", "Logoipsum", "Logoipsum", "Logoipsum"].map((label, i) => (
-                  <span
-                    key={`${dup}-${i}`}
-                    className="font-heading shrink-0 text-lg font-semibold text-neutral-500"
-                  >
-                    {label}
-                  </span>
-                ))
-              )}
+          <div className="mx-auto mt-10 max-w-3xl text-center">
+            <p className="text-[11px] text-neutral-500">
+              Built for independent coaches managing 200 clients, in any niche.
+            </p>
+            <div
+              className="relative mt-4 overflow-hidden"
+              style={{
+                maskImage: "linear-gradient(to right, transparent, black 12%, black 88%, transparent)",
+                WebkitMaskImage:
+                  "linear-gradient(to right, transparent, black 12%, black 88%, transparent)",
+              }}
+            >
+              <div className="animate-marquee flex w-max items-center gap-8">
+                {[...Array(2)].flatMap((_, dup) =>
+                  NICHES.filter((n) => n.value !== "other").map(({ value, label, Icon }) => (
+                    <span
+                      key={`${dup}-${value}`}
+                      className="flex shrink-0 items-center gap-2 text-sm font-medium text-neutral-400"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </span>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>

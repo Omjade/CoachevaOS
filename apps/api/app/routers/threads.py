@@ -3,7 +3,7 @@ import mimetypes
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, WebSocket, WebSocketDisconnect, status
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +16,7 @@ from app.models.notifications import Notification
 from app.models.users import User
 from app.schemas.messaging import MessageCreate, MessageOut, PresenceOut, ThreadOut
 from app.security import decode_token
-from app.storage import read_file, save_upload
+from app.storage import get_presigned_url, read_file, save_upload
 from app.utils.time import utcnow
 from app.ws import manager
 
@@ -300,13 +300,20 @@ async def get_message_media(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     await _get_authorized_thread(db, user, message.thread_id)
 
+    disposition = "inline" if message.type in (MessageType.image, MessageType.video) else "attachment"
+    presigned = get_presigned_url(
+        message.media_url,
+        content_disposition=f'{disposition}; filename="{message.body or "attachment"}"',
+    )
+    if presigned:
+        return RedirectResponse(presigned)
+
     content = await read_file(message.media_url)
     if content is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
 
     content_type, _ = mimetypes.guess_type(message.media_url)
     content_type = content_type or "application/octet-stream"
-    disposition = "inline" if message.type in (MessageType.image, MessageType.video) else "attachment"
     return Response(
         content=content,
         media_type=content_type,

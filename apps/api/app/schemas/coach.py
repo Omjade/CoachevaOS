@@ -53,6 +53,7 @@ class CoachProfileOut(BaseModel):
     email: str
     timezone: str
     billing_country_code: str | None = None
+    currency: str = "usd"
     bio: str | None = None
     website_url: str | None = None
     instagram_url: str | None = None
@@ -68,6 +69,7 @@ class CoachProfileUpdate(BaseModel):
     business_name: str | None = None
     niche: str | None = None
     billing_country_code: str | None = None
+    currency: str | None = None
     bio: str | None = None
     website_url: str | None = None
     instagram_url: str | None = None
@@ -81,6 +83,16 @@ class CoachProfileUpdate(BaseModel):
         v = v.strip().upper()
         if len(v) != 2:
             raise ValueError("Country code must be a 2-letter ISO code")
+        return v
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip().lower()
+        if len(v) != 3 or not v.isalpha():
+            raise ValueError("Currency must be a 3-letter ISO code, e.g. usd, inr, eur")
         return v
 
     @field_validator("bio")
@@ -110,3 +122,4 @@ class PortalPublicOut(BaseModel):
     instagram_url: str | None = None
     linkedin_url: str | None = None
     gallery_image_urls: list[str] | None = None
+    featured_form_slug: str | None = None

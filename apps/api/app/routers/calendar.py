@@ -152,6 +152,17 @@ async def book_meeting(
 
     ends_at = body.starts_at + timedelta(minutes=rules.session_length)
 
+    conflict = await db.execute(
+        select(Meeting).where(
+            Meeting.coach_id == client.coach_id,
+            Meeting.status == MeetingStatus.scheduled,
+            Meeting.starts_at < ends_at,
+            Meeting.ends_at > body.starts_at,
+        )
+    )
+    if conflict.scalar_one_or_none() is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That time was just booked. Pick another slot.")
+
     user = await db.get(User, client.user_id)
     assert user is not None
 

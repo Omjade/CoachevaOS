@@ -45,6 +45,13 @@ class CoachProfile(Base):
     # value region resolution treats as authoritative once set, since it's
     # closest to what the coach will actually enter at Paddle's own checkout.
     billing_country_code: Mapped[str | None] = mapped_column(String(2))
+    # Display currency for everything client-billing-related (invoices,
+    # dashboard money amounts) — deliberately separate from the Paddle-only
+    # India/Global platform-subscription region toggle, which only ever
+    # affects what the coach pays CoachevaOS, never what their own clients
+    # are billed. Auto-set once at onboarding from the same region signal,
+    # editable anytime after in Coach Settings.
+    currency: Mapped[str] = mapped_column(String(3), default="usd")
     brand_color: Mapped[str | None] = mapped_column(String(16))
     logo_url: Mapped[str | None] = mapped_column(String(1024))
     cal_com_url: Mapped[str | None] = mapped_column(String(1024))
