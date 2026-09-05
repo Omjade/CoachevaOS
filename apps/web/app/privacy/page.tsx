@@ -17,7 +17,7 @@ const sections = [
       "Account information you provide when you sign up: name, email address, business name, timezone, and (for coaches) your coaching niche.",
       "Client and coaching data that coaches enter or that clients submit through intake forms, check-ins, messages, tasks, documents, and progress updates. This data belongs to the coach's practice, not to CoachevaOS.",
       "Usage data such as pages visited and features used, collected automatically to keep the product reliable and to improve it.",
-      "Payment and subscription details when a coach selects a paid plan, processed by our payment providers. We do not store full card numbers on our own servers.",
+      "Payment and subscription details when a coach selects a paid plan, processed by Paddle.com, our payment provider and Merchant of Record. We do not store full card numbers on our own servers.",
     ],
   },
   {
@@ -30,11 +30,12 @@ const sections = [
     ],
   },
   {
-    heading: "Who can see what",
+    heading: "Who we share data with",
     body: [
       "Every account is scoped to its owner. A coach can only see their own clients, leads, and messages, never another coach's data.",
       "A client can only see their own records and their own coach's shared content (messages, tasks, documents, sessions), never another client's data, and never another coach's internal notes or business data.",
       "CoachevaOS staff do not access account content except as needed to provide support you've requested or to investigate a security issue.",
+      "Paddle.com receives the billing details needed to process a subscription — name, email, and payment information — and acts as Merchant of Record for sale, subscription management, tax collection and remittance, and invoicing. Paddle's own privacy practices govern that data once it's in their hands.",
     ],
   },
   {
@@ -62,6 +63,10 @@ const sections = [
     body: [
       "If we make material changes to this policy, we'll update this page and, where appropriate, notify account owners by email.",
     ],
+  },
+  {
+    heading: "Registered business address",
+    body: ["7, Narhari Nagar, Nashik, Maharashtra 422010, India"],
   },
   {
     heading: "Contact",

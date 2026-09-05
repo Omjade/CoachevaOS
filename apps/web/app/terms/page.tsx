@@ -24,11 +24,33 @@ const sections = [
     ],
   },
   {
-    heading: "3. Free trial and subscriptions",
+    heading: "3. Free trial, subscriptions & payments",
     body: [
       "New coach accounts start with a 14-day free trial. After the trial, continued access to write actions (creating/editing clients, leads, tasks, and related records) requires selecting a paid plan; read access to your existing data remains available.",
-      "Subscription fees are billed in advance on the plan's billing cycle and are non-refundable except where required by law.",
-      "You can cancel at any time; cancellation takes effect at the end of the current billing period.",
+      "All payments for CoachevaOS subscriptions are handled by our payment provider and reseller, Paddle.com. Paddle acts as the Merchant of Record for these transactions and is the seller of the subscriptions, meaning Paddle is the party you're purchasing from and the party responsible for billing, tax, and payment processing.",
+      <>
+        Refund requests are handled under{" "}
+        <a
+          href="https://www.paddle.com/legal/refund-policy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent-600 hover:underline"
+        >
+          Paddle's Refund Policy
+        </a>
+        , and your purchase is also subject to{" "}
+        <a
+          href="https://www.paddle.com/legal/checkout-buyer-terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent-600 hover:underline"
+        >
+          Paddle's Buyer Terms
+        </a>
+        . We don't maintain a separate refund policy of our own — if you have a billing question,
+        contact us and we'll help route it.
+      </>,
+      "You can cancel at any time; cancellation takes effect at the end of the current billing period, and you keep access through the period you've already paid for.",
     ],
   },
   {
