@@ -34,6 +34,12 @@ services:
         value: production
       - key: FRONTEND_URL
         value: https://coachevaos.com
+      # This backend's own public URL — replace with the real deployed API
+      # domain if it differs. Used to register Calendly/Cal.com webhook
+      # callbacks at connect time; wrong/missing value = external bookings
+      # silently don't sync (same failure mode as a missing redirect URI).
+      - key: API_BASE_URL
+        value: https://api.coachevaos.com
       - key: CORS_EXTRA_ORIGINS
         value: '["https://coachevaos.com","https://www.coachevaos.com"]'
       # Secrets and per-deploy values are never committed — Render prompts

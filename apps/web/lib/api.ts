@@ -511,6 +511,8 @@ export interface MeetingData {
   ends_at: string;
   status: MeetingStatus;
   meeting_url: string | null;
+  meeting_provider: "google" | "zoom" | null;
+  booking_source: "internal" | "calendly" | "cal_com";
 }
 
 export type CalendarProviderKey = "google" | "zoom" | "calendly" | "cal_com";
@@ -535,6 +537,11 @@ export interface GoogleCalendarEvent {
 export interface SchedulingLinks {
   calendly_url: string | null;
   cal_com_url: string | null;
+  video_provider: "google" | "zoom" | null;
+}
+
+export interface AvailabilityRulesWithTimezone extends AvailabilityRules {
+  coach_timezone: string;
 }
 
 // Check-ins
@@ -1414,7 +1421,7 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  getCoachAvailability: () => request<AvailabilityRules>("/calendar/availability"),
+  getCoachAvailability: () => request<AvailabilityRulesWithTimezone>("/calendar/availability"),
 
   getSchedulingLinks: () => request<SchedulingLinks>("/calendar/scheduling-links"),
 
@@ -1425,8 +1432,20 @@ export const api = {
 
   listMyMeetings: () => request<MeetingData[]>("/meetings/mine"),
 
-  bookMeeting: (starts_at: string) =>
-    request<MeetingData>("/meetings/book", { method: "POST", body: JSON.stringify({ starts_at }) }),
+  bookMeeting: (date: string, time: string) =>
+    request<MeetingData>("/meetings/book", { method: "POST", body: JSON.stringify({ date, time }) }),
+
+  rescheduleMeeting: (
+    meetingId: string,
+    body: { starts_at: string } | { date: string; time: string }
+  ) =>
+    request<MeetingData>(`/meetings/${meetingId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  cancelMeeting: (meetingId: string) =>
+    request<MeetingData>(`/meetings/${meetingId}/cancel`, { method: "POST" }),
 
   // Integrations
   listIntegrations: () => request<IntegrationStatus[]>("/integrations"),

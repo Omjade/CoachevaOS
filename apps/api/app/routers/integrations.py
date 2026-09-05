@@ -61,6 +61,7 @@ async def disconnect_integration(
 ) -> None:
     connection = await _get_connection(db, coach.id, provider)
     if connection is not None:
+        await _unregister_webhook(connection)
         await db.delete(connection)
         await db.commit()
 
@@ -141,6 +142,90 @@ def _decode_state(state: str, expected_provider: CalendarProvider) -> tuple[uuid
     if payload.get("type") != "integration_state" or payload.get("provider") != expected_provider.value:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid connect link")
     return uuid.UUID(payload["sub"]), payload.get("extra", "")
+
+
+async def _register_calendly_webhook(
+    http: httpx.AsyncClient, access_token: str, coach_id: uuid.UUID, user_uri: str, organization_uri: str | None
+) -> dict:
+    """Best-effort: Calendly has no per-account default webhook, so a
+    subscription must be created explicitly at connect time. Returns extra
+    fields to merge into the connection's extra_json (signing_key +
+    subscription uri) — an empty dict if this fails, which just means
+    external Calendly bookings won't sync into CoachevaOS's own calendar
+    (the "book via Calendly" link out still works either way)."""
+    signing_key = secrets.token_urlsafe(32)
+    callback_url = f"{settings.api_base_url}/webhooks/calendly/{coach_id}"
+    body: dict = {
+        "url": callback_url,
+        "events": ["invitee.created", "invitee.canceled"],
+        "scope": "user",
+        "user": user_uri,
+        "signing_key": signing_key,
+    }
+    if organization_uri:
+        body["organization"] = organization_uri
+    try:
+        res = await http.post(
+            "https://api.calendly.com/webhook_subscriptions",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json=body,
+        )
+        if res.status_code not in (200, 201):
+            return {}
+        subscription_uri = res.json().get("resource", {}).get("uri")
+        return {
+            "webhook_signing_key": signing_key,
+            "webhook_subscription_uri": subscription_uri,
+            "calendly_user_uri": user_uri,
+        }
+    except httpx.HTTPError:
+        return {}
+
+
+async def _register_calcom_webhook(
+    http: httpx.AsyncClient, access_token: str, coach_id: uuid.UUID
+) -> dict:
+    """Same best-effort posture as _register_calendly_webhook above."""
+    secret = secrets.token_urlsafe(32)
+    callback_url = f"{settings.api_base_url}/webhooks/calcom/{coach_id}"
+    try:
+        res = await http.post(
+            "https://api.cal.com/v2/webhooks",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "subscriberUrl": callback_url,
+                "triggers": ["BOOKING_CREATED", "BOOKING_CANCELLED", "BOOKING_RESCHEDULED"],
+                "active": True,
+                "secret": secret,
+            },
+        )
+        if res.status_code not in (200, 201):
+            return {}
+        data = res.json().get("data", res.json())
+        return {"webhook_secret": secret, "webhook_id": data.get("id")}
+    except httpx.HTTPError:
+        return {}
+
+
+async def _unregister_webhook(connection: CalendarConnection) -> None:
+    """Best-effort cleanup on disconnect — never blocks the disconnect itself
+    on a failed revoke call, matching this app's existing revoke-is-optional
+    posture (e.g. account deletion, integration token refresh failures)."""
+    extra = connection.extra_json or {}
+    try:
+        async with httpx.AsyncClient() as http:
+            if connection.provider == CalendarProvider.calendly and extra.get("webhook_subscription_uri"):
+                await http.delete(
+                    extra["webhook_subscription_uri"],
+                    headers={"Authorization": f"Bearer {connection.access_token}"},
+                )
+            elif connection.provider == CalendarProvider.cal_com and extra.get("webhook_id"):
+                await http.delete(
+                    f"https://api.cal.com/v2/webhooks/{extra['webhook_id']}",
+                    headers={"Authorization": f"Bearer {connection.access_token}"},
+                )
+    except httpx.HTTPError:
+        pass
 
 
 async def _upsert_connection(
@@ -275,6 +360,15 @@ async def integration_callback(
             )
             me_data = me.json().get("resource", {}) if me.status_code == 200 else {}
             label = me_data.get("scheduling_url") or me_data.get("email")
+            webhook_extra = {}
+            if me_data.get("uri"):
+                webhook_extra = await _register_calendly_webhook(
+                    http,
+                    tokens["access_token"],
+                    coach_id,
+                    user_uri=me_data["uri"],
+                    organization_uri=me_data.get("current_organization"),
+                )
             await _upsert_connection(
                 db,
                 coach_id,
@@ -283,7 +377,7 @@ async def integration_callback(
                 refresh_token=tokens.get("refresh_token"),
                 expires_in=tokens.get("expires_in"),
                 account_label=label,
-                extra_json={"scheduling_url": me_data.get("scheduling_url")},
+                extra_json={"scheduling_url": me_data.get("scheduling_url"), **webhook_extra},
             )
 
         elif provider == CalendarProvider.cal_com:
@@ -309,6 +403,7 @@ async def integration_callback(
                         scheduling_url = f"https://cal.com/{username}"
             except httpx.HTTPError:
                 pass
+            webhook_extra = await _register_calcom_webhook(http, access_token, coach_id)
             await _upsert_connection(
                 db,
                 coach_id,
@@ -317,13 +412,13 @@ async def integration_callback(
                 refresh_token=body.get("refreshToken"),
                 expires_in=None,
                 account_label=scheduling_url or "Cal.com account",
-                extra_json={"scheduling_url": scheduling_url},
+                extra_json={"scheduling_url": scheduling_url, **webhook_extra},
             )
 
     return RedirectResponse(f"{base_return}?connected={provider.value}")
 
 
-async def _ensure_fresh_token(db: AsyncSession, connection: CalendarConnection) -> str:
+async def ensure_fresh_token(db: AsyncSession, connection: CalendarConnection) -> str:
     """Returns a valid access token, refreshing it first if it's near/past expiry."""
     if (
         connection.token_expires_at is not None
@@ -353,6 +448,34 @@ async def _ensure_fresh_token(db: AsyncSession, connection: CalendarConnection) 
                 headers={"Authorization": f"Basic {basic}"},
                 data={"grant_type": "refresh_token", "refresh_token": connection.refresh_token},
             )
+        elif connection.provider == CalendarProvider.calendly:
+            # Standard OAuth2 refresh — same token endpoint the initial
+            # authorization_code exchange already uses successfully.
+            res = await http.post(
+                "https://auth.calendly.com/oauth/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "client_id": settings.calendly_client_id,
+                    "client_secret": settings.calendly_client_secret,
+                    "refresh_token": connection.refresh_token,
+                },
+            )
+        elif connection.provider == CalendarProvider.cal_com:
+            # Best-effort only: Cal.com's own issue tracker shows real,
+            # unresolved confusion around their v2 OAuth refresh path (some
+            # reports of 404s, a separate "managed users" refresh flow being
+            # deprecated) — this mirrors the already-working /exchange
+            # endpoint's shape rather than a confirmed-stable spec. Any
+            # failure here just falls through to returning the existing
+            # token unchanged, same as every other branch.
+            try:
+                res = await http.post(
+                    f"https://api.cal.com/v2/oauth/{settings.calcom_client_id}/refresh",
+                    headers={"x-cal-secret-key": settings.calcom_client_secret},
+                    json={"refreshToken": connection.refresh_token},
+                )
+            except httpx.HTTPError:
+                return connection.access_token
         else:
             return connection.access_token
 
@@ -360,13 +483,19 @@ async def _ensure_fresh_token(db: AsyncSession, connection: CalendarConnection) 
         return connection.access_token
 
     tokens = res.json()
-    connection.access_token = tokens["access_token"]
-    if tokens.get("refresh_token"):
-        connection.refresh_token = tokens["refresh_token"]
-    if tokens.get("expires_in"):
-        connection.token_expires_at = datetime.now(timezone.utc) + timedelta(
-            seconds=tokens["expires_in"]
-        )
+    if connection.provider == CalendarProvider.cal_com:
+        data = tokens.get("data", tokens)
+        connection.access_token = data.get("accessToken", connection.access_token)
+        if data.get("refreshToken"):
+            connection.refresh_token = data["refreshToken"]
+    else:
+        connection.access_token = tokens["access_token"]
+        if tokens.get("refresh_token"):
+            connection.refresh_token = tokens["refresh_token"]
+        if tokens.get("expires_in"):
+            connection.token_expires_at = datetime.now(timezone.utc) + timedelta(
+                seconds=tokens["expires_in"]
+            )
     await db.commit()
     return connection.access_token
 
@@ -382,7 +511,7 @@ async def list_google_calendar_events(
     if connection is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Google Calendar isn't connected")
 
-    token = await _ensure_fresh_token(db, connection)
+    token = await ensure_fresh_token(db, connection)
     now = datetime.now(timezone.utc)
     try:
         async with httpx.AsyncClient(timeout=10.0) as http:
@@ -426,6 +555,16 @@ async def list_google_calendar_events(
     return out
 
 
+async def get_preferred_video_provider(db: AsyncSession, coach_id: uuid.UUID) -> str | None:
+    """Which of google/zoom would actually be used for a new booking right
+    now — same preference order as create_video_call_link. Lets a client see
+    up front what they'll be joining, not just discover it after booking."""
+    for provider in (CalendarProvider.google, CalendarProvider.zoom):
+        if await _get_connection(db, coach_id, provider) is not None:
+            return provider.value
+    return None
+
+
 async def create_video_call_link(
     db: AsyncSession,
     coach_id: uuid.UUID,
@@ -433,16 +572,16 @@ async def create_video_call_link(
     starts_at: datetime,
     ends_at: datetime,
     topic: str,
-) -> str | None:
+) -> tuple[str | None, str | None]:
     """Best-effort: if the coach has Google or Zoom connected (Google preferred),
-    create a real call and return its join URL. Returns None if neither is
-    connected or the provider call fails — callers should treat that as
-    non-fatal, matching how meeting_url has always been optional."""
+    create a real call and return (provider, join_url). Returns (None, None) if
+    neither is connected or the provider call fails — callers should treat
+    that as non-fatal, matching how meeting_url has always been optional."""
     for provider in (CalendarProvider.google, CalendarProvider.zoom):
         connection = await _get_connection(db, coach_id, provider)
         if connection is None:
             continue
-        token = await _ensure_fresh_token(db, connection)
+        token = await ensure_fresh_token(db, connection)
 
         try:
             async with httpx.AsyncClient() as http:
@@ -461,7 +600,7 @@ async def create_video_call_link(
                         },
                     )
                     if res.status_code in (200, 201):
-                        return res.json().get("hangoutLink")
+                        return "google", res.json().get("hangoutLink")
                 else:
                     res = await http.post(
                         "https://api.zoom.us/v2/users/me/meetings",
@@ -482,7 +621,7 @@ async def create_video_call_link(
                         },
                     )
                     if res.status_code in (200, 201):
-                        return res.json().get("join_url")
+                        return "zoom", res.json().get("join_url")
         except httpx.HTTPError:
-            return None
-    return None
+            return None, None
+    return None, None

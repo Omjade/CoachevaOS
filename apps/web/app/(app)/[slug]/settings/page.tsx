@@ -37,7 +37,6 @@ import Avatar from "@/components/Avatar";
 import SecurityPrivacyCard from "@/components/SecurityPrivacyCard";
 import AssistantSettingsCard from "@/components/AssistantSettingsCard";
 import AutomationSettingsCard from "@/components/AutomationSettingsCard";
-import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 
 const TIMEZONES = listTimezones();
 
@@ -609,8 +608,6 @@ function CoachSettings() {
           </div>
         </Card>
       )}
-
-      <GoogleCalendarCard />
 
       <AssistantSettingsCard />
 

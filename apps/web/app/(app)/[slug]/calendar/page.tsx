@@ -1,20 +1,23 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   PlusIcon as Plus,
   XIcon as X,
   CheckIcon as Check,
-  VideoCameraIcon as VideoCamera,
-  CalendarBlankIcon as CalendarBlank,
   LinkIcon as LinkIconGlyph,
   ArrowSquareOutIcon as ArrowSquareOut,
+  PencilSimpleIcon as PencilSimple,
+  ProhibitIcon as Prohibit,
 } from "@phosphor-icons/react";
+import { GoogleMeetIcon, ZoomIcon, CalendlyIcon, CalDotComIcon } from "@/components/ProviderIcons";
+import GoogleCalendarCard from "@/components/GoogleCalendarCard";
 import {
   api,
   API_URL,
   ApiError,
   AvailabilityRules,
+  AvailabilityRulesWithTimezone,
   CalendarProviderKey,
   CoachProfile,
   IntegrationStatus,
@@ -22,10 +25,12 @@ import {
   SchedulingLinks,
 } from "@/lib/api";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { Button, Card, Eyebrow } from "@/components/ui";
+import { Button, Card, Eyebrow, Input } from "@/components/ui";
 import { getNicheConfig } from "@/lib/niche";
 import { useViewerRole } from "@/lib/useViewerRole";
 import { useCurrentUser } from "@/lib/useCurrentUser";
+
+const WINDOW_DAYS = 20;
 
 // A coach's calendar reads in the coach's own local time (correct as-is) —
 // this only adds an explicit "for {client}" tag next to it using the
@@ -39,11 +44,18 @@ function timeInZone(iso: string, timezone: string): string {
   });
 }
 
-const PROVIDERS: { key: CalendarProviderKey; label: string; Icon: typeof VideoCamera }[] = [
-  { key: "google", label: "Google Meet", Icon: VideoCamera },
-  { key: "zoom", label: "Zoom", Icon: VideoCamera },
-  { key: "calendly", label: "Calendly", Icon: CalendarBlank },
-  { key: "cal_com", label: "Cal.com", Icon: CalendarBlank },
+const PROVIDER_ICON: Record<CalendarProviderKey, typeof GoogleMeetIcon> = {
+  google: GoogleMeetIcon,
+  zoom: ZoomIcon,
+  calendly: CalendlyIcon,
+  cal_com: CalDotComIcon,
+};
+
+const PROVIDERS: { key: CalendarProviderKey; label: string; Icon: typeof GoogleMeetIcon }[] = [
+  { key: "google", label: "Google Meet", Icon: GoogleMeetIcon },
+  { key: "zoom", label: "Zoom", Icon: ZoomIcon },
+  { key: "calendly", label: "Calendly", Icon: CalendlyIcon },
+  { key: "cal_com", label: "Cal.com", Icon: CalDotComIcon },
 ];
 
 const DAY_KEYS: (keyof AvailabilityRules["days"])[] = [
@@ -72,15 +84,51 @@ const DEFAULT_RULES: AvailabilityRules = {
   slots: [],
 };
 
-function nextDatesForDay(dayIndex: number, count = 3): Date[] {
-  const dates: Date[] = [];
-  const today = new Date();
+// Calendar-day arithmetic done entirely in the coach's own timezone, never
+// the viewer's browser zone — otherwise a client near a date boundary could
+// be shown (and book) the wrong day relative to the coach's real calendar.
+// Only the Y/M/D components matter here; the actual instant is constructed
+// server-side from date+time+coach_timezone, so plain UTC-midnight markers
+// are a safe, DST-proof way to walk whole calendar days.
+function todayInTimezone(timezone: string): { y: number; m: number; d: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? "0");
+  return { y: get("year"), m: get("month"), d: get("day") };
+}
+
+function nextDatesForDayInTimezone(
+  dayIndex: number,
+  timezone: string,
+  count = 3
+): { iso: string; weekday: number; label: string }[] {
+  const { y, m, d } = todayInTimezone(timezone);
+  const startUtc = Date.UTC(y, m - 1, d);
+  const dates: { iso: string; weekday: number; label: string }[] = [];
   for (let i = 0; dates.length < count && i < 28; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    if (d.getDay() === dayIndex) dates.push(d);
+    const cursor = new Date(startUtc + i * 86400000);
+    if (cursor.getUTCDay() === dayIndex) {
+      const iso = cursor.toISOString().slice(0, 10);
+      const label = cursor.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      });
+      dates.push({ iso, weekday: dayIndex, label });
+    }
   }
   return dates;
+}
+
+function withinNextNDays(iso: string, days: number): boolean {
+  const now = Date.now();
+  const t = new Date(iso).getTime();
+  return t >= now - 60_000 && t <= now + days * 86400000;
 }
 
 export default function CalendarPage() {
@@ -112,6 +160,38 @@ const PROVIDER_LABEL: Record<string, string> = {
   cal_com: "Cal.com",
 };
 
+function MeetingProviderBadge({ provider }: { provider: "google" | "zoom" | null }) {
+  if (!provider) return null;
+  const Icon = PROVIDER_ICON[provider];
+  return (
+    <span className="flex items-center gap-1 text-xs text-neutral-500">
+      <Icon className="h-3.5 w-3.5" />
+      {PROVIDER_LABEL[provider]}
+    </span>
+  );
+}
+
+const BOOKING_SOURCE_LABEL: Record<string, string> = {
+  calendly: "Calendly",
+  cal_com: "Cal.com",
+};
+
+// An externally-synced meeting (booked on the coach's own Calendly/Cal.com
+// page, mirrored in here via their webhook) isn't one CoachevaOS can safely
+// reschedule — there's no way to push that change back to the real booking,
+// so it would just desync. Cancelling only affects our own mirrored copy;
+// the caption below makes that limitation explicit rather than implying a
+// full round-trip that doesn't exist.
+function ExternalBookingNote({ source }: { source: MeetingData["booking_source"] }) {
+  if (source === "internal") return null;
+  return (
+    <p className="text-xs text-neutral-400">
+      Booked via {BOOKING_SOURCE_LABEL[source]} — manage the time there; cancelling here only
+      updates this view.
+    </p>
+  );
+}
+
 function CoachCalendar() {
   const searchParams = useSearchParams();
   const [rules, setRules] = useState<AvailabilityRules>(DEFAULT_RULES);
@@ -124,6 +204,15 @@ function CoachCalendar() {
   const [availError, setAvailError] = useState<string | null>(null);
   const [integrationError, setIntegrationError] = useState<string | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
+  const [showAllMeetings, setShowAllMeetings] = useState(false);
+  const [meetingActionError, setMeetingActionError] = useState<string | null>(null);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [rescheduleValue, setRescheduleValue] = useState("");
+  const [busyMeetingId, setBusyMeetingId] = useState<string | null>(null);
+
+  function refreshMeetings() {
+    api.listMeetings().then(setMeetings).catch(() => {});
+  }
 
   function refreshIntegrations() {
     api.listIntegrations().then(setIntegrations).catch(() => setIntegrations([]));
@@ -132,7 +221,7 @@ function CoachCalendar() {
   useEffect(() => {
     api.myProfile().then(setProfile).catch(() => {});
     api.getMyAvailability().then(setRules).catch(() => {});
-    api.listMeetings().then(setMeetings).catch(() => {});
+    refreshMeetings();
     refreshIntegrations();
   }, []);
 
@@ -195,6 +284,57 @@ function CoachCalendar() {
     save({ ...rules, slots: rules.slots.filter((s) => s !== slot) });
   }
 
+  async function cancelMeeting(meetingId: string) {
+    setBusyMeetingId(meetingId);
+    setMeetingActionError(null);
+    try {
+      await api.cancelMeeting(meetingId);
+      refreshMeetings();
+    } catch (err) {
+      setMeetingActionError(
+        err instanceof ApiError ? err.message : "Couldn't cancel that session. Try again."
+      );
+    } finally {
+      setBusyMeetingId(null);
+    }
+  }
+
+  function startReschedule(meeting: MeetingData) {
+    setReschedulingId(meeting.id);
+    // Pre-fill with the meeting's current local time so the coach is editing
+    // from a sensible starting point, not a blank field.
+    const d = new Date(meeting.starts_at);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setRescheduleValue(
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    );
+    setMeetingActionError(null);
+  }
+
+  async function confirmReschedule(meetingId: string) {
+    if (!rescheduleValue) return;
+    setBusyMeetingId(meetingId);
+    setMeetingActionError(null);
+    try {
+      await api.rescheduleMeeting(meetingId, { starts_at: new Date(rescheduleValue).toISOString() });
+      setReschedulingId(null);
+      refreshMeetings();
+    } catch (err) {
+      setMeetingActionError(
+        err instanceof ApiError ? err.message : "Couldn't reschedule that session. Try again."
+      );
+    } finally {
+      setBusyMeetingId(null);
+    }
+  }
+
+  const visibleMeetings = useMemo(() => {
+    const upcoming = meetings.filter((m) => m.status === "scheduled");
+    return showAllMeetings ? upcoming : upcoming.filter((m) => withinNextNDays(m.starts_at, WINDOW_DAYS));
+  }, [meetings, showAllMeetings]);
+  const hiddenCount =
+    meetings.filter((m) => m.status === "scheduled").length - visibleMeetings.length;
+
   return (
     <div className="animate-fade-up flex flex-col gap-6">
       <div>
@@ -208,7 +348,7 @@ function CoachCalendar() {
         <h3 className="font-heading mb-3 text-lg font-semibold text-neutral-900">Integrations</h3>
         <p className="mb-4 text-xs text-neutral-500">
           Connect a video or scheduling provider so sessions booked in CoachevaOS get a real
-          join link automatically.
+          join link automatically. Your clients will see whichever one is connected.
         </p>
         {integrations !== null &&
           integrations.every((i) => !i.connected) && (
@@ -230,17 +370,33 @@ function CoachCalendar() {
             return (
               <div
                 key={key}
-                className="flex items-center justify-between rounded-[12px] border border-neutral-200 px-3.5 py-2.5"
+                className={`flex items-center justify-between rounded-[12px] border px-3.5 py-2.5 ${
+                  connected ? "border-green-200 bg-green-50/40" : "border-neutral-200"
+                }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-600">
-                    <Icon className="h-4 w-4" />
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                    <Icon className="h-8 w-8" />
                   </span>
                   <div>
-                    <p className="font-medium text-neutral-900">{label}</p>
-                    {connected && status?.account_label && (
-                      <p className="truncate text-xs text-neutral-500">{status.account_label}</p>
-                    )}
+                    <p className="flex items-center gap-1.5 font-medium text-neutral-900">
+                      {label}
+                      <span
+                        className={`inline-block h-1.5 w-1.5 rounded-full ${
+                          connected ? "bg-green-500" : "bg-neutral-300"
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </p>
+                    <p className="text-xs">
+                      {connected ? (
+                        <span className="font-medium text-green-700">
+                          Connected{status?.account_label ? ` · ${status.account_label}` : ""}
+                        </span>
+                      ) : (
+                        <span className="text-neutral-400">Not connected</span>
+                      )}
+                    </p>
                   </div>
                 </div>
                 {connected ? (
@@ -265,6 +421,8 @@ function CoachCalendar() {
           })}
         </div>
       </Card>
+
+      <GoogleCalendarCard />
 
       <Card>
         <div className="mb-4 flex items-center justify-between">
@@ -358,49 +516,108 @@ function CoachCalendar() {
       </Card>
 
       <Card>
-        <h3 className="font-heading mb-3 text-lg font-semibold text-neutral-900">
-          Upcoming meetings
-        </h3>
-        {meetings.length === 0 ? (
-          <p className="text-sm text-neutral-500">No meetings booked yet.</p>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-heading text-lg font-semibold text-neutral-900">
+            Upcoming meetings
+          </h3>
+          <span className="text-xs text-neutral-400">Next {WINDOW_DAYS} days</span>
+        </div>
+        {meetingActionError && <p className="mb-3 text-xs text-accent-600">{meetingActionError}</p>}
+        {visibleMeetings.length === 0 ? (
+          <p className="text-sm text-neutral-500">No meetings booked in this window.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {meetings.map((m) => (
+            {visibleMeetings.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center justify-between rounded-[12px] border border-neutral-200 px-3.5 py-2.5 text-sm"
+                className="flex flex-col gap-2 rounded-[12px] border border-neutral-200 px-3.5 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
-                <span className="text-neutral-900">
-                  {m.client_name}{" "}
-                  <span className="text-neutral-500">
-                    · {getNicheConfig(profile?.niche).sessionLabel}
+                <div>
+                  <span className="text-neutral-900">
+                    {m.client_name}{" "}
+                    <span className="text-neutral-500">
+                      · {getNicheConfig(profile?.niche).sessionLabel}
+                    </span>
                   </span>
-                </span>
-                <div className="flex items-center gap-3">
-                  <span className="text-neutral-500">
-                    {new Date(m.starts_at).toLocaleString()}
-                    {m.client_timezone && (
-                      <span className="text-neutral-400">
-                        {" "}
-                        ({timeInZone(m.starts_at, m.client_timezone)} for {m.client_name})
-                      </span>
-                    )}
-                  </span>
-                  {m.meeting_url && (
-                    <a
-                      href={m.meeting_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 font-medium text-accent-600 hover:text-accent-700"
-                    >
-                      Join
-                      <ArrowSquareOut className="h-3.5 w-3.5" />
-                    </a>
-                  )}
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-neutral-500">
+                    <span>
+                      {new Date(m.starts_at).toLocaleString()}
+                      {m.client_timezone && (
+                        <span className="text-neutral-400">
+                          {" "}
+                          ({timeInZone(m.starts_at, m.client_timezone)} for {m.client_name})
+                        </span>
+                      )}
+                    </span>
+                    <MeetingProviderBadge provider={m.meeting_provider} />
+                  </div>
+                  <ExternalBookingNote source={m.booking_source} />
                 </div>
+                {reschedulingId === m.id ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                      type="datetime-local"
+                      value={rescheduleValue}
+                      onChange={(e) => setRescheduleValue(e.target.value)}
+                      className="w-auto text-xs"
+                    />
+                    <Button
+                      className="!px-3 !py-1.5 text-xs"
+                      onClick={() => confirmReschedule(m.id)}
+                      disabled={busyMeetingId === m.id}
+                    >
+                      {busyMeetingId === m.id ? "Saving…" : "Confirm"}
+                    </Button>
+                    <button
+                      className="text-xs text-neutral-500 underline"
+                      onClick={() => setReschedulingId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    {m.meeting_url && (
+                      <a
+                        href={m.meeting_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 font-medium text-accent-600 hover:text-accent-700"
+                      >
+                        Join
+                        <ArrowSquareOut className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                    {m.booking_source === "internal" && (
+                      <button
+                        className="flex items-center gap-1 text-xs font-medium text-neutral-500 hover:text-neutral-700"
+                        onClick={() => startReschedule(m)}
+                      >
+                        <PencilSimple className="h-3.5 w-3.5" />
+                        Reschedule
+                      </button>
+                    )}
+                    <button
+                      className="flex items-center gap-1 text-xs font-medium text-accent-600 hover:text-accent-700"
+                      onClick={() => cancelMeeting(m.id)}
+                      disabled={busyMeetingId === m.id}
+                    >
+                      <Prohibit className="h-3.5 w-3.5" />
+                      {busyMeetingId === m.id ? "Cancelling…" : "Cancel"}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
+        )}
+        {hiddenCount > 0 && (
+          <button
+            className="mt-3 text-xs font-medium text-accent-600 hover:underline"
+            onClick={() => setShowAllMeetings((v) => !v)}
+          >
+            {showAllMeetings ? "Show only next 20 days" : `View ${hiddenCount} more upcoming`}
+          </button>
         )}
       </Card>
     </div>
@@ -409,11 +626,15 @@ function CoachCalendar() {
 
 export function ClientCalendar() {
   const { user } = useCurrentUser();
-  const [rules, setRules] = useState<AvailabilityRules | null>(null);
+  const [rules, setRules] = useState<AvailabilityRulesWithTimezone | null>(null);
   const [meetings, setMeetings] = useState<MeetingData[]>([]);
   const [booking, setBooking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [links, setLinks] = useState<SchedulingLinks | null>(null);
+  const [showAllMeetings, setShowAllMeetings] = useState(false);
+  const [busyMeetingId, setBusyMeetingId] = useState<string | null>(null);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [reschedulingBusyKey, setReschedulingBusyKey] = useState<string | null>(null);
 
   function refresh() {
     api.listMyMeetings().then(setMeetings).catch(() => {});
@@ -425,20 +646,44 @@ export function ClientCalendar() {
     refresh();
   }, []);
 
-  async function book(date: Date, slot: string) {
-    const [h, m] = slot.split(":").map(Number);
-    const startsAt = new Date(date);
-    startsAt.setHours(h, m, 0, 0);
-    const key = `${date.toDateString()}-${slot}`;
+  async function book(dateIso: string, slot: string) {
+    const key = `${dateIso}-${slot}`;
     setBooking(key);
     setError(null);
     try {
-      await api.bookMeeting(startsAt.toISOString());
+      await api.bookMeeting(dateIso, slot);
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't book that slot");
     } finally {
       setBooking(null);
+    }
+  }
+
+  async function cancelMeeting(meetingId: string) {
+    setBusyMeetingId(meetingId);
+    setError(null);
+    try {
+      await api.cancelMeeting(meetingId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't cancel that session. Try again.");
+    } finally {
+      setBusyMeetingId(null);
+    }
+  }
+
+  async function reschedule(meetingId: string, dateIso: string, slot: string) {
+    setReschedulingBusyKey(`${dateIso}-${slot}`);
+    setError(null);
+    try {
+      await api.rescheduleMeeting(meetingId, { date: dateIso, time: slot });
+      setReschedulingId(null);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't reschedule that session. Try again.");
+    } finally {
+      setReschedulingBusyKey(null);
     }
   }
 
@@ -448,47 +693,148 @@ export function ClientCalendar() {
       )
     : [];
 
+  const candidateDates = rules
+    ? availableDayIndices.flatMap((dayIndex) =>
+        nextDatesForDayInTimezone(dayIndex, rules.coach_timezone)
+      )
+    : [];
+
+  const visibleMeetings = useMemo(() => {
+    const upcoming = meetings.filter((m) => m.status === "scheduled");
+    return showAllMeetings ? upcoming : upcoming.filter((m) => withinNextNDays(m.starts_at, WINDOW_DAYS));
+  }, [meetings, showAllMeetings]);
+  const hiddenCount =
+    meetings.filter((m) => m.status === "scheduled").length - visibleMeetings.length;
+
+  const slotPicker = (onPick: (dateIso: string, slot: string) => void, busyKey: string | null) => (
+    <div className="flex flex-col gap-4">
+      {candidateDates.map(({ iso, label }) => (
+        <div key={iso}>
+          <p className="mb-2 text-sm font-medium">{label}</p>
+          <div className="flex flex-wrap gap-2">
+            {rules!.slots.map((slot) => {
+              const key = `${iso}-${slot}`;
+              return (
+                <Button
+                  key={slot}
+                  type="button"
+                  variant="secondary"
+                  className="px-3 py-1.5 text-xs"
+                  disabled={busyKey === key}
+                  onClick={() => onPick(iso, slot)}
+                >
+                  {busyKey === key ? "Saving…" : slot}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="animate-fade-up flex flex-col gap-6">
       <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
         Book a session
       </h1>
 
+      {links?.video_provider && (
+        <div className="flex items-center gap-2 rounded-[12px] border border-neutral-200 bg-neutral-50/60 px-3.5 py-2.5 text-xs text-neutral-600">
+          {(() => {
+            const Icon = PROVIDER_ICON[links.video_provider];
+            return <Icon className="h-5 w-5 shrink-0" />;
+          })()}
+          Sessions with your coach automatically include a {PROVIDER_LABEL[links.video_provider]}{" "}
+          link once booked.
+        </div>
+      )}
+
       <Card>
-        <h3 className="font-heading mb-3 text-lg font-semibold text-neutral-900">
-          Upcoming sessions
-        </h3>
-        {meetings.length === 0 ? (
-          <p className="text-sm text-neutral-500">Nothing booked yet.</p>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-heading text-lg font-semibold text-neutral-900">
+            Upcoming sessions
+          </h3>
+          <span className="text-xs text-neutral-400">Next {WINDOW_DAYS} days</span>
+        </div>
+        {error && <p className="mb-3 text-xs text-accent-600">{error}</p>}
+        {visibleMeetings.length === 0 ? (
+          <p className="text-sm text-neutral-500">Nothing booked in this window.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {meetings.map((m) => (
+            {visibleMeetings.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center justify-between rounded-[12px] border border-neutral-200 px-3.5 py-2.5 text-sm text-neutral-900"
+                className="flex flex-col gap-2 rounded-[12px] border border-neutral-200 px-3.5 py-2.5 text-sm text-neutral-900 sm:flex-row sm:items-center sm:justify-between"
               >
-                {/* Explicit stored User.timezone rather than the ambient
-                    browser zone — keeps this in sync with the coach's own
-                    view of the same meeting, which already uses the same
-                    stored value (see the coach calendar's timeInZone tag). */}
-                {new Date(m.starts_at).toLocaleString(
-                  undefined,
-                  user?.timezone ? { timeZone: user.timezone } : undefined
-                )}
-                {m.meeting_url && (
-                  <a
-                    href={m.meeting_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 font-medium text-accent-600 hover:text-accent-700"
-                  >
-                    Join
-                    <ArrowSquareOut className="h-3.5 w-3.5" />
-                  </a>
+                <div>
+                  {/* Explicit stored User.timezone rather than the ambient
+                      browser zone — keeps this in sync with the coach's own
+                      view of the same meeting, which already uses the same
+                      stored value (see the coach calendar's timeInZone tag). */}
+                  {new Date(m.starts_at).toLocaleString(
+                    undefined,
+                    user?.timezone ? { timeZone: user.timezone } : undefined
+                  )}
+                  <div className="mt-0.5">
+                    <MeetingProviderBadge provider={m.meeting_provider} />
+                  </div>
+                  <ExternalBookingNote source={m.booking_source} />
+                </div>
+                {reschedulingId === m.id ? (
+                  <div className="flex flex-col gap-2">
+                    {slotPicker((d, s) => reschedule(m.id, d, s), reschedulingBusyKey)}
+                    <button
+                      className="self-start text-xs text-neutral-500 underline"
+                      onClick={() => setReschedulingId(null)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    {m.meeting_url && (
+                      <a
+                        href={m.meeting_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 font-medium text-accent-600 hover:text-accent-700"
+                      >
+                        Join
+                        <ArrowSquareOut className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                    {m.booking_source === "internal" && (
+                      <button
+                        className="flex items-center gap-1 text-xs font-medium text-neutral-500 hover:text-neutral-700"
+                        onClick={() => setReschedulingId(m.id)}
+                        disabled={!rules || rules.slots.length === 0}
+                      >
+                        <PencilSimple className="h-3.5 w-3.5" />
+                        Reschedule
+                      </button>
+                    )}
+                    <button
+                      className="flex items-center gap-1 text-xs font-medium text-accent-600 hover:text-accent-700"
+                      onClick={() => cancelMeeting(m.id)}
+                      disabled={busyMeetingId === m.id}
+                    >
+                      <Prohibit className="h-3.5 w-3.5" />
+                      {busyMeetingId === m.id ? "Cancelling…" : "Cancel"}
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
+        )}
+        {hiddenCount > 0 && (
+          <button
+            className="mt-3 text-xs font-medium text-accent-600 hover:underline"
+            onClick={() => setShowAllMeetings((v) => !v)}
+          >
+            {showAllMeetings ? "Show only next 20 days" : `View ${hiddenCount} more upcoming`}
+          </button>
         )}
       </Card>
 
@@ -519,46 +865,22 @@ export function ClientCalendar() {
       )}
 
       <Card>
-        <h3 className="font-heading mb-3 text-lg font-semibold text-neutral-900">
-          Available times
-        </h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-heading text-lg font-semibold text-neutral-900">
+            Available times
+          </h3>
+          {rules && (
+            <span className="text-xs text-neutral-400">
+              Coach&apos;s timezone: {rules.coach_timezone}
+            </span>
+          )}
+        </div>
         {!rules || rules.slots.length === 0 || availableDayIndices.length === 0 ? (
           <p className="text-sm text-neutral-500">
             Your coach hasn&apos;t set up bookable times yet.
           </p>
         ) : (
-          <div className="flex flex-col gap-4">
-            {availableDayIndices.flatMap((dayIndex) =>
-              nextDatesForDay(dayIndex).map((date) => (
-                <div key={date.toDateString()}>
-                  <p className="mb-2 text-sm font-medium">
-                    {date.toLocaleDateString(undefined, {
-                      weekday: "long",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {rules.slots.map((slot) => {
-                      const key = `${date.toDateString()}-${slot}`;
-                      return (
-                        <Button
-                          key={slot}
-                          type="button"
-                          variant="secondary"
-                          className="px-3 py-1.5 text-xs"
-                          disabled={booking === key}
-                          onClick={() => book(date, slot)}
-                        >
-                          {booking === key ? "Booking…" : slot}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          slotPicker(book, booking)
         )}
         {error && <p className="mt-3 text-sm text-accent-700">{error}</p>}
       </Card>

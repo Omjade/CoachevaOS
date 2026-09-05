@@ -38,6 +38,7 @@ from app.routers import (
     tasks,
     threads,
     timeline,
+    webhooks,
 )
 from app.scheduler import start_scheduler, stop_scheduler
 
@@ -120,6 +121,7 @@ app.include_router(tasks.client_tasks_router)
 app.include_router(threads.router)
 app.include_router(calendar.router)
 app.include_router(integrations.router)
+app.include_router(webhooks.router)
 app.include_router(checkins.router)
 app.include_router(billing.router)
 app.include_router(payments_paddle.router)

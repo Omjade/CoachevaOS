@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     calcom_client_secret: str = ""
     calcom_redirect_uri: str = "http://localhost:8000/integrations/calcom/callback"
     frontend_url: str = "http://localhost:3000"
+    # This backend's own publicly reachable base URL — used to construct
+    # outbound webhook subscription URLs (Calendly/Cal.com need a real
+    # internet-reachable callback, not localhost) when registering a webhook
+    # at OAuth-connect time. Set to the real deployed API domain in
+    # production (e.g. https://api.coachevaos.com).
+    api_base_url: str = "http://localhost:8000"
     # Always-allowed production origins, regardless of FRONTEND_URL. Extra
     # origins (a staging preview URL, a second custom domain) can be added
     # here without touching FRONTEND_URL, which stays the "primary app" value
