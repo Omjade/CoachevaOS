@@ -32,6 +32,7 @@ export async function generateMetadata({
     title: `${s.keyword} | Built for ${label}s | CoachevaOS`,
     description: s.directAnswer.slice(0, 155),
     path: `/solutions/${s.value}`,
+    keywords: [s.keyword, `${label.toLowerCase()} software`, `${label.toLowerCase()} client management`, ...(s.personaTerms ?? [])],
   });
 }
 
@@ -117,6 +118,22 @@ export default async function SolutionPage({ params }: { params: Promise<{ niche
             <Button>Start your free trial</Button>
           </Link>
         </div>
+
+        {s.relatedBlogSlug && (
+          <InternalLinkCluster
+            title="Read more"
+            links={[{ label: `Client management for every kind of ${label.toLowerCase()}`, href: `/blog/${s.relatedBlogSlug}` }]}
+          />
+        )}
+
+        <InternalLinkCluster
+          title={`Free tools for ${label.toLowerCase()}s`}
+          links={[
+            { label: "How many clients can you realistically manage?", href: "/tools/capacity-calculator" },
+            { label: "How many clients do you need to hit your income goal?", href: "/tools/revenue-calculator" },
+            { label: "How much is churn costing you?", href: "/tools/churn-calculator" },
+          ]}
+        />
 
         <InternalLinkCluster
           title="See how CoachevaOS compares"

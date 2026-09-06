@@ -50,7 +50,7 @@ export default function RevenueCalculator() {
 
       <Card className="flex flex-col items-center justify-center gap-2 bg-neutral-900 text-center">
         <p className="text-xs tracking-wide text-neutral-400 uppercase">Clients needed</p>
-        <p className="font-heading text-5xl font-semibold text-white">{result.clientsNeeded}</p>
+        <p className="font-heading text-5xl font-semibold text-accent-500">{result.clientsNeeded}</p>
         <p className="text-sm text-neutral-300">active clients at that price point</p>
         <p className="mt-4 text-xs text-neutral-500">
           At {monthlyChurnPercent}% monthly churn, plan to bring in roughly {result.newClientsPerMonth} new

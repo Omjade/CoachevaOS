@@ -7,14 +7,39 @@ import { Eyebrow, Button, Card } from "@/components/ui";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import DirectAnswer from "@/components/DirectAnswer";
 import InternalLinkCluster from "@/components/InternalLinkCluster";
+import NicheApplicability from "@/components/NicheApplicability";
+import FAQAccordion from "@/components/FAQAccordion";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Free Coaching Business Spreadsheet Template | CoachevaOS",
+  title: "Free Coaching Business Spreadsheet Template | Revenue & Renewal Tracker",
   description:
-    "A free coaching business spreadsheet: track revenue per client, sessions delivered, and renewal dates in one place. Real CSV download, no signup required.",
+    "A free coaching business spreadsheet: track revenue per client, sessions delivered, and renewal dates in one place. Built for life coaches, business coaches, and any 1:1 coaching practice. Real CSV download, no signup required.",
   path: "/templates/coaching-spreadsheet",
+  keywords: [
+    "coaching business spreadsheet template",
+    "free coaching revenue tracker",
+    "coaching business tracker spreadsheet",
+    "life coach business spreadsheet",
+    "coaching renewal tracker template",
+    "solo coaching business management spreadsheet",
+  ],
 });
+
+const FAQ = [
+  {
+    q: "What's the difference between this and the client tracker template?",
+    a: "The client tracker focuses on contact info and session scheduling. This spreadsheet is the business-side view — revenue per client, sessions delivered, and renewal dates — so you can see your practice's financial health, not just client status.",
+  },
+  {
+    q: "Does this work for any coaching niche, or just business coaches?",
+    a: "Despite the name, it's not business-coach-specific — the revenue and renewal columns work identically for life coaching, health coaching, executive coaching, or any recurring-package coaching model.",
+  },
+  {
+    q: "Can I track annual packages, not just monthly?",
+    a: "Yes — just adjust the renewal date and monthly revenue columns to reflect your actual billing cycle; the spreadsheet doesn't assume monthly-only billing.",
+  },
+];
 
 const COLUMNS = ["Client Name", "Package", "Monthly Revenue", "Sessions This Month", "Status", "Renewal Date", "Notes"];
 
@@ -64,6 +89,15 @@ export default function CoachingSpreadsheetTemplatePage() {
           <Link href="/features/coaching-dashboard">
             <Button>See the coaching dashboard</Button>
           </Link>
+        </div>
+
+        <NicheApplicability toolLabel="coaching business spreadsheet" />
+
+        <h2 className="font-heading mb-4 text-xl font-semibold text-neutral-900">
+          Frequently asked questions
+        </h2>
+        <div className="mb-10">
+          <FAQAccordion items={FAQ} />
         </div>
 
         <InternalLinkCluster

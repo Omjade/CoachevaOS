@@ -63,7 +63,7 @@ export default function CapacityCalculator() {
 
       <Card className="flex flex-col items-center justify-center gap-2 bg-neutral-900 text-center">
         <p className="text-xs tracking-wide text-neutral-400 uppercase">Realistic client capacity</p>
-        <p className="font-heading text-5xl font-semibold text-white">{result.maxClients}</p>
+        <p className="font-heading text-5xl font-semibold text-accent-500">{result.maxClients}</p>
         <p className="text-sm text-neutral-300">active clients per week</p>
         <p className="mt-4 text-xs text-neutral-500">
           Based on {result.minutesPerClientPerWeek} minutes of session + admin time per client, per

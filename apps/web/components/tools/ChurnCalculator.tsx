@@ -53,7 +53,7 @@ export default function ChurnCalculator() {
 
       <Card className="flex flex-col items-center justify-center gap-2 bg-neutral-900 text-center">
         <p className="text-xs tracking-wide text-neutral-400 uppercase">Revenue lost to churn, per year</p>
-        <p className="font-heading text-5xl font-semibold text-white">${result.annualLoss.toLocaleString()}</p>
+        <p className="font-heading text-5xl font-semibold text-accent-500">${result.annualLoss.toLocaleString()}</p>
         <p className="text-sm text-neutral-300">
           about {result.clientsLostPerMonth} client{result.clientsLostPerMonth === 1 ? "" : "s"} lost a month
         </p>

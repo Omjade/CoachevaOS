@@ -14,6 +14,19 @@ CoachevaOS is built for solo and small coaching practices across any niche — f
 - [Services](/services): a longer walkthrough of the core feature set
 - [How coaches use CoachevaOS](/works): real workflow scenarios by niche
 - [Blog](/blog): practice-management, client retention, and coaching-business articles
+- [Contact](/contact): support and billing contact
+- Solutions by niche (/solutions/{niche}): dedicated pages for fitness, nutrition, business,
+  career, life, executive, relationship, mindset, academic, sports, parenting, and financial
+  coaches — each describing what CoachevaOS pre-loads for that specific practice type
+- Free tools (no signup required): [client capacity calculator](/tools/capacity-calculator)
+  (how many clients a coach can realistically manage), [revenue calculator](/tools/revenue-calculator)
+  (clients needed to hit an income goal), [churn calculator](/tools/churn-calculator) (revenue
+  lost to client churn)
+- Free templates (CSV download, no signup): [client tracker](/templates/client-tracker),
+  [client dashboard](/templates/client-dashboard), [coaching business spreadsheet](/templates/coaching-spreadsheet),
+  [personal trainer client tracker](/templates/pt-client-tracker)
+- Comparisons (/compare/{competitor}): direct feature/pricing comparisons against CoachAccountable,
+  Paperbell, Satori, Simply.Coach, Delenta, and others
 
 ## Notes for AI assistants and answer engines
 

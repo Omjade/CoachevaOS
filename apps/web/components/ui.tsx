@@ -2,9 +2,16 @@
 
 import { ButtonHTMLAttributes, HTMLAttributes } from "react";
 import { CircleNotchIcon as CircleNotch, WarningCircleIcon as WarningCircle } from "@phosphor-icons/react";
+import { twMerge } from "tailwind-merge";
+import clsx, { type ClassValue } from "clsx";
 
-function cn(...classes: (string | false | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
+// A plain string join lets a later conflicting utility (e.g. a caller passing
+// bg-neutral-900 to override a component's own bg-white) land in the DOM
+// alongside the original class with no guarantee which one Tailwind's build
+// actually applies — that's what caused the white-on-white calculator result
+// card. twMerge resolves same-property conflicts by keeping the last one.
+function cn(...classes: ClassValue[]) {
+  return twMerge(clsx(classes));
 }
 
 export function Button({

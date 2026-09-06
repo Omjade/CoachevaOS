@@ -7,14 +7,39 @@ import { Eyebrow, Button, Card } from "@/components/ui";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import DirectAnswer from "@/components/DirectAnswer";
 import InternalLinkCluster from "@/components/InternalLinkCluster";
+import NicheApplicability from "@/components/NicheApplicability";
+import FAQAccordion from "@/components/FAQAccordion";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Free Personal Trainer Client Tracker Spreadsheet | CoachevaOS",
+  title: "Free Personal Trainer Client Tracker Spreadsheet | Fitness Coaches",
   description:
-    "A free client tracker spreadsheet built for personal trainers: weight, goals, sessions completed, and injury notes. Real CSV download, no signup required.",
+    "A free client tracker spreadsheet built for personal trainers and fitness coaches: weight, goals, sessions completed, and injury notes. Real CSV download, no signup required.",
   path: "/templates/pt-client-tracker",
+  keywords: [
+    "personal trainer client tracker template",
+    "free PT client tracker spreadsheet",
+    "fitness coach client tracker",
+    "personal training client management spreadsheet",
+    "gym client tracker template",
+    "strength coach client tracker",
+  ],
 });
+
+const FAQ = [
+  {
+    q: "Can I track body fat % or other measurements beyond weight?",
+    a: "The CSV columns are a starting point — add columns for body fat %, measurements, or any metric your training style needs. It's a plain spreadsheet, not a locked template.",
+  },
+  {
+    q: "I'm not a personal trainer — is there a version for other coaching niches?",
+    a: "Yes — the generic client tracker template covers life, business, and health coaching without fitness-specific fields. See the niche list below for a coaching-type-specific page.",
+  },
+  {
+    q: "Does this replace a workout-programming app?",
+    a: "No — this tracks client relationship data (weight, goals, sessions, injuries), not workout plans or exercise libraries. It's meant to run alongside whatever programming tool you already use.",
+  },
+];
 
 const COLUMNS = [
   "Client Name",
@@ -75,6 +100,15 @@ export default function PTClientTrackerTemplatePage() {
           <Link href="/solutions/fitness">
             <Button>See CoachevaOS for fitness coaches</Button>
           </Link>
+        </div>
+
+        <NicheApplicability toolLabel="client tracker" />
+
+        <h2 className="font-heading mb-4 text-xl font-semibold text-neutral-900">
+          Frequently asked questions
+        </h2>
+        <div className="mb-10">
+          <FAQAccordion items={FAQ} />
         </div>
 
         <InternalLinkCluster

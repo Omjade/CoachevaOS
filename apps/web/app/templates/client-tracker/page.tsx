@@ -7,14 +7,40 @@ import { Eyebrow, Button, Card } from "@/components/ui";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import DirectAnswer from "@/components/DirectAnswer";
 import InternalLinkCluster from "@/components/InternalLinkCluster";
+import NicheApplicability from "@/components/NicheApplicability";
+import FAQAccordion from "@/components/FAQAccordion";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Free Client Tracker Template for Coaches | CoachevaOS",
+  title: "Free Client Tracker Template for Coaches | Life, Business & Health Coaches",
   description:
-    "A free client tracker spreadsheet for coaches: name, contact, program, status, next session, and notes. Real CSV download, no signup required.",
+    "A free client tracker spreadsheet for coaches: name, contact, program, status, next session, and notes. Works for life coaches, business coaches, health coaches, and any 1:1 practice. Real CSV download, no signup required.",
   path: "/templates/client-tracker",
+  keywords: [
+    "client tracker template for coaches",
+    "free coaching client tracker spreadsheet",
+    "life coach client tracker",
+    "business coach client tracker template",
+    "coaching client management spreadsheet",
+    "coaching CRM spreadsheet template",
+    "free client management template",
+  ],
 });
+
+const FAQ = [
+  {
+    q: "What coaching niches is this client tracker template built for?",
+    a: "The columns (contact info, program, status, next session, notes) are generic enough to work for life coaching, business coaching, health coaching, career coaching, or any 1:1 coaching practice — you're not locked into fitness-specific or niche-specific fields.",
+  },
+  {
+    q: "Do I need to sign up or give my email to download it?",
+    a: "No — it's a direct CSV download, no signup, no email capture. Open it in Google Sheets or Excel immediately.",
+  },
+  {
+    q: "What happens when I outgrow this spreadsheet?",
+    a: "Most coaches hit friction once they pass 15-20 active clients and need reminders, a client portal, or automatic engagement flags a spreadsheet can't do — CoachevaOS is built for exactly that next step, with the same client data model.",
+  },
+];
 
 const COLUMNS = [
   "Client Name",
@@ -74,6 +100,15 @@ export default function ClientTrackerTemplatePage() {
           <Link href="/features/client-dashboard">
             <Button>See the client dashboard</Button>
           </Link>
+        </div>
+
+        <NicheApplicability toolLabel="client tracker template" />
+
+        <h2 className="font-heading mb-4 text-xl font-semibold text-neutral-900">
+          Frequently asked questions
+        </h2>
+        <div className="mb-10">
+          <FAQAccordion items={FAQ} />
         </div>
 
         <InternalLinkCluster

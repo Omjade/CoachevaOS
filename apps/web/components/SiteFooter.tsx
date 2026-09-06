@@ -17,6 +17,20 @@ const FOOTER_LINKS = [
   { href: "/terms", label: "Terms" },
 ];
 
+// Free lead-magnet tools/templates — built but previously unlinked from any
+// visible page (only reachable via sitemap.ts, which crawlers but not real
+// visitors read). Grouped separately from FOOTER_LINKS since there are more
+// of them and they serve a different purpose (inbound/SEO, not site nav).
+const FREE_RESOURCES = [
+  { href: "/tools/capacity-calculator", label: "Capacity Calculator" },
+  { href: "/tools/revenue-calculator", label: "Revenue Calculator" },
+  { href: "/tools/churn-calculator", label: "Churn Calculator" },
+  { href: "/templates/client-tracker", label: "Client Tracker Template" },
+  { href: "/templates/client-dashboard", label: "Client Dashboard Template" },
+  { href: "/templates/coaching-spreadsheet", label: "Coaching Spreadsheet Template" },
+  { href: "/templates/pt-client-tracker", label: "PT Client Tracker Template" },
+];
+
 const SOCIALS = [
   { icon: InstagramLogo, label: "Instagram", href: "https://www.instagram.com/coachevaos" },
   { icon: LinkedinLogo, label: "LinkedIn", href: "https://www.linkedin.com/company/coachevaos" },
@@ -60,6 +74,15 @@ export default function SiteFooter() {
             </a>
           ))}
         </div>
+      </div>
+
+      <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-x-5 gap-y-2 border-t border-divider pt-6 text-xs text-neutral-500">
+        <span className="font-semibold text-neutral-700">Free tools:</span>
+        {FREE_RESOURCES.map((link) => (
+          <Link key={link.href} href={link.href} className="hover:text-accent-600">
+            {link.label}
+          </Link>
+        ))}
       </div>
 
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 border-t border-divider pt-6 text-xs text-neutral-500 sm:flex-row">

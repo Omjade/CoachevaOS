@@ -7,14 +7,39 @@ import { Eyebrow, Button, Card } from "@/components/ui";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import DirectAnswer from "@/components/DirectAnswer";
 import InternalLinkCluster from "@/components/InternalLinkCluster";
+import NicheApplicability from "@/components/NicheApplicability";
+import FAQAccordion from "@/components/FAQAccordion";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Free Client Dashboard Template for Coaches | CoachevaOS",
+  title: "Free Client Dashboard Template for Coaches | Any Coaching Niche",
   description:
-    "A free at-a-glance client dashboard template: status, package value, last/next session, and an engagement flag per client. Real CSV download, no signup required.",
+    "A free at-a-glance client dashboard template: status, package value, last/next session, and an engagement flag per client. Works for life, business, health, and executive coaches. Real CSV download, no signup required.",
   path: "/templates/client-dashboard",
+  keywords: [
+    "client dashboard template for coaches",
+    "coaching client status tracker",
+    "free coach dashboard spreadsheet",
+    "life coach dashboard template",
+    "business coach client dashboard",
+    "coaching engagement tracker template",
+  ],
 });
+
+const FAQ = [
+  {
+    q: "What does the green/yellow/red engagement flag mean?",
+    a: "It's a manual at-a-glance signal you set per client — green for on-track, yellow for needs a check-in, red for at risk of churning — so you can scan the sheet and know who needs attention without reading every row.",
+  },
+  {
+    q: "Is this dashboard template specific to one coaching niche?",
+    a: "No — status, package value, and session dates apply the same way whether you're a life coach, business coach, health coach, or executive coach. Nothing in it is fitness- or niche-specific.",
+  },
+  {
+    q: "How is this different from CoachevaOS's real client dashboard?",
+    a: "This spreadsheet needs manual updates to the engagement flag and session dates. CoachevaOS's actual dashboard updates automatically and uses AI to flag at-risk clients before you'd notice manually — this template is the free, manual starting point.",
+  },
+];
 
 const COLUMNS = [
   "Client Name",
@@ -74,6 +99,15 @@ export default function ClientDashboardTemplatePage() {
           <Link href="/features/client-dashboard">
             <Button>See the real client dashboard</Button>
           </Link>
+        </div>
+
+        <NicheApplicability toolLabel="client dashboard template" />
+
+        <h2 className="font-heading mb-4 text-xl font-semibold text-neutral-900">
+          Frequently asked questions
+        </h2>
+        <div className="mb-10">
+          <FAQAccordion items={FAQ} />
         </div>
 
         <InternalLinkCluster

@@ -17,6 +17,7 @@ export interface BlogPost {
   tag: string;
   sections: BlogSection[];
   faq?: BlogFAQItem[];
+  keywords?: string[];
 }
 
 export const blogPosts: BlogPost[] = [
@@ -1447,6 +1448,391 @@ export const blogPosts: BlogPost[] = [
         paragraphs: [
           "Beyond feature lists, the real test is whether a tool fits how you already work: does it match your niche, does setup take an afternoon or a week, and does pricing scale with your actual client count instead of assuming an enterprise budget. Add your real clients during a trial and see whether your week feels lighter within the first few days, that's a better signal than any comparison table, including this one.",
         ],
+      },
+    ],
+  },
+  {
+    slug: "software-for-online-fitness-coaches-and-personal-trainers",
+    title: "Client Management Software for Online Fitness Coaches and Personal Trainers",
+    description:
+      "Why online fitness coaches, personal trainers, and specialty trainers (weight loss, transformation, mobility, running/endurance) all hit the same admin wall — and what to actually track per client.",
+    date: "2026-08-20",
+    readTime: "8 min read",
+    tag: "Fitness",
+    keywords: [
+      "software for online fitness coaches",
+      "personal trainer client management software",
+      "online PT client tracking",
+      "fitness trainer software",
+      "weight loss coach software",
+      "fat loss coach client tracker",
+      "body transformation coach software",
+      "women's fitness coach software",
+      "men's fitness coach software",
+      "functional fitness coach software",
+      "mobility coach client tracking",
+      "running coach software",
+      "marathon coach client management",
+      "triathlon coach software",
+      "health and fitness coach software",
+    ],
+    sections: [
+      {
+        heading: "Every fitness coach eventually outgrows a spreadsheet",
+        paragraphs: [
+          "Whether you're an online fitness coach running everything through DMs, a personal trainer with a full in-person roster, or a fitness trainer splitting time between both, the admin problem looks identical once you pass a handful of clients: check-ins scattered across text threads, payment status you're tracking from memory, and no single place to see who's actually engaged versus who's gone quiet.",
+          "The workout programming itself usually isn't the bottleneck — most coaches already have a system for that, whether it's a dedicated programming app or their own spreadsheet. The bottleneck is everything around the training: scheduling, check-in cadence, payment tracking, and noticing disengagement before a client quietly cancels.",
+        ],
+      },
+      {
+        heading: "Different fitness specialties, the same underlying problem",
+        paragraphs: [
+          "A weight-loss or fat-loss coach and a body transformation coach are tracking progress photos, weigh-ins, and measurements on a cadence that needs to stay consistent to mean anything — easy to keep up with 5 clients, much harder at 30. Women's fitness and men's fitness coaches often run structured, longer-horizon programs (a 12-week glute program, a strength cycle) where losing track of where a client is in the program is a real risk to results and retention.",
+          "Functional fitness and mobility coaches typically work with clients managing an injury history or a physical limitation that needs to stay visible every session, not buried in an old note. Running, marathon, and triathlon coaches are managing training blocks tied to a hard external deadline — a race day — where a missed check-in during a taper week is a very different problem than a missed check-in in week 2.",
+        ],
+      },
+      {
+        heading: "What online personal training specifically needs",
+        paragraphs: [
+          "Online PT adds a layer in-person training doesn't have: no default face-to-face touchpoint to catch a disengaging client early. If a client trains alone and only talks to you over messages, silence is the only signal you get, and it usually comes too late. This is exactly why an automated daily flag on who's gone quiet matters more for online fitness coaches than almost any other coaching niche.",
+          "Time zones and asynchronous check-ins also matter more for online coaches with a geographically spread client base — a system that logs check-ins as they come in, rather than requiring a live call, fits how online coaching actually runs.",
+        ],
+      },
+      {
+        heading: "What CoachevaOS tracks for a fitness coaching practice",
+        paragraphs: [
+          "Body weight, body fat %, training experience, injuries/limitations, steps, and sleep hours come pre-loaded for every fitness client, fully editable if your specialty needs different fields — a running coach might swap in weekly mileage, a transformation coach might add progress-photo check-ins. The AI daily briefing flags who's gone quiet before it becomes a churn problem, and everything sits alongside session scheduling and payment tracking in one branded client portal.",
+          "CoachevaOS deliberately doesn't include a workout builder or exercise library — it's built to run alongside whatever programming tool you already use, not replace it. The job here is the practice management layer around your training, not the training itself.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Does this replace my workout programming app?",
+        a: "No. CoachevaOS handles client records, scheduling, payments, check-ins, and engagement tracking — it's designed to run alongside your existing workout-programming tool, not replace it.",
+      },
+      {
+        q: "Does this work for running, marathon, and triathlon coaches, not just strength/PT?",
+        a: "Yes — the underlying client management (scheduling, check-ins, engagement tracking) is the same regardless of training modality. Custom fields can be adapted to weekly mileage, race dates, or whatever an endurance coaching practice actually tracks.",
+      },
+      {
+        q: "Is this specific to one fitness niche like weight loss or bodybuilding?",
+        a: "No — the same system works for weight-loss coaching, body transformation, functional fitness, mobility coaching, and general personal training. Only the custom fields you choose to track change, not the underlying platform.",
+      },
+    ],
+  },
+  {
+    slug: "software-for-health-wellness-and-nutrition-coaches",
+    title: "Client Management Software for Health, Wellness, and Nutrition Coaches",
+    description:
+      "Health coaches, wellness coaches, holistic health practitioners, wellness practitioners, and lifestyle coaches all manage sensitive, detailed client information — here's what actually needs a real system instead of a spreadsheet.",
+    date: "2026-08-22",
+    readTime: "7 min read",
+    tag: "Nutrition",
+    keywords: [
+      "health coach software",
+      "wellness coach client management",
+      "holistic health practitioner software",
+      "wellness practitioner client tracking",
+      "lifestyle coach software",
+      "nutrition and wellness coach software",
+      "health and wellness coach client management",
+      "nutrition coach client tracker",
+    ],
+    sections: [
+      {
+        heading: "Health coaching client work is more than meal plans",
+        paragraphs: [
+          "A nutrition coach's day-to-day involves dietary preferences, allergies and restrictions, weight trends, and calorie targets that all need to stay accurate and current — get one of these wrong from an outdated note and it's not just an admin slip, it's a real client-safety issue. A health coach or wellness coach often carries an even broader picture: sleep, stress, movement, and lifestyle factors alongside nutrition, which is exactly the kind of multi-dimensional client profile a chat thread and a notes app can't hold reliably.",
+        ],
+      },
+      {
+        heading: "Holistic health and wellness practitioners face a specific trust problem",
+        paragraphs: [
+          "Holistic health practitioners and wellness practitioners are often working with clients who've shared a lot of sensitive personal health context — conditions, history, sensitivities — and expect that to be handled with real discretion, not scattered across a personal inbox. A branded, private client portal signals a level of professionalism and confidentiality that a generic email thread simply doesn't, which matters directly for client trust and retention in this kind of practice.",
+        ],
+      },
+      {
+        heading: "Lifestyle and wellness coaches: broader scope, same underlying chaos",
+        paragraphs: [
+          "Lifestyle coaches and wellness coaches whose practice spans more than just diet — habits, routines, stress management — deal with the same core admin problem as any 1:1 coach: check-ins that need a consistent cadence, and no easy way to see who's falling behind across an entire client roster without manually reviewing each thread.",
+        ],
+      },
+      {
+        heading: "What to actually track for nutrition and wellness clients",
+        paragraphs: [
+          "A nutrition and wellness coaching workspace comes pre-loaded with current weight, dietary preference, allergies/restrictions, and daily calorie target — fully editable, so a holistic health practitioner can swap in whatever fields their specific modality actually tracks (sleep quality, stress rating, movement minutes). The AI daily briefing surfaces which clients are due for a check-in, so nothing falls through the cracks as a roster grows past what one person can track from memory.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Can clients log allergies and dietary restrictions safely?",
+        a: "Yes — a nutrition coach's workspace comes pre-loaded with dietary preference and allergy/restriction fields alongside weight and calorie targets, kept in a private, client-scoped portal rather than a shared spreadsheet.",
+      },
+      {
+        q: "Is this only for clinical nutritionists, or does it work for holistic/alternative practitioners too?",
+        a: "It works for both — the platform doesn't assume a clinical framework. Holistic health practitioners and wellness practitioners can adapt the custom fields to whatever their specific modality tracks, rather than being locked into calorie-and-macro-only fields.",
+      },
+    ],
+  },
+  {
+    slug: "software-for-business-coaches-entrepreneur-and-sales-coaches",
+    title: "Client Management Software for Business, Entrepreneur, and Sales Coaches",
+    description:
+      "Business coaches, startup coaches, small business coaches, sales coaches, marketing coaches, and CEO coaches all track client business metrics — here's what a real system looks like instead of a client-by-client spreadsheet.",
+    date: "2026-08-25",
+    readTime: "7 min read",
+    tag: "Business",
+    keywords: [
+      "business coach software",
+      "entrepreneur coach client management",
+      "startup coach software",
+      "small business coach software",
+      "business growth coach software",
+      "business strategy coach client tracking",
+      "sales coach software",
+      "marketing coach client management",
+      "CEO coach software",
+      "wellness entrepreneur coach software",
+    ],
+    sections: [
+      {
+        heading: "Business coaching runs on numbers, not just notes",
+        paragraphs: [
+          "Unlike a lot of coaching niches, business coaching involves tracking hard metrics per client: monthly revenue, team size, active leads, conversion rate. A business coach, entrepreneur coach, or small business coach juggling more than a handful of clients ends up with these numbers scattered across separate client spreadsheets — exactly the kind of data that should live in one dashboard, not be reconstructed from memory before every call.",
+        ],
+      },
+      {
+        heading: "Startup and growth-stage coaching moves fast",
+        paragraphs: [
+          "Startup coaches and business growth/strategy coaches are often working with clients whose numbers shift meaningfully week to week — a founder client isn't the same case month over month the way some other coaching relationships are. Losing track of where a client's metrics stood even a few weeks ago makes it hard to show real progress or catch a business heading in the wrong direction early.",
+        ],
+      },
+      {
+        heading: "Sales and marketing coaches need a lead pipeline too",
+        paragraphs: [
+          "Sales coaches and marketing coaches are in an unusual position: they're coaching clients on exactly the kind of lead-generation and conversion work their own coaching practice also needs. A lead pipeline built into the same platform — Kanban board, CSV import, conversion tracking — means a sales coach can run their own client acquisition with the same rigor they're teaching, not a worse version of it.",
+        ],
+      },
+      {
+        heading: "CEO coaches and wellness entrepreneur coaches: same core need",
+        paragraphs: [
+          "Whether the client relationship is framed as CEO coaching, executive-adjacent business coaching, or wellness-entrepreneur coaching (coaches helping wellness practitioners run their own business), the underlying admin problem is identical: client revenue and lead metrics, a branded portal, and an AI daily briefing flagging who needs attention — regardless of what the coaching conversation itself covers.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Can I track a client's revenue and team metrics over time, not just a snapshot?",
+        a: "Yes — monthly revenue, team size, active leads, and conversion rate are logged per client and visible as a trend, not overwritten each time you update them.",
+      },
+      {
+        q: "Does CoachevaOS help me run my own coaching business's lead generation too?",
+        a: "Yes — the same lead pipeline (Kanban board, CSV import, conversion tracking) that tracks your clients' businesses also runs your own client acquisition, alongside the AI daily briefing.",
+      },
+    ],
+  },
+  {
+    slug: "software-for-career-and-professional-development-coaches",
+    title: "Client Management Software for Career, Interview, and Professional Development Coaches",
+    description:
+      "Career coaches, professional development coaches, interview coaches, job search coaches, and corporate coaches all track a client's momentum through a process with real deadlines — here's what needs a real system.",
+    date: "2026-08-27",
+    readTime: "6 min read",
+    tag: "Career",
+    keywords: [
+      "career coach software",
+      "professional development coach software",
+      "workplace coach client management",
+      "interview coach software",
+      "job search coach client tracker",
+      "corporate coach software",
+    ],
+    sections: [
+      {
+        heading: "Career coaching moves in unpredictable bursts",
+        paragraphs: [
+          "A career coach's client can go from actively applying to completely quiet for a month, then suddenly have three interviews in one week. That unpredictable pace is exactly what makes career coaching hard to track in a static spreadsheet — the moment that matters most (a client stalling, or a client suddenly needing rapid-fire interview prep) doesn't announce itself on a schedule.",
+        ],
+      },
+      {
+        heading: "Interview and job search coaching needs momentum tracking",
+        paragraphs: [
+          "Interview coaches and job search coaches are fundamentally tracking a funnel: applications sent, interviews landed, offers received. Without a system logging this per client, it's easy to lose the thread on who's actively in a search versus who's quietly given up on the process without saying so — exactly the client an AI daily briefing flagging inactivity is built to catch.",
+        ],
+      },
+      {
+        heading: "Professional development and corporate coaching: longer horizons",
+        paragraphs: [
+          "Professional development coaches, workplace coaches, and corporate coaches often work on a longer timeline — a promotion track, a skills gap, an internal transition — where progress is measured over months, not weeks. A branded client portal with structured goal tracking keeps that longer arc visible, instead of relying on remembering what was discussed three sessions ago.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Can I track how many applications and interviews a client has had?",
+        a: "Yes — applications-sent and interview-count are tracked per client alongside current/target role and target salary, so momentum (or its absence) is visible at a glance.",
+      },
+      {
+        q: "Does this work for corporate/internal coaching, not just external job searches?",
+        a: "Yes — the same client portal and goal-tracking structure works for a promotion track or internal transition just as well as an external job search; the fields are fully editable to match.",
+      },
+    ],
+  },
+  {
+    slug: "software-for-life-and-personal-development-coaches",
+    title: "Client Management Software for Life, Confidence, and Personal Development Coaches",
+    description:
+      "Life coaches, confidence coaches, productivity coaches, accountability coaches, and public speaking coaches all track progress that's inherently harder to quantify than a fitness metric — here's what actually helps.",
+    date: "2026-08-29",
+    readTime: "7 min read",
+    tag: "Life",
+    keywords: [
+      "life coach software",
+      "confidence coach software",
+      "productivity coach client management",
+      "personal development coach software",
+      "accountability coach software",
+      "public speaking coach client tracker",
+      "success coach software",
+      "men's coach software",
+      "women's coach software",
+    ],
+    sections: [
+      {
+        heading: "Personal development progress doesn't fit neatly on a spreadsheet",
+        paragraphs: [
+          "Life coaches, confidence coaches, and success coaches are tracking something genuinely harder to quantify than a weight number or a revenue figure: a client's evolving focus area, confidence level, and the challenges they're actually working through. Scattered notes across sessions make it easy to lose the thread of real progress, even when it's happening.",
+        ],
+      },
+      {
+        heading: "Accountability coaching lives or dies on consistency",
+        paragraphs: [
+          "Accountability coaches and productivity coaches are, almost by definition, selling consistency and follow-through — which makes it especially important that the coach's own systems don't fall behind. A structured check-in cadence with an automated flag on who's gone quiet isn't just a nice-to-have here; it's directly aligned with what the coaching itself promises.",
+        ],
+      },
+      {
+        heading: "Public speaking and identity-specific coaching (men's/women's coaching)",
+        paragraphs: [
+          "Public speaking coaches often track progress across a series of discrete events (a talk, a pitch, a presentation) rather than a continuous metric — a portal that logs each engagement and outcome separately keeps that history intact. Men's coaches and women's coaches running identity-specific practices face the same core admin need as any 1:1 life coach: a private, branded space and a consistent way to track a client's own stated goals over time, without generic corporate framing that doesn't fit the relationship.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "How do you track subjective progress like confidence or mindset?",
+        a: "Through simple rated check-ins (e.g. a 1-10 confidence scale) logged over time, alongside free-text focus-area and challenge fields — enough structure to see a real trend without forcing subjective progress into a rigid metric.",
+      },
+      {
+        q: "Is this generic, or does it adapt to a specific coaching identity or niche (like a men's or women's coaching practice)?",
+        a: "The platform itself is niche-agnostic — every field is editable, and the branded portal is your own, not generic. It adapts to how you frame your practice rather than assuming one specific style of life coaching.",
+      },
+    ],
+  },
+  {
+    slug: "software-for-executive-and-leadership-coaches",
+    title: "Client Management Software for Executive and Leadership Coaches",
+    description:
+      "Executive coaches and leadership coaches work with senior clients who expect discretion and structure — here's what a real practice-management system looks like for high-stakes 1:1 coaching relationships.",
+    date: "2026-08-31",
+    readTime: "6 min read",
+    tag: "Executive",
+    keywords: [
+      "executive coach software",
+      "leadership coach client management",
+      "executive coaching platform",
+      "leadership coaching software",
+    ],
+    sections: [
+      {
+        heading: "Executive clients expect more than an email thread",
+        paragraphs: [
+          "An executive coach or leadership coach working with senior leaders is operating in a context where an ad hoc mix of email and a shared doc doesn't read as a serious operating system for the relationship — it undersells the engagement itself. A branded, private client portal signals the level of structure and discretion this kind of client relationship expects by default.",
+        ],
+      },
+      {
+        heading: "Confidentiality has to be structural, not just promised",
+        paragraphs: [
+          "Every executive client's portal, notes, and data should be scoped entirely to that client and your own account — nothing shared across clients, nothing visible to anyone else. For leadership coaching specifically, where a client's team-performance concerns or leadership struggles are often sensitive internal information, that separation isn't a nice-to-have feature, it's the baseline expectation.",
+        ],
+      },
+      {
+        heading: "Tracking leadership progress across a whole roster",
+        paragraphs: [
+          "Current title, team size managed, leadership focus area, and a team engagement score give an executive coach a structured way to see each client's trajectory, while an AI daily briefing across the full roster means a coach managing several senior clients doesn't have to manually review every account to know who needs attention this week.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Is client data kept fully private and separate per executive client?",
+        a: "Yes — every client's portal, notes, and data are scoped entirely to that client and your own account; nothing is shared across clients or visible to anyone else.",
+      },
+      {
+        q: "Can I track a client's team engagement or leadership metrics over time?",
+        a: "Yes — team size managed, leadership focus area, and a team engagement score are tracked per client and visible as a trend across the coaching engagement, not a one-time snapshot.",
+      },
+    ],
+  },
+  {
+    slug: "software-for-group-membership-and-high-ticket-coaching",
+    title: "Client Management Software for Group, Membership, and High-Ticket Coaching Programs",
+    description:
+      "Whether you run group coaching, a coaching membership, or a high-ticket/VIP program, the client-relationship data underneath still needs real tracking — here's what actually matters for each model.",
+    date: "2026-09-02",
+    readTime: "7 min read",
+    tag: "Business",
+    keywords: [
+      "group coaching software",
+      "coaching membership software",
+      "high-ticket coaching software",
+      "VIP coaching client management",
+      "premium coaching software",
+      "online coaching platform",
+      "virtual coaching software",
+      "1:1 coaching software",
+    ],
+    sections: [
+      {
+        heading: "One business model, three very different admin problems",
+        paragraphs: [
+          "Group coaching, membership coaching, and high-ticket/VIP coaching all sell coaching, but the day-to-day admin each one demands is genuinely different. A group program's problem is tracking many individuals moving through the same content at different paces. A membership's problem is recurring, low-touch relationships at real scale. A high-ticket or VIP program's problem is the opposite: very few clients, but an expectation of white-glove attention that a generic system undersells.",
+        ],
+      },
+      {
+        heading: "Group coaching: individual progress inside a shared program",
+        paragraphs: [
+          "Even when sessions are delivered to a group, each participant's actual progress, engagement, and payment status is still an individual relationship — a member going quiet in a group program is just as real a churn risk as a 1:1 client going quiet, and it's easier to miss in a group setting precisely because attention is split. CoachevaOS doesn't manage group session logistics or cohort scheduling itself, but every participant still gets their own client record, portal, and engagement tracking, so no one falls through the cracks just because they're one of twelve instead of your only client.",
+        ],
+      },
+      {
+        heading: "Membership coaching: recurring relationships at volume",
+        paragraphs: [
+          "A coaching membership model usually means more active clients than a pure high-touch practice, each paying recurring, often lower-touch fees. At that volume, manually checking in on every member's status stops being realistic — this is exactly where an AI daily briefing flagging disengaged members earns its keep, since the alternative is either missing churn signals entirely or spending admin time no membership's margins were built to support.",
+        ],
+      },
+      {
+        heading: "High-ticket, VIP, and premium coaching: fewer clients, higher stakes",
+        paragraphs: [
+          "High-ticket, VIP, and premium coaching programs invert the volume problem: very few clients, but each one expects a level of responsiveness and polish that a generic spreadsheet actively undermines. A branded client portal, fast turnaround on check-ins, and a system that never drops a detail matters disproportionately here — at this price point, a client noticing you've lost track of something they told you is a retention risk a lower-ticket practice could absorb but a premium one can't.",
+        ],
+      },
+      {
+        heading: "Virtual and online coaching, across any of these models",
+        paragraphs: [
+          "Whether it's called virtual coaching, online coaching, or remote coaching, delivering any of these models without in-person contact removes the casual in-person cues that would otherwise flag a disengaging client. That's true whether the program is 1:1, group, membership, or high-ticket — which is why engagement tracking matters more, not less, the more remote the coaching relationship is.",
+        ],
+      },
+    ],
+    faq: [
+      {
+        q: "Does CoachevaOS run group coaching sessions or cohort scheduling?",
+        a: "No — CoachevaOS doesn't manage group session delivery or cohort logistics itself. What it does track is each individual participant's client record, engagement, and payment status within a group or membership program, so no one member gets lost in the group.",
+      },
+      {
+        q: "Is this built specifically for high-ticket or VIP coaching?",
+        a: "It's not exclusive to any one price point — the same branded portal, session tracking, and AI daily briefing work for a $50/month membership or a $10,000 VIP engagement. The difference is how much each client relationship benefits from that level of polish, which tends to matter more the higher the price point.",
       },
     ],
   },

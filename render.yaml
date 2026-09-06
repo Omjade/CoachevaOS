@@ -90,10 +90,16 @@ services:
         sync: false
       - key: AWS_REGION
         value: us-east-1
-      # Paddle: switching this to "live" points the backend at Paddle's real
-      # API instead of the sandbox — do this only once a live Paddle account,
-      # live keys, and live price IDs (below) all actually exist. Sandbox
-      # price IDs do NOT work against the live API and vice versa.
+      # Paddle: switching this to "production" points the backend at Paddle's
+      # real API instead of the sandbox AND is the exact string Paddle.js's
+      # Environments type requires on the frontend (paddle_client.py's own
+      # switch only checks for != "sandbox", but the frontend checkout will
+      # fail to initialize on anything other than "sandbox" or "production" —
+      # never use "live" here). Do this only once a live Paddle account, live
+      # keys, and live price IDs (below) all actually exist. Sandbox price
+      # IDs do NOT work against the live API and vice versa. DO NOT flip this
+      # until go-live Part 3 (vendors.paddle.com verification + real test
+      # payment) is complete.
       - key: PADDLE_ENVIRONMENT
         value: sandbox
       - key: PADDLE_API_KEY
@@ -104,6 +110,16 @@ services:
       # dashboard: https://api.coachevaos.com/billing/paddle/webhook
       - key: PADDLE_WEBHOOK_SECRET
         sync: false
+      # Render's own load balancer overwrites X-Forwarded-For with the real
+      # client IP (it isn't a passthrough proxy an attacker could spoof
+      # through), so it's safe to trust that header here. See
+      # app/payments/paddle_ips.py for the allowlist fetch/cache and
+      # app/config.py's comments for when NOT to enable trust_proxy_header
+      # on a different host.
+      - key: PADDLE_WEBHOOK_IP_ALLOWLIST_ENABLED
+        value: "true"
+      - key: PADDLE_WEBHOOK_TRUST_PROXY_HEADER
+        value: "true"
       - key: PADDLE_PRICE_STARTER_MONTHLY
         sync: false
       - key: PADDLE_PRICE_STARTER_ANNUAL

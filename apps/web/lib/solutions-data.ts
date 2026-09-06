@@ -11,6 +11,8 @@ export interface NicheSolution {
   faq: FAQItem[];
   /** Section headers folding in low-volume persona/sub-niche search terms, only fitness uses this today. */
   personaTerms?: string[];
+  /** Slug of a deep-dive blog post covering this niche's persona terms in full, for bidirectional linking. */
+  relatedBlogSlug?: string;
 }
 
 // Grounded in the real per-niche custom-field/metric templates
@@ -29,11 +31,17 @@ export const SOLUTIONS: NicheSolution[] = [
       "Every client's check-ins, progress, and payment status live in one dashboard, and the AI daily briefing tells you who's fallen quiet before they quietly churn.",
     tracks: ["Body weight", "Body fat %", "Training experience", "Injuries / limitations", "Steps", "Sleep hours"],
     personaTerms: [
-      "Strength & performance coaches",
-      "Fat-loss & weight-loss coaches",
+      "Online fitness coaches & online personal trainers",
+      "Fitness trainers running their own coaching business",
+      "Weight-loss & fat-loss coaches",
+      "Body transformation coaches",
       "Women's fitness & glute-program coaches",
-      "Wellness & lifestyle coaches",
+      "Men's fitness coaches",
+      "Functional fitness & mobility coaches",
+      "Running, marathon & triathlon coaches",
+      "Health and fitness coaches",
     ],
+    relatedBlogSlug: "software-for-online-fitness-coaches-and-personal-trainers",
     faq: [
       {
         q: "Does CoachevaOS include a workout builder or exercise library?",
@@ -55,6 +63,15 @@ export const SOLUTIONS: NicheSolution[] = [
     outcome:
       "Every client's dietary profile, weight trend, and calorie target live in one place, with an AI briefing flagging who's due for a check-in.",
     tracks: ["Current weight", "Dietary preference", "Allergies / restrictions", "Daily calorie target"],
+    personaTerms: [
+      "Health coaches & wellness coaches",
+      "Holistic health coaches",
+      "Wellness practitioners",
+      "Lifestyle coaches",
+      "Nutrition and wellness coaches",
+      "Health and wellness coaches",
+    ],
+    relatedBlogSlug: "software-for-health-wellness-and-nutrition-coaches",
     faq: [
       {
         q: "Can clients log allergies and dietary restrictions?",
@@ -72,6 +89,16 @@ export const SOLUTIONS: NicheSolution[] = [
     outcome:
       "Client revenue, team size, and active leads are tracked per client, while your own lead pipeline and AI daily briefing keep your own practice's growth on track too.",
     tracks: ["Monthly revenue", "Team size", "Active leads", "Conversion rate", "Main bottleneck"],
+    personaTerms: [
+      "Entrepreneur & startup coaches",
+      "Small business coaches",
+      "Business growth & business strategy coaches",
+      "Sales coaches",
+      "Marketing coaches",
+      "CEO coaches",
+      "Wellness entrepreneur coaches",
+    ],
+    relatedBlogSlug: "software-for-business-coaches-entrepreneur-and-sales-coaches",
     faq: [
       {
         q: "Can I track a client's revenue and lead metrics?",
@@ -93,6 +120,14 @@ export const SOLUTIONS: NicheSolution[] = [
     outcome:
       "Applications, interviews, and target-role/salary progress are tracked per client, with an AI briefing flagging who's gone quiet before they lose momentum.",
     tracks: ["Current role", "Target role", "Target salary", "Applications sent"],
+    personaTerms: [
+      "Professional development coaches",
+      "Workplace coaches",
+      "Interview coaches",
+      "Job search coaches",
+      "Corporate coaches",
+    ],
+    relatedBlogSlug: "software-for-career-and-professional-development-coaches",
     faq: [
       {
         q: "Can I track how many applications and interviews a client has had?",
@@ -110,6 +145,16 @@ export const SOLUTIONS: NicheSolution[] = [
     outcome:
       "A client's focus area, confidence rating, and challenges are logged in one place, with progress visible over time instead of buried in old notes.",
     tracks: ["Main focus area", "Confidence level", "Current challenges"],
+    personaTerms: [
+      "Productivity coaches",
+      "Confidence coaches",
+      "Personal development coaches",
+      "Accountability coaches",
+      "Public speaking coaches",
+      "Success coaches",
+      "Men's coaches & women's coaches",
+    ],
+    relatedBlogSlug: "software-for-life-and-personal-development-coaches",
     faq: [
       {
         q: "How does CoachevaOS track a life-coaching client's progress?",
@@ -127,6 +172,8 @@ export const SOLUTIONS: NicheSolution[] = [
     outcome:
       "Each executive client's leadership focus, team size, and engagement score are tracked in a branded, private portal, with an AI briefing keeping your whole roster visible.",
     tracks: ["Current title", "Team size managed", "Leadership focus area", "Team engagement score"],
+    personaTerms: ["Leadership coaches"],
+    relatedBlogSlug: "software-for-executive-and-leadership-coaches",
     faq: [
       {
         q: "Is client data kept private and separate per executive client?",
@@ -144,6 +191,7 @@ export const SOLUTIONS: NicheSolution[] = [
     outcome:
       "Relationship status, satisfaction score, and focus areas are tracked per client in one private, branded portal, with session notes turning into structured follow-ups.",
     tracks: ["Relationship status", "Relationship satisfaction", "Main focus area"],
+    personaTerms: ["Dating coaches", "Communication coaches"],
     faq: [
       {
         q: "Can I log a relationship-satisfaction score over time?",
@@ -161,6 +209,7 @@ export const SOLUTIONS: NicheSolution[] = [
     outcome:
       "Confidence and stress-level ratings are logged per check-in, turning subjective progress into a real, visible trend over time.",
     tracks: ["Confidence level", "Stress level", "Current challenges"],
+    personaTerms: ["ADHD coaches", "Wellness & mindset coaches"],
     faq: [
       {
         q: "How do you track subjective progress like confidence or stress?",
@@ -195,6 +244,12 @@ export const SOLUTIONS: NicheSolution[] = [
     outcome:
       "Discipline, performance level, and injury history are tracked per athlete, with a performance-score metric visible as a real trend.",
     tracks: ["Sport / discipline", "Current performance level", "Injuries / limitations", "Performance score"],
+    personaTerms: [
+      "Strength coaches & strength and conditioning coaches",
+      "Performance coaches",
+      "Sports performance coaches",
+      "Athletic performance coaches",
+    ],
     faq: [
       {
         q: "Can I track an athlete's injury history alongside their performance?",

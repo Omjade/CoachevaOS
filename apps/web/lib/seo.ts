@@ -10,17 +10,20 @@ export function buildMetadata({
   description,
   path,
   ogImage,
+  keywords,
 }: {
   title: string;
   description: string;
   path: string;
   ogImage?: string;
+  keywords?: string[];
 }): Metadata {
   const url = `${SITE_URL}${path}`;
   const images = [{ url: ogImage ?? "/opengraph-image", width: 1200, height: 630, alt: title }];
   return {
     title,
     description,
+    keywords,
     alternates: { canonical: url },
     openGraph: {
       type: "website",
