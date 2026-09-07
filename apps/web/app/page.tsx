@@ -11,6 +11,12 @@ import {
   BarbellIcon as Barbell,
   VideoCameraIcon as VideoCamera,
   HeartbeatIcon as Heartbeat,
+  SquaresFourIcon as SquaresFour,
+  UserCircleIcon as UserCircle,
+  SparkleIcon as Sparkle,
+  NotePencilIcon as NotePencil,
+  ChatCircleIcon as ChatCircle,
+  CalendarBlankIcon as CalendarBlank,
 } from "@phosphor-icons/react";
 import { api, ApiError } from "@/lib/api";
 import { NICHES } from "@/lib/niches";
@@ -39,95 +45,68 @@ const capabilities = [
     n: "01",
     title: "Everything in one place",
     body: "No more juggling ten different apps to run your practice. Clients, leads, chat, calendar, and billing all live in one calm system.",
-    tags: ["One login", "One dashboard", "No more app-switching"],
+    Icon: SquaresFour,
   },
   {
     n: "02",
     title: "A dedicated, personalized portal per client",
     body: "Every client gets their own branded onboarding and portal from day one, so it feels premium, not like a shared spreadsheet.",
-    tags: ["Branded onboarding", "Personal portal", "Feels premium"],
+    Icon: UserCircle,
   },
   {
     n: "03",
     title: "AI daily briefing for you and your client",
     body: "Open the app to a morning briefing that already knows who needs you today, with a personalized dashboard, sessions, and everything else in one place.",
-    tags: ["Who needs attention", "Personalized dashboard", "You always approve"],
+    Icon: Sparkle,
   },
   {
     n: "04",
     title: "Build a form in seconds with AI",
     body: "Describe what you need and get a ready-to-share form instantly, for onboarding or any general info, sent to anyone with one link.",
-    tags: ["AI form builder", "Share in one click", "Onboarding or general"],
+    Icon: NotePencil,
   },
   {
     n: "05",
     title: "A dedicated chat for every client",
     body: "Progress, tasks, goals, custom fields, and documents you need day to day, all attached to the same conversation, not scattered across tools.",
-    tags: ["Progress & tasks", "Goals & custom fields", "Documents"],
+    Icon: ChatCircle,
   },
   {
     n: "06",
     title: "Calendar, leads, and a dashboard that thinks ahead",
     body: "Connect your calendar so clients book around your real availability, manage your lead pipeline from new to active with one-click CSV import, and see it all summarized: daily briefing, weekly digest, churn risk, growth, and engagement.",
-    tags: ["Calendar booking", "Lead pipeline + CSV import", "AI-driven dashboard"],
+    Icon: CalendarBlank,
   },
 ];
 
-const HEADING_LINES = [
-  "Every client,",
-  "session, and",
-  "follow-up,",
-  "in one steady",
-  "rhythm.",
-];
+const HEADING_LINES = ["Every tool.", "Every client.", "One platform."];
 
-function CapabilityAccordion() {
-  const [open, setOpen] = useState(0);
+function CapabilityGrid() {
   return (
-    <div className="flex flex-col gap-3">
-      {capabilities.map((c, i) => {
-        const isOpen = open === i;
-        return (
-          <motion.div
-            key={c.n}
-            layout
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            onClick={() => setOpen(i)}
-            className={`cursor-pointer overflow-hidden rounded-[24px] transition-colors duration-300 ${
-              isOpen
-                ? "bg-neutral-900 text-white"
-                : "border border-neutral-300/50 bg-white text-neutral-500 shadow-[0_10px_20px_rgba(28,29,31,0.05)] hover:-translate-y-0.5 hover:shadow-[0_14px_26px_rgba(28,29,31,0.08)]"
-            }`}
-          >
-            {isOpen ? (
-              <div className="p-6">
-                <div className="mb-3 flex items-start justify-between">
-                  <h3 className="font-heading text-xl font-semibold text-white">{c.title}</h3>
-                  <span className="text-xs text-neutral-500">({c.n})</span>
-                </div>
-                <p className="mb-5 max-w-[280px] text-[13px] leading-relaxed text-neutral-400">
-                  {c.body}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {c.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs text-neutral-200"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="flex h-[74px] items-center justify-between px-6">
-                <h4 className="text-base font-medium text-neutral-500">{c.title}</h4>
-                <span className="text-xs text-neutral-300">({c.n})</span>
-              </div>
-            )}
-          </motion.div>
-        );
-      })}
+    <div className="grid grid-cols-1 gap-px overflow-hidden rounded-[22px] bg-neutral-200 sm:grid-cols-2 lg:grid-cols-3">
+      {capabilities.map((c, i) => (
+        <motion.div
+          key={c.n}
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.4, delay: i * 0.05 }}
+          className={`flex flex-col gap-4 p-6 ${i % 2 === 0 ? "bg-white" : "bg-neutral-50"}`}
+        >
+          <div className="flex items-start justify-between">
+            <span className="font-heading text-xs font-semibold text-neutral-400">{c.n}</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+              <c.Icon className="h-5 w-5" weight="fill" />
+            </span>
+          </div>
+          <div>
+            <h4 className="font-heading mb-1.5 text-[15px] leading-snug font-semibold text-neutral-900">
+              {c.title}
+            </h4>
+            <p className="text-[12.5px] leading-relaxed text-neutral-500">{c.body}</p>
+          </div>
+        </motion.div>
+      ))}
     </div>
   );
 }
@@ -501,56 +480,62 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Every client, session, and follow-up — workspace capabilities */}
+      {/* Every tool, every client — workspace capabilities */}
       <section
         id="features"
         className="bg-neutral-100 px-3 py-4 md:px-4"
       >
         <div className="mx-auto max-w-6xl rounded-[26px] bg-white px-6 py-12 shadow-[0_20px_50px_rgba(28,29,31,0.05)] md:px-12 md:py-16">
-          <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-10">
-            <div>
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.5 }}
-                transition={{ duration: 0.4 }}
-                className="mb-5 inline-flex items-center gap-1.5 rounded-[5px] border border-neutral-300/60 bg-white px-2.5 py-1 text-[10px] font-medium text-accent-600 uppercase shadow-sm"
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-accent-600" />
-                Your coaching command center
-              </motion.div>
+          <div className="mx-auto mb-10 max-w-2xl text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.4 }}
+              className="mx-auto mb-5 inline-flex items-center gap-1.5 rounded-[5px] border border-neutral-300/60 bg-white px-2.5 py-1 text-[10px] font-medium text-accent-600 uppercase shadow-sm"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-600" />
+              Your coaching command center
+            </motion.div>
 
-              <h2 className="font-heading mb-6 max-w-[320px] text-[40px] leading-[0.98] font-semibold tracking-tight text-neutral-900 md:text-[52px]">
-                {HEADING_LINES.map((line, i) => (
-                  <motion.span
-                    key={line}
-                    initial={{ opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, amount: 0.5 }}
-                    transition={{ duration: 0.6, delay: 0.1 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                    className="block"
-                  >
-                    {line}
-                  </motion.span>
-                ))}
-              </h2>
+            <h2 className="font-heading mb-4 text-[40px] leading-[0.98] font-semibold tracking-tight text-neutral-900 md:text-[52px]">
+              {HEADING_LINES.map((line, i) => (
+                <motion.span
+                  key={line}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.5 }}
+                  transition={{ duration: 0.6, delay: 0.1 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                  className="block"
+                >
+                  {line}
+                </motion.span>
+              ))}
+            </h2>
 
-              <motion.p
-                initial={{ opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.5 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
-                className="max-w-[320px] text-[13px] leading-relaxed text-neutral-600 md:text-sm"
-              >
-                CoachevaOS keeps the work around your coaching in one place, so you can spend
-                less time chasing details and more time coaching.
-              </motion.p>
-            </div>
-
-            <div className="mx-auto w-full max-w-[430px]">
-              <CapabilityAccordion />
-            </div>
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="mx-auto max-w-md text-[13px] leading-relaxed text-neutral-600 md:text-sm"
+            >
+              CoachevaOS keeps the work around your coaching in one place, so you can spend
+              less time chasing details and more time coaching.
+            </motion.p>
           </div>
+
+          <CapabilityGrid />
+
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.5 }}
+            className="font-heading mt-12 text-center text-xl font-semibold tracking-tight text-neutral-900 md:text-[28px]"
+          >
+            One platform to run your entire coaching business.
+          </motion.p>
         </div>
       </section>
 
