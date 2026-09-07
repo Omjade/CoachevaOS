@@ -14,6 +14,12 @@ export const metadata: Metadata = buildMetadata({
   description:
     "An honest roundup of the best coaching software for solo and independent coaches in 2026, including where each tool is actually the better fit.",
   path: "/best-coaching-software-solo-coaches",
+  keywords: [
+    "best coaching software for solo coaches",
+    "software for independent coaches",
+    "solo coaching practice software",
+    "best software for one-person coaching business",
+  ],
 });
 
 const ROUNDUP = [

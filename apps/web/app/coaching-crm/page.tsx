@@ -16,6 +16,13 @@ export const metadata: Metadata = buildMetadata({
   description:
     "A coaching CRM built around the coaching relationship, not a generic sales pipeline: leads, client history, session context, and an AI daily briefing in one place.",
   path: "/coaching-crm",
+  keywords: [
+    "coaching CRM",
+    "CRM for coaches",
+    "coaching business CRM software",
+    "client relationship management for coaches",
+    "coach CRM with lead pipeline",
+  ],
 });
 
 const FEATURES = [

@@ -45,6 +45,14 @@ export default async function BlogPostPage({
     day: "numeric",
   });
 
+  // Sorted by date (not array order, which is append-order and not
+  // necessarily chronological) so prev/next reflects an actual reading
+  // sequence rather than an arbitrary insertion position.
+  const byDate = [...blogPosts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const currentIndex = byDate.findIndex((p) => p.slug === post.slug);
+  const prevPost = currentIndex > 0 ? byDate[currentIndex - 1] : null;
+  const nextPost = currentIndex < byDate.length - 1 ? byDate[currentIndex + 1] : null;
+
   const related = blogPosts.filter((p) => p.slug !== post.slug).slice(0, 2);
 
   const articleStructuredData = {
@@ -121,6 +129,35 @@ export default async function BlogPostPage({
               Start free trial
             </Link>
           </div>
+
+          {(prevPost || nextPost) && (
+            <div className="mt-14 grid grid-cols-1 gap-3 border-t border-divider pt-8 sm:grid-cols-2">
+              {prevPost ? (
+                <Link
+                  href={`/blog/${prevPost.slug}`}
+                  className="rounded-[16px] border border-neutral-300/50 bg-white p-4 hover:border-accent-600"
+                >
+                  <p className="mb-1 text-[10px] font-semibold tracking-wide text-neutral-400 uppercase">
+                    ← Previous
+                  </p>
+                  <p className="text-sm font-medium text-neutral-800">{prevPost.title}</p>
+                </Link>
+              ) : (
+                <div />
+              )}
+              {nextPost && (
+                <Link
+                  href={`/blog/${nextPost.slug}`}
+                  className="rounded-[16px] border border-neutral-300/50 bg-white p-4 text-right hover:border-accent-600"
+                >
+                  <p className="mb-1 text-[10px] font-semibold tracking-wide text-neutral-400 uppercase">
+                    Next →
+                  </p>
+                  <p className="text-sm font-medium text-neutral-800">{nextPost.title}</p>
+                </Link>
+              )}
+            </div>
+          )}
 
           {related.length > 0 && (
             <div className="mt-14">

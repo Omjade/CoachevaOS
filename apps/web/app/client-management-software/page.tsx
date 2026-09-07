@@ -16,6 +16,13 @@ export const metadata: Metadata = buildMetadata({
   description:
     "Client management software for coaches: a branded portal, lead-to-client pipeline, custom fields per niche, and an AI daily briefing, all in one dashboard.",
   path: "/client-management-software",
+  keywords: [
+    "client management software for coaches",
+    "coaching client management system",
+    "coach client tracking software",
+    "client management platform for coaches",
+    "coaching client database software",
+  ],
 });
 
 const FEATURES = [

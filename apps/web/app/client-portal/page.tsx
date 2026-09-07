@@ -16,6 +16,13 @@ export const metadata: Metadata = buildMetadata({
   description:
     "A branded client portal for coaches: messaging, session booking, check-ins, progress, and documents in one place your clients actually use.",
   path: "/client-portal",
+  keywords: [
+    "client portal for coaches",
+    "coaching client portal software",
+    "branded client portal",
+    "coach client app",
+    "client-facing coaching software",
+  ],
 });
 
 const FEATURES = [

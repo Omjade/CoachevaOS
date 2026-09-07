@@ -18,6 +18,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import FloatingToolIcons from "@/components/FloatingToolIcons";
 import DemoVideoDialog from "@/components/DemoVideoDialog";
+import LandingDashboardPreview from "@/components/LandingDashboardPreview";
 import CoachMapCarousel from "@/components/CoachMapCarousel";
 import FAQAccordion from "@/components/FAQAccordion";
 
@@ -319,8 +320,9 @@ export default function LandingPage() {
               className="animate-fade-up mx-auto mt-14 max-w-lg text-xs text-neutral-700/80 md:text-[13px]"
               style={{ animationDelay: "950ms" }}
             >
-              Replace scattered tools with one calm system for client records, follow-ups,
-              bookings, billing, and AI-guided coaching.
+              Client management software for independent coaches, any niche: replace the
+              spreadsheet, WhatsApp, and Calendly stack with one system for client records,
+              follow-ups, bookings, billing, and AI-guided coaching.
             </p>
 
             <div
@@ -343,6 +345,12 @@ export default function LandingPage() {
                 Watch demo
               </button>
             </div>
+            <p
+              className="animate-fade-up mt-3 text-[11px] text-neutral-500"
+              style={{ animationDelay: "1120ms" }}
+            >
+              Free for 14 days. Cancel anytime — you keep access through what you've already paid for.
+            </p>
           </div>
 
           {/* Bottom scroll tab */}
@@ -440,6 +448,66 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Same workspace, two views — proves it looks sophisticated to clients too */}
+      <section className="bg-neutral-100 px-6 py-16 md:px-9">
+        <div className="mx-auto max-w-4xl text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.4 }}
+            className="mb-5 inline-flex items-center gap-1.5 rounded-[5px] border border-neutral-300/60 bg-white px-2.5 py-1 text-[10px] font-medium text-accent-600 uppercase shadow-sm"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-600" />
+            One workspace, two views
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.5 }}
+            className="font-heading mx-auto mb-4 max-w-2xl text-[32px] leading-[1.05] font-semibold tracking-tight text-neutral-900 md:text-[44px]"
+          >
+            What looks calm to you looks{" "}
+            <span className="text-accent-600">premium</span> to them
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mx-auto mb-10 max-w-lg text-[13px] leading-relaxed text-neutral-600 md:text-sm"
+          >
+            A branded portal makes a $200 coaching package feel like the real business it is —
+            not a WhatsApp thread. See both sides of the same workspace below.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <LandingDashboardPreview />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="mt-8"
+          >
+            <Link
+              href="/sandbox"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-600 hover:text-accent-700"
+            >
+              Explore an interactive sandbox — no email required <span aria-hidden>→</span>
+            </Link>
+          </motion.div>
         </div>
       </section>
 

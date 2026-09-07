@@ -9,6 +9,7 @@ import DirectAnswer from "@/components/DirectAnswer";
 import Testimonial from "@/components/Testimonial";
 import FAQAccordion from "@/components/FAQAccordion";
 import InternalLinkCluster from "@/components/InternalLinkCluster";
+import NicheApplicability from "@/components/NicheApplicability";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -16,6 +17,15 @@ export const metadata: Metadata = buildMetadata({
   description:
     "AI coaching software that prioritizes across your whole client base each morning and flags at-risk clients before they churn, not a single bolted-on chatbot feature.",
   path: "/ai-coaching-software",
+  keywords: [
+    "AI coaching software",
+    "AI coaching platform",
+    "AI coach assistant",
+    "AI coaching app",
+    "generative AI coaching software",
+    "AI client management for coaches",
+    "AI churn detection for coaches",
+  ],
 });
 
 const FEATURES = [
@@ -86,6 +96,8 @@ export default function AICoachingSoftwarePage() {
         <div className="mb-10">
           <Testimonial />
         </div>
+
+        <NicheApplicability toolLabel="AI coaching platform" />
 
         <h2 className="font-heading mb-4 text-xl font-semibold text-neutral-900">
           Frequently asked questions

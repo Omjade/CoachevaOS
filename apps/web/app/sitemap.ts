@@ -16,6 +16,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE_URL}/privacy`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/terms`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${SITE_URL}/blog`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${SITE_URL}/free-kits`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE_URL}/sandbox`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE_URL}/templates/coaching-agreement-template`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE_URL}/templates/discovery-questions-library`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${SITE_URL}/templates/client-checkin-framework`, changeFrequency: "monthly", priority: 0.7 },
     // Focus-tier standalone + feature + roundup pages (Section 8b + Section 2 keyword list).
     { url: `${SITE_URL}/ai-coaching-software`, changeFrequency: "monthly", priority: 0.9 },
     { url: `${SITE_URL}/client-management-software`, changeFrequency: "monthly", priority: 0.9 },

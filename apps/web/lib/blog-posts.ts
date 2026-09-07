@@ -544,33 +544,81 @@ export const blogPosts: BlogPost[] = [
     ],
     title: "12 Must-Have Features in a Modern Coaching Platform",
     description:
-      "A feature checklist to screenshot and compare against any coaching platform you're evaluating, from client records to AI prioritization.",
+      "A feature-by-feature checklist to screenshot and compare against any coaching platform you're evaluating, from client records to AI prioritization.",
     date: "2026-08-03",
-    readTime: "6 min read",
+    readTime: "7 min read",
     tag: "Business",
     sections: [
       {
-        heading: "Client management essentials",
+        heading: "1. A real client record, not a spreadsheet row",
         paragraphs: [
-          "A real client record (not a spreadsheet row): intake responses, goals, session notes, and progress history in one place. A branded client portal so clients have their own home for the relationship. Custom fields specific to your coaching niche, not a generic contact form.",
+          "Intake responses, goals, session notes, and progress history in one place — not scattered across a spreadsheet row, a notes app, and old email threads.",
         ],
       },
       {
-        heading: "Scheduling and communication",
+        heading: "2. A branded client portal",
         paragraphs: [
-          "Booking tied to your real, current availability, not a static link that goes stale. Secure in-app messaging, so client conversations aren't scattered across text and email. Automated reminders that actually reduce no-shows.",
+          "Clients get their own home for the relationship, not a folder buried in your inbox — it also signals professionalism a shared doc never will.",
         ],
       },
       {
-        heading: "Money and growth",
+        heading: "3. Custom fields specific to your coaching niche",
         paragraphs: [
-          "Billing and invoice status visible per client, so nothing falls through the cracks. A lead pipeline if you're actively growing your practice, ideally one that converts a lead into a full client record without re-entering data.",
+          "A generic contact form doesn't fit a fitness coach's body-composition metrics any better than it fits a financial coach's net-worth tracking — fields should adapt to your niche, not force it into a generic shape.",
         ],
       },
       {
-        heading: "What separates a modern platform from an older one",
+        heading: "4. Booking tied to your real, current availability",
         paragraphs: [
-          "AI-assisted prioritization: a daily view of who needs attention across your whole client base, not a per-client report you have to go looking for. This is the feature category most legacy coaching tools still don't have.",
+          "A static scheduling link that goes stale the moment your week changes creates exactly the back-and-forth a booking system is supposed to eliminate.",
+        ],
+      },
+      {
+        heading: "5. Secure in-app messaging",
+        paragraphs: [
+          "Client conversations that live inside the platform instead of scattered across text and email are easier to search, safer, and don't disappear when a phone gets a new number.",
+        ],
+      },
+      {
+        heading: "6. Automated reminders",
+        paragraphs: [
+          "Session reminders and reschedule links that fire without a coach remembering to send them are one of the highest-leverage fixes for no-shows specifically.",
+        ],
+      },
+      {
+        heading: "7. Billing and invoice status per client",
+        paragraphs: [
+          "Payment status visible at a glance, not reconstructed from memory or a separate invoicing tool, so nothing falls through the cracks at renewal time.",
+        ],
+      },
+      {
+        heading: "8. A lead pipeline that converts into a real client record",
+        paragraphs: [
+          "If you're actively growing your practice, a lead pipeline that hands off directly into a full client record — without re-entering the same information twice — matters more than the pipeline itself.",
+        ],
+      },
+      {
+        heading: "9. AI-assisted daily prioritization",
+        paragraphs: [
+          "A daily view of who needs attention across your whole client base, computed from real activity, not a per-client report you have to go looking for. This is the single feature category most legacy coaching tools still don't have.",
+        ],
+      },
+      {
+        heading: "10. Multi-timezone scheduling",
+        paragraphs: [
+          "If any of your clients are outside your own timezone, a platform that handles that conversion automatically avoids the exact kind of scheduling error that reads as unprofessional.",
+        ],
+      },
+      {
+        heading: "11. Session note history that's actually searchable",
+        paragraphs: [
+          "Being able to search past session notes for a specific topic or decision, rather than scrolling chronologically through months of entries, is the difference between notes you actually use and notes you just archive.",
+        ],
+      },
+      {
+        heading: "12. Real data export, not lock-in",
+        paragraphs: [
+          "A platform that lets you export your own client data on request is a signal about how the vendor treats your practice's data generally — treat reluctance to offer this as a real warning sign, not a minor detail.",
         ],
       },
     ],
@@ -1257,37 +1305,67 @@ export const blogPosts: BlogPost[] = [
     description:
       "An actionable list of the repetitive coaching-business tasks worth automating first, each mapped to a real time-cost.",
     date: "2026-08-19",
-    readTime: "6 min read",
+    readTime: "8 min read",
     tag: "Operations",
     sections: [
       {
-        heading: "Reminders and confirmations",
+        heading: "1. Reminders and confirmations",
         paragraphs: [
           "Session reminders, booking confirmations, and reschedule links: all fully automatable, and among the highest-leverage fixes for no-shows specifically.",
         ],
       },
       {
-        heading: "Session notes into follow-ups",
+        heading: "2. Session notes into follow-ups",
         paragraphs: [
           "Turning a session note into a summary and draft follow-up message, reviewed before sending, saves real time on the single most repetitive writing task in a coaching practice.",
         ],
       },
       {
-        heading: "Lead follow-up nudges",
+        heading: "3. Lead follow-up nudges",
         paragraphs: [
           "A flag when a lead has sat untouched past a set number of days, so follow-up doesn't depend on a coach remembering to check the pipeline manually.",
         ],
       },
       {
-        heading: "Subscription and invoice status",
+        heading: "4. Subscription and invoice status",
         paragraphs: [
           "Automatic tracking of who's approaching a renewal date or has an overdue invoice, instead of a manual monthly review that's easy to postpone.",
         ],
       },
       {
-        heading: "New-client onboarding drafts",
+        heading: "5. New-client onboarding drafts",
         paragraphs: [
           "A welcome message and suggested first goals drafted automatically from a new client's intake, reviewed and sent by the coach rather than written from scratch each time.",
+        ],
+      },
+      {
+        heading: "6. Recurring check-in prompts",
+        paragraphs: [
+          "A scheduled nudge to log a client's check-in (weight, mood, progress metric, whatever your niche tracks) removes the need to remember which client is due for one this week.",
+        ],
+      },
+      {
+        heading: "7. Re-engagement nudges for at-risk clients",
+        paragraphs: [
+          "A flag when a client's engagement pattern has quietly dropped — fewer replies, missed check-ins — catches a disengaging client while there's still time for a real conversation, instead of after they've already cancelled.",
+        ],
+      },
+      {
+        heading: "8. Testimonial and case-study requests",
+        paragraphs: [
+          "Automatically prompting a happy client for a testimonial right after a real milestone (a goal hit, a program completed) catches the moment they're most likely to say yes, instead of relying on remembering to ask later.",
+        ],
+      },
+      {
+        heading: "9. Waitlist-to-open-slot notifications",
+        paragraphs: [
+          "When a client cancels or a program frees up a slot, automatically notifying the next person on a waitlist fills capacity faster than manually working down a list from memory.",
+        ],
+      },
+      {
+        heading: "10. Chasing incomplete intake forms",
+        paragraphs: [
+          "A reminder sent automatically to a new client who started but didn't finish an intake form saves the awkward manual follow-up and keeps onboarding moving without a coach having to track who's stalled.",
         ],
       },
     ],
@@ -1394,9 +1472,9 @@ export const blogPosts: BlogPost[] = [
         a: "Usually yes. A solo or small practice needs pricing that scales with client count, fast setup, and tools sized for one person's workflow, not a platform built for a coaching organization managing a team of coaches. Several tools on this list, including CoachevaOS, are specifically priced and built for that smaller scale.",
       },
     ],
-    title: "Top 10 Best Small Business Coaching Software (2026 Review)",
+    title: "6 Best Small Business Coaching Software Options (2026 Review)",
     description:
-      "A real, honest comparison of the coaching software options worth considering for a small coaching practice in 2026, including where each one is genuinely the best fit.",
+      "A real, honest comparison of 6 coaching software options worth considering for a small coaching practice in 2026, including where each one is genuinely the best fit.",
     date: "2026-08-31",
     readTime: "10 min read",
     tag: "Business",

@@ -1,15 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, Eyebrow } from "@/components/ui";
+import { Card, Eyebrow, Button } from "@/components/ui";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import { SOLUTIONS } from "@/lib/solutions-data";
 import { nicheDisplayLabel } from "@/lib/niche";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Services",
-  description: "Everything CoachevaOS gives an independent coach: client workspace, lead pipeline, branded portal, AI daily briefing, and niche-ready templates.",
-};
+export const metadata: Metadata = buildMetadata({
+  title: "Services | Everything CoachevaOS Gives Your Coaching Practice",
+  description:
+    "Everything CoachevaOS gives an independent coach: client workspace, lead pipeline, branded portal, AI daily briefing, and niche-ready templates for any coaching practice.",
+  path: "/services",
+  keywords: [
+    "coaching software features",
+    "coaching platform services",
+    "client management software features",
+    "coaching CRM features",
+    "AI coaching platform features",
+    "coaching practice management services",
+  ],
+});
 
 const SERVICES = [
   {
@@ -39,6 +51,7 @@ export default function ServicesPage() {
     <div className="flex flex-1 flex-col bg-neutral-100">
       <SiteHeader variant="static" />
       <main className="mx-auto w-full max-w-3xl px-3 py-10 md:px-4">
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Services" }]} />
         <Eyebrow className="mb-4">Services</Eyebrow>
         <h1 className="font-heading mb-3 text-[36px] font-semibold tracking-tight text-neutral-900 md:text-[44px]">
           Everything your coaching practice needs, in one place
@@ -74,6 +87,15 @@ export default function ServicesPage() {
               {nicheDisplayLabel(s.value)}
             </Link>
           ))}
+        </div>
+
+        <div className="mt-12 rounded-[16px] bg-neutral-900 p-6 text-center">
+          <p className="mb-4 text-sm text-neutral-200">
+            See all of this running with your own clients, free for 14 days.
+          </p>
+          <Link href="/signup">
+            <Button>Start your free trial</Button>
+          </Link>
         </div>
       </main>
       <SiteFooter />

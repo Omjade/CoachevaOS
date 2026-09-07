@@ -1,12 +1,24 @@
 import type { Metadata } from "next";
-import { Card, Eyebrow } from "@/components/ui";
+import Link from "next/link";
+import { Card, Eyebrow, Button } from "@/components/ui";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "How Coaches Use It",
-  description: "Example workflows showing how a coaching week actually runs on CoachevaOS: fitness, business, and career coaching scenarios.",
-};
+export const metadata: Metadata = buildMetadata({
+  title: "How Coaches Use CoachevaOS | Real Workflow Examples",
+  description:
+    "Example workflows showing how a coaching week actually runs on CoachevaOS: fitness, business, and career coaching scenarios, from client check-ins to lead conversion.",
+  path: "/works",
+  keywords: [
+    "coaching software workflow examples",
+    "how coaches use coaching software",
+    "coaching CRM workflow",
+    "coaching client management examples",
+    "AI coaching platform workflow",
+  ],
+});
 
 const SCENARIOS = [
   {
@@ -31,6 +43,7 @@ export default function WorksPage() {
     <div className="flex flex-1 flex-col bg-neutral-100">
       <SiteHeader variant="static" />
       <main className="mx-auto w-full max-w-3xl px-3 py-10 md:px-4">
+        <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "How Coaches Use It" }]} />
         <Eyebrow className="mb-4">How coaches use it</Eyebrow>
         <h1 className="font-heading mb-3 text-[36px] font-semibold tracking-tight text-neutral-900 md:text-[44px]">
           A few days on CoachevaOS
@@ -48,6 +61,15 @@ export default function WorksPage() {
               <p className="text-sm leading-relaxed text-neutral-600">{s.body}</p>
             </Card>
           ))}
+        </div>
+
+        <div className="mt-12 rounded-[16px] bg-neutral-900 p-6 text-center">
+          <p className="mb-4 text-sm text-neutral-200">
+            See what a week looks like with your own clients, free for 14 days.
+          </p>
+          <Link href="/signup">
+            <Button>Start your free trial</Button>
+          </Link>
         </div>
       </main>
       <SiteFooter />

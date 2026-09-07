@@ -16,6 +16,13 @@ export const metadata: Metadata = buildMetadata({
   description:
     "Coaching automation software that handles onboarding, session-note follow-ups, and lead-capture forms automatically, so admin stops eating the hours you'd rather coach in.",
   path: "/coaching-automation",
+  keywords: [
+    "coaching automation software",
+    "automate coaching business tasks",
+    "coaching workflow automation",
+    "coach admin automation",
+    "automated client onboarding for coaches",
+  ],
 });
 
 const FEATURES = [

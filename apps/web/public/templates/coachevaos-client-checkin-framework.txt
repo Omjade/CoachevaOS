@@ -1,0 +1,30 @@
+15-MINUTE WEEKLY CLIENT CHECK-IN FRAMEWORK
+
+A structured, repeatable agenda for a short accountability check-in — async (written) or a quick call, your choice. Keeps check-ins consistent without them ballooning into a full session every week.
+
+MINUTES 0-3 — WINS
+"What's one thing that went well since we last talked?"
+Start here, always. Opening with a win sets tone and surfaces real progress the client might otherwise gloss over.
+
+MINUTES 3-7 — COMMITMENTS REVIEW
+"What did you commit to last time, and where did that actually land?"
+Go through last session's action items one by one. Mark each: done / partially done / not done. Don't skip the ones that weren't done — that's the most useful part of the check-in, not the least.
+
+MINUTES 7-10 — OBSTACLES
+"What got in the way, if anything did?"
+For anything not done, ask what specifically blocked it — time, motivation, a skill gap, an external event. This is diagnostic, not judgment.
+
+MINUTES 10-13 — THIS WEEK'S FOCUS
+"What's the one thing that matters most this week?"
+Not a list of five priorities — one. Coaching that tries to move everything at once usually moves nothing.
+
+MINUTES 13-15 — COMMITMENT + CONFIDENCE CHECK
+"What are you committing to before we talk again, and how confident are you (1-10) you'll actually do it?"
+If confidence is below 7, the commitment is probably too big — shrink it right there rather than letting it fail silently.
+
+---
+USING THIS WITH A GROUP OR MEMBERSHIP PROGRAM
+The same five sections work as a written weekly check-in form instead of a call — ask the same 5 questions, have clients submit async, and you review batches instead of taking 15 minutes live with each person. This is exactly the kind of individual tracking inside a group program that a platform like CoachevaOS's client portal was built for.
+
+---
+Downloaded from coachevaos.com/templates/client-checkin-framework — free to adapt for your own check-in cadence.

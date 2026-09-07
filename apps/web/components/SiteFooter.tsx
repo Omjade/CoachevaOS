@@ -22,6 +22,10 @@ const FOOTER_LINKS = [
 // visitors read). Grouped separately from FOOTER_LINKS since there are more
 // of them and they serve a different purpose (inbound/SEO, not site nav).
 const FREE_RESOURCES = [
+  { href: "/free-kits", label: "All Free Kits" },
+  { href: "/templates/coaching-agreement-template", label: "Coaching Agreement Template" },
+  { href: "/templates/discovery-questions-library", label: "Discovery Questions Library" },
+  { href: "/templates/client-checkin-framework", label: "Client Check-In Framework" },
   { href: "/tools/capacity-calculator", label: "Capacity Calculator" },
   { href: "/tools/revenue-calculator", label: "Revenue Calculator" },
   { href: "/tools/churn-calculator", label: "Churn Calculator" },

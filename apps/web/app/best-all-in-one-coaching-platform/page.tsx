@@ -14,6 +14,12 @@ export const metadata: Metadata = buildMetadata({
   description:
     "The best all-in-one coaching platforms in 2026, compared honestly: client management, scheduling, billing tracking, and AI, all from a single dashboard.",
   path: "/best-all-in-one-coaching-platform",
+  keywords: [
+    "best all-in-one coaching platform",
+    "all-in-one coaching software",
+    "coaching platform comparison",
+    "all-in-one client management software for coaches",
+  ],
 });
 
 const ROUNDUP = [
