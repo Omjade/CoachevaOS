@@ -319,8 +319,8 @@ export default function LandingPage() {
               className="animate-fade-up mx-auto mt-14 max-w-md text-xs text-neutral-700/80 md:text-[13px]"
               style={{ animationDelay: "950ms" }}
             >
-              CoachevaOS is an all-in-one, AI-powered coaching platform that manages client
-              records, scheduling, billing, and automated follow-ups in a single system.
+              Client records, programs, chat, scheduling, billing, and documents — unified in one
+              place, so nothing about your practice slips through the cracks.
             </p>
 
             <div
