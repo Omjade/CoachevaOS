@@ -6,7 +6,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  SparkleIcon as Sparkle,
   EnvelopeSimpleIcon as EnvelopeSimple,
   PhoneIcon as Phone,
   CaretDownIcon as CaretDown,
@@ -246,7 +245,7 @@ function ContactForm() {
   );
 }
 
-const HEADLINE_LINE_1 = ["One", "calm", "system"];
+const HEADLINE_LINE_1 = ["One", "calm", "AI", "system"];
 const HEADLINE_LINE_2 = ["for", "your", "whole", "coaching", "practice."];
 const WORD_STAGGER_MS = 55;
 const HEADLINE_START_MS = 130;
@@ -278,7 +277,7 @@ export default function LandingPage() {
             <div
               className="animate-fade-up mb-6 inline-flex items-center gap-1.5 rounded-[7px] border border-divider bg-white/80 px-2.5 py-1.5 text-[11px] text-accent-600 shadow-sm"
             >
-              <Sparkle className="h-3 w-3" weight="fill" />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-600" />
               The operating system for coaches
             </div>
 
@@ -317,12 +316,11 @@ export default function LandingPage() {
             </h1>
 
             <p
-              className="animate-fade-up mx-auto mt-14 max-w-lg text-xs text-neutral-700/80 md:text-[13px]"
+              className="animate-fade-up mx-auto mt-14 max-w-md text-xs text-neutral-700/80 md:text-[13px]"
               style={{ animationDelay: "950ms" }}
             >
-              Client management software for independent coaches, any niche: replace the
-              spreadsheet, WhatsApp, and Calendly stack with one system for client records,
-              follow-ups, bookings, billing, and AI-guided coaching.
+              CoachevaOS is an all-in-one, AI-powered coaching platform that manages client
+              records, scheduling, billing, and automated follow-ups in a single system.
             </p>
 
             <div
@@ -345,12 +343,6 @@ export default function LandingPage() {
                 Watch demo
               </button>
             </div>
-            <p
-              className="animate-fade-up mt-3 text-[11px] text-neutral-500"
-              style={{ animationDelay: "1120ms" }}
-            >
-              Free for 14 days. Cancel anytime — you keep access through what you've already paid for.
-            </p>
           </div>
 
           {/* Bottom scroll tab */}
@@ -481,8 +473,8 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mx-auto mb-10 max-w-lg text-[13px] leading-relaxed text-neutral-600 md:text-sm"
           >
-            A branded portal makes a $200 coaching package feel like the real business it is —
-            not a WhatsApp thread. See both sides of the same workspace below.
+            A branded portal makes a $500 coaching package feel like the real business it is —
+            and it's the same workspace, with dummy data, below. Click around it.
           </motion.p>
 
           <motion.div
@@ -492,21 +484,6 @@ export default function LandingPage() {
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           >
             <LandingDashboardPreview />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
-            className="mt-8"
-          >
-            <Link
-              href="/sandbox"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent-600 hover:text-accent-700"
-            >
-              Explore an interactive sandbox — no email required <span aria-hidden>→</span>
-            </Link>
           </motion.div>
         </div>
       </section>
