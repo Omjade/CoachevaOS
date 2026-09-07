@@ -319,10 +319,25 @@ function BillingPageInner() {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {!hasRealSubscription && region && (
-          <p className="text-xs text-neutral-500">
-            Pricing shown in {region === "india" ? "INR (India)" : "USD"}
-          </p>
+        {!hasRealSubscription && region ? (
+          <div className="flex gap-1.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setRegion("global")}
+              className={`rounded-full border px-3 py-1.5 ${region === "global" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 text-neutral-600"}`}
+            >
+              Global (USD)
+            </button>
+            <button
+              type="button"
+              onClick={() => setRegion("india")}
+              className={`rounded-full border px-3 py-1.5 ${region === "india" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-200 text-neutral-600"}`}
+            >
+              India (INR)
+            </button>
+          </div>
+        ) : (
+          <span />
         )}
         <div className="ml-auto flex gap-1.5 text-xs">
           <button
@@ -341,6 +356,13 @@ function BillingPageInner() {
           </button>
         </div>
       </div>
+
+      {cycle === "annual" && (
+        <p className="text-xs text-neutral-500">
+          Annual billing charges 11 months up front — the 12th month is free, billed once a year
+          instead of monthly.
+        </p>
+      )}
 
       {hasRealSubscription && (
         <p className="text-xs text-neutral-500">

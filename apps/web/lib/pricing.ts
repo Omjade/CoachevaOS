@@ -13,6 +13,11 @@ export interface PricingTier {
   // "Why you need to pay" — what's included at this tier, shown on the public
   // pricing page. Same copy across currencies; only the price differs.
   features: string[];
+  // Marketing "best for most people" pick shown on the public pricing page
+  // only — distinct from billing/page.tsx's recommendedTierFor(), which
+  // recommends based on a coach's actual client count once they have a real
+  // account. Only one tier should ever be true.
+  popular?: boolean;
 }
 
 const TIER_FEATURES: Record<SubscriptionTier, string[]> = {
@@ -54,10 +59,10 @@ const TIER_FEATURES: Record<SubscriptionTier, string[]> = {
 // own Paddle.PricePreview() response (see components/payments/PaddleCheckout.tsx),
 // never computed or re-formatted here.
 export const GLOBAL_PRICING_TIERS: PricingTier[] = [
-  { tier: "starter", name: "Starter", monthlyPrice: "$19/mo", annualPrice: "$190/yr", blurb: "Up to 15 clients", clientLimit: 15, features: TIER_FEATURES.starter },
-  { tier: "growth", name: "Growth", monthlyPrice: "$29/mo", annualPrice: "$290/yr", blurb: "Up to 30 clients", clientLimit: 30, features: TIER_FEATURES.growth },
-  { tier: "scale", name: "Scale", monthlyPrice: "$49/mo", annualPrice: "$490/yr", blurb: "Up to 60 clients", clientLimit: 60, features: TIER_FEATURES.scale },
-  { tier: "pro", name: "Pro", monthlyPrice: "$99/mo", annualPrice: "$990/yr", blurb: "100+ clients", clientLimit: 100, features: TIER_FEATURES.pro },
+  { tier: "starter", name: "Starter", monthlyPrice: "$22/mo", annualPrice: "$242/yr", blurb: "Up to 15 clients", clientLimit: 15, features: TIER_FEATURES.starter },
+  { tier: "growth", name: "Growth", monthlyPrice: "$34/mo", annualPrice: "$374/yr", blurb: "Up to 30 clients", clientLimit: 30, features: TIER_FEATURES.growth, popular: true },
+  { tier: "scale", name: "Scale", monthlyPrice: "$58/mo", annualPrice: "$638/yr", blurb: "Up to 60 clients", clientLimit: 60, features: TIER_FEATURES.scale },
+  { tier: "pro", name: "Pro", monthlyPrice: "$92/mo", annualPrice: "$1,012/yr", blurb: "100+ clients", clientLimit: 100, features: TIER_FEATURES.pro },
   {
     tier: "enterprise",
     name: "Enterprise",
@@ -70,10 +75,10 @@ export const GLOBAL_PRICING_TIERS: PricingTier[] = [
 ];
 
 export const INDIA_PRICING_TIERS: PricingTier[] = [
-  { tier: "starter", name: "Starter", monthlyPrice: "₹499/mo", annualPrice: "₹4,499/yr", blurb: "Up to 15 clients", clientLimit: 15, features: TIER_FEATURES.starter },
-  { tier: "growth", name: "Growth", monthlyPrice: "₹799/mo", annualPrice: "₹7,199/yr", blurb: "Up to 30 clients", clientLimit: 30, features: TIER_FEATURES.growth },
-  { tier: "scale", name: "Scale", monthlyPrice: "₹1,499/mo", annualPrice: "₹13,499/yr", blurb: "Up to 60 clients", clientLimit: 60, features: TIER_FEATURES.scale },
-  { tier: "pro", name: "Pro", monthlyPrice: "₹2,999/mo", annualPrice: "₹26,999/yr", blurb: "100+ clients", clientLimit: 100, features: TIER_FEATURES.pro },
+  { tier: "starter", name: "Starter", monthlyPrice: "₹649/mo", annualPrice: "₹7,139/yr", blurb: "Up to 15 clients", clientLimit: 15, features: TIER_FEATURES.starter },
+  { tier: "growth", name: "Growth", monthlyPrice: "₹999/mo", annualPrice: "₹10,989/yr", blurb: "Up to 30 clients", clientLimit: 30, features: TIER_FEATURES.growth, popular: true },
+  { tier: "scale", name: "Scale", monthlyPrice: "₹1,799/mo", annualPrice: "₹19,789/yr", blurb: "Up to 60 clients", clientLimit: 60, features: TIER_FEATURES.scale },
+  { tier: "pro", name: "Pro", monthlyPrice: "₹2,699/mo", annualPrice: "₹29,689/yr", blurb: "100+ clients", clientLimit: 100, features: TIER_FEATURES.pro },
   {
     tier: "enterprise",
     name: "Enterprise",
