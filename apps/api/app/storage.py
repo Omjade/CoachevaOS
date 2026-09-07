@@ -64,6 +64,11 @@ async def save_upload(file: UploadFile) -> tuple[str, str]:
                 Key=_s3_key(key),
                 Body=content,
                 ContentType=file.content_type or "application/octet-stream",
+                # Every key is a fresh uuid4 — never overwritten — so this is
+                # safe to cache aggressively/immutably. Previously unset
+                # entirely, meaning every re-fetch (page nav, React remount)
+                # was a full network round-trip with nothing to fall back on.
+                CacheControl="public, max-age=31536000, immutable",
             )
             return key, file_type
         except Exception:

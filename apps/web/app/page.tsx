@@ -7,11 +7,24 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   EnvelopeSimpleIcon as EnvelopeSimple,
-  PhoneIcon as Phone,
   CaretDownIcon as CaretDown,
+  BarbellIcon as Barbell,
+  VideoCameraIcon as VideoCamera,
+  HeartbeatIcon as Heartbeat,
 } from "@phosphor-icons/react";
 import { api, ApiError } from "@/lib/api";
 import { NICHES } from "@/lib/niches";
+
+// Marketing-only marquee list — adds popular business-model synonym terms
+// (online coach, personal trainer, health coach) that visitors actually
+// search for, without touching the functional NICHES array the onboarding
+// form's niche <select> depends on for real custom-field templates.
+const MARQUEE_NICHES = [
+  ...NICHES.filter((n) => n.value !== "other"),
+  { value: "online-coach", label: "Online coaching", Icon: VideoCamera },
+  { value: "personal-trainer", label: "Personal training", Icon: Barbell },
+  { value: "health-coach", label: "Health coaching", Icon: Heartbeat },
+];
 import { ErrorBanner } from "@/components/ui";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -319,8 +332,9 @@ export default function LandingPage() {
               className="animate-fade-up mx-auto mt-14 max-w-md text-xs text-neutral-700/80 md:text-[13px]"
               style={{ animationDelay: "950ms" }}
             >
-              Client records, programs, chat, scheduling, billing, and documents — unified in one
-              place, so nothing about your practice slips through the cracks.
+              All-in-one AI coaching software for client records, programs, chat, scheduling,
+              billing, and documents — focus on coaching, so nothing about your practice slips
+              through the cracks.
             </p>
 
             <div
@@ -427,7 +441,7 @@ export default function LandingPage() {
             >
               <div className="animate-marquee flex w-max items-center gap-8">
                 {[...Array(2)].flatMap((_, dup) =>
-                  NICHES.filter((n) => n.value !== "other").map(({ value, label, Icon }) => (
+                  MARQUEE_NICHES.map(({ value, label, Icon }) => (
                     <span
                       key={`${dup}-${value}`}
                       className="flex shrink-0 items-center gap-2 text-sm font-medium text-neutral-400"
@@ -648,16 +662,7 @@ export default function LandingPage() {
                   </span>
                   <div className="leading-tight">
                     <p className="text-[9px] text-neutral-600">E-mail address</p>
-                    <p className="text-[10px] font-medium text-neutral-900">hello@youragency.com</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="flex h-[29px] w-[29px] shrink-0 items-center justify-center rounded-[8px] border border-neutral-200/70 bg-white shadow-sm">
-                    <Phone className="h-3.5 w-3.5 text-neutral-700" />
-                  </span>
-                  <div className="leading-tight">
-                    <p className="text-[9px] text-neutral-600">Phone number</p>
-                    <p className="text-[10px] font-medium text-neutral-900">+1 (647) 555-0172</p>
+                    <p className="text-[10px] font-medium text-neutral-900">help@coachevaos.com</p>
                   </div>
                 </div>
               </motion.div>

@@ -24,7 +24,6 @@ import {
   VideoCameraIcon as VideoCamera,
   TrendUpIcon as TrendUp,
   WarningIcon as Warning,
-  XIcon as X,
 } from "@phosphor-icons/react";
 import { GoogleMeetIcon } from "@/components/ProviderIcons";
 import { ClientGrowthChart, EngagementTrendChart, LeadFunnelChart, Sparkline } from "@/components/DashboardCharts";
@@ -81,22 +80,6 @@ const CLIENT_CHECKLIST = [
   { label: "Book a session", done: true },
 ];
 
-function TrialBanner() {
-  const [open, setOpen] = useState(true);
-  if (!open) return null;
-  return (
-    <div className="mb-4 flex items-center justify-between rounded-[12px] border border-neutral-200 bg-white px-4 py-2.5">
-      <p className="text-[11px] text-neutral-600">
-        9 days left in your trial. <span className="font-semibold text-neutral-900 underline">pick a plan</span> to
-        keep going without interruption.
-      </p>
-      <button onClick={() => setOpen(false)} aria-label="Dismiss">
-        <X className="h-3.5 w-3.5 text-neutral-400" />
-      </button>
-    </div>
-  );
-}
-
 function GettingStartedCard({ title, items }: { title: string; items: { label: string; done: boolean }[] }) {
   const doneCount = items.filter((i) => i.done).length;
   return (
@@ -145,12 +128,11 @@ function StatTile({ Icon, value, label, spark }: { Icon: typeof Users; value: st
 function CoachDashboardSection() {
   return (
     <div className="flex flex-col gap-4">
-      <TrialBanner />
       <div>
         <p className="mb-1 inline-flex items-center gap-1.5 rounded-[6px] border border-accent-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-accent-600 uppercase">
           <span className="h-1.5 w-1.5 rounded-full bg-accent-600" /> Monday, September 7
         </p>
-        <h3 className="font-heading text-lg font-semibold text-neutral-900">Good evening, Om</h3>
+        <h3 className="font-heading text-lg font-semibold text-neutral-900">Good evening, Alex</h3>
         <p className="text-[11px] text-neutral-500">Here's what's happening today.</p>
       </div>
       <GettingStartedCard title="a quick tour of the essentials." items={COACH_CHECKLIST} />
@@ -185,18 +167,22 @@ function CoachDashboardSection() {
 }
 
 function CoachLeadsSection() {
+  // Matches the real 5-stage Kanban (LeadsBoard.tsx) exactly: New, Contacted,
+  // Follow Up, Booked, Lost — each column has a colored top border.
   const stages = [
-    { label: "New", items: ["Jordan P.", "Casey L."] },
-    { label: "Contacted", items: ["Sam R."] },
-    { label: "Follow up", items: ["Aisha M."] },
-    { label: "Booked", items: ["Devon K."] },
+    { label: "New", border: "border-t-neutral-400", items: ["Jordan P.", "Casey L."] },
+    { label: "Contacted", border: "border-t-blue-400", items: ["Sam R."] },
+    { label: "Follow Up", border: "border-t-amber-400", items: ["Aisha M."] },
+    { label: "Booked", border: "border-t-accent-500", items: ["Devon K."] },
+    { label: "Lost", border: "border-t-neutral-300", items: [] },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
       {stages.map((s) => (
-        <div key={s.label} className="rounded-[12px] border border-neutral-200 bg-white p-3">
+        <div key={s.label} className={`rounded-[12px] border border-t-2 border-neutral-200 bg-white p-3 ${s.border}`}>
           <p className="mb-2 text-[10px] font-semibold text-neutral-500 uppercase">{s.label}</p>
           <div className="flex flex-col gap-1.5">
+            {s.items.length === 0 && <p className="text-[10px] text-neutral-300">—</p>}
             {s.items.map((i) => (
               <div key={i} className="rounded-[8px] bg-neutral-100 px-2 py-1.5 text-[11px] text-neutral-700">
                 {i}
@@ -345,10 +331,10 @@ function CoachCustomFieldsSection() {
 function CoachProfileSection() {
   return (
     <Card>
-      <p className="mb-1 text-xs font-semibold text-neutral-900">Om Jade</p>
-      <p className="mb-3 text-[11px] text-neutral-500">Parenting Coach</p>
+      <p className="mb-1 text-xs font-semibold text-neutral-900">Alex</p>
+      <p className="mb-3 text-[11px] text-neutral-500">Fitness Coach</p>
       <div className="flex flex-col gap-2 text-[11px] text-neutral-600">
-        <p>Business name: Om Jade Coaching</p>
+        <p>Business name: Alex Fitness Coaching</p>
         <p>Branded portal: on</p>
         <p>Timezone: America/New_York</p>
       </div>
@@ -382,9 +368,9 @@ function ClientDashboardSection() {
           <span className="text-[10px] text-neutral-400">↻</span>
         </div>
         <div className="mb-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200">
-          <div className="h-full w-0 rounded-full bg-accent-600" />
+          <div className="h-full w-1/2 rounded-full bg-accent-600" />
         </div>
-        <p className="mb-3 text-[10px] text-neutral-500">0 of 0 tasks complete (0%)</p>
+        <p className="mb-3 text-[10px] text-neutral-500">6 of 12 tasks complete (50%)</p>
         <div className="flex items-start gap-2 rounded-[10px] bg-neutral-100 p-3">
           <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600">
             <Sparkle className="h-3 w-3" weight="fill" />
@@ -392,12 +378,46 @@ function ClientDashboardSection() {
           <div>
             <p className="mb-1 text-[9px] font-semibold text-accent-600 uppercase">Your coach's AI summary</p>
             <p className="text-[11px] leading-relaxed text-neutral-600">
-              Karan Malhotra is currently behind pace in the Strength + Conditioning program. No
-              tasks completed or recorded yet, and no recent check-ins to assess engagement.
+              Karan is on pace in the Strength + Conditioning program, with 3 straight weeks of
+              logged check-ins — worth celebrating on the next call.
             </p>
           </div>
         </div>
       </Card>
+      <Card>
+        <h4 className="font-heading mb-1 text-sm font-semibold text-neutral-900">Your program</h4>
+        <p className="text-xs text-neutral-600">12-Week Transformation · Week 6 of 12</p>
+      </Card>
+      <Card>
+        <div className="flex items-center justify-between">
+          <h4 className="font-heading text-sm font-semibold text-neutral-900">Your plan</h4>
+          <span className="rounded-full bg-accent-100 px-2.5 py-0.5 text-[10px] font-semibold text-accent-700">Active</span>
+        </div>
+        <p className="mt-1 text-xs text-neutral-500">Renews Oct 6, 2026</p>
+      </Card>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Card className="!p-4">
+          <span className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+            <VideoCamera className="h-3.5 w-3.5" weight="fill" />
+          </span>
+          <p className="text-xs font-semibold text-neutral-900">Next session</p>
+          <p className="text-[10px] text-neutral-500">Thursday, 10:00 AM</p>
+        </Card>
+        <Card className="!p-4">
+          <span className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+            <CheckSquare className="h-3.5 w-3.5" weight="fill" />
+          </span>
+          <p className="text-xs font-semibold text-neutral-900">Tasks</p>
+          <p className="text-[10px] text-neutral-500">1 incomplete</p>
+        </Card>
+        <Card className="!p-4">
+          <span className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+            <ChartLineUp className="h-3.5 w-3.5" weight="fill" />
+          </span>
+          <p className="text-xs font-semibold text-neutral-900">Goals</p>
+          <p className="text-[10px] text-neutral-500">2 of 3 on track</p>
+        </Card>
+      </div>
       <EngagementTrendChart data={ENGAGEMENT_DATA} />
     </div>
   );
@@ -657,8 +677,8 @@ export default function LandingDashboardPreview() {
                 items={COACH_SECTIONS}
                 active={coachSection}
                 onSelect={setCoachSection}
-                identityName="Om Jade"
-                identityRole="Parenting Coach"
+                identityName="Alex"
+                identityRole="Fitness Coach"
                 brandLabel="CoachevaOS"
               />
             ) : (

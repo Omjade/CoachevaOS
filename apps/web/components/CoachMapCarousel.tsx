@@ -3,8 +3,21 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { CaretLeftIcon as CaretLeft, CaretRightIcon as CaretRight, MapPinIcon as MapPin } from "@phosphor-icons/react";
+import {
+  CaretLeftIcon as CaretLeft,
+  CaretRightIcon as CaretRight,
+  MapPinIcon as MapPin,
+  ClockIcon as Clock,
+  SparkleIcon as Sparkle,
+  ChatCircleTextIcon as ChatCircleText,
+  EyeIcon as Eye,
+} from "@phosphor-icons/react";
 import { TESTIMONIALS } from "@/lib/testimonials";
+
+// Positional, not per-testimonial — every coach's painPoints array is
+// authored in this same order (hours saved, premium feel, nothing lost,
+// caught early), so the icon meaning stays fixed while the copy switches.
+const PAIN_POINT_ICONS = [Clock, Sparkle, ChatCircleText, Eye];
 
 export default function CoachMapCarousel() {
   const [active, setActive] = useState(0);
@@ -18,11 +31,12 @@ export default function CoachMapCarousel() {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[58%_1fr]">
       {/* Left: dark product showcase + live map pin */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 20, boxShadow: "0 0 0 1px rgba(255,255,255,0.06)" }}
         whileInView={{ opacity: 1, y: 0 }}
+        whileHover={{ boxShadow: "0 0 0 1.5px rgba(255,75,56,0.55), 0 0 50px rgba(255,75,56,0.18)" }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.5 }}
-        className="relative aspect-[6/5] overflow-hidden rounded-[24px] bg-neutral-900"
+        className="relative aspect-[6/5] overflow-hidden rounded-[24px] bg-neutral-900 transition-shadow duration-500"
       >
         <div className="relative z-10 flex flex-col items-center pt-8 text-center">
           <span className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[11px] text-neutral-200">
@@ -76,8 +90,18 @@ export default function CoachMapCarousel() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.5, delay: 0.15 }}
-        className="flex flex-1 flex-col justify-between gap-5 rounded-[19px] border border-neutral-300/50 bg-white p-6 shadow-[0_16px_32px_rgba(28,29,31,0.09)]"
+        className="relative flex flex-1 flex-col justify-between gap-5 overflow-hidden rounded-[19px] border border-neutral-300/50 bg-white p-6 shadow-[0_16px_32px_rgba(28,29,31,0.09)]"
       >
+        {/* Slow-drifting brand-colored glow — fills what would otherwise be
+            dead white space below the pain points (the card stretches to
+            match the dark panel's height via the grid row), and keeps the
+            whole card feeling alive between testimonial switches. */}
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -bottom-20 h-56 w-56 rounded-full bg-accent-200/40 blur-3xl"
+          animate={{ x: [0, 20, -10, 0], y: [0, -15, 10, 0] }}
+          transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+        />
         <AnimatePresence mode="wait">
           <motion.div
             key={testimonial.id}
@@ -110,25 +134,31 @@ export default function CoachMapCarousel() {
             {/* Pain points this coach's niche actually feels — switches with
                 the testimonial so this space always stays relevant, not a
                 fixed generic list. */}
-            <div className="mt-6 grid grid-cols-2 gap-3 border-t border-neutral-100 pt-5">
-              {testimonial.painPoints.map((p, i) => (
-                <motion.div
-                  key={p.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: 0.1 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <p className="font-heading flex items-center gap-1.5 text-lg font-semibold text-accent-600">
+            <div className="relative mt-6 grid grid-cols-2 gap-4 border-t border-neutral-100 pt-5">
+              {testimonial.painPoints.map((p, i) => {
+                const Icon = PAIN_POINT_ICONS[i % PAIN_POINT_ICONS.length];
+                return (
+                  <motion.div
+                    key={p.label}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: 0.1 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                    className="flex items-start gap-2.5"
+                  >
                     <motion.span
-                      className="inline-block h-1.5 w-1.5 rounded-full bg-accent-500"
-                      animate={{ opacity: [0.4, 1, 0.4] }}
-                      transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
-                    />
-                    {p.stat}
-                  </p>
-                  <p className="text-[11px] leading-snug text-neutral-500">{p.label}</p>
-                </motion.div>
-              ))}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600"
+                      animate={{ boxShadow: ["0 0 0 0 rgba(255,75,56,0)", "0 0 0 6px rgba(255,75,56,0.08)", "0 0 0 0 rgba(255,75,56,0)"] }}
+                      transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: i * 0.35 }}
+                    >
+                      <Icon className="h-4 w-4" weight="fill" />
+                    </motion.span>
+                    <div>
+                      <p className="font-heading text-sm font-semibold text-neutral-900">{p.stat}</p>
+                      <p className="text-[11px] leading-snug text-neutral-500">{p.label}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         </AnimatePresence>

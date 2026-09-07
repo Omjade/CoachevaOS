@@ -7,17 +7,17 @@ import Breadcrumbs from "@/components/Breadcrumbs";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: "About CoachevaOS | Coaching Client Management Software for Any Niche",
+  title: "About CoachevaOS | AI Coaching Client Management Software",
   description:
-    "CoachevaOS is client and practice management software for independent coaches: a branded client portal, scheduling, billing, a lead pipeline, and an AI daily briefing — built for life, business, health, fitness, executive, and any other 1:1 coaching niche.",
+    "CoachevaOS is AI-powered coaching client management software for independent coaches: a branded client portal, scheduling, billing, a lead pipeline, and an AI daily briefing — built for life, business, health, fitness, executive, and any other 1:1 coaching niche.",
   path: "/about",
   keywords: [
-    "coaching software",
+    "AI coaching client management software",
+    "AI coaching software",
     "coaching client management software",
     "coaching practice management platform",
     "client portal for coaches",
     "coaching CRM",
-    "AI coaching software",
     "independent coach software",
     "solo coaching business software",
   ],
@@ -70,15 +70,15 @@ export default function AboutPage() {
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
         <Eyebrow className="mb-4">About</Eyebrow>
         <h1 className="font-heading mb-5 text-[36px] font-semibold tracking-tight text-neutral-900 md:text-[44px]">
-          Coaching client management software, built around the actual job
+          AI coaching client management software, built around the actual job
         </h1>
         <div className="mb-10 flex flex-col gap-4 text-sm leading-relaxed text-neutral-600">
           <p>
-            CoachevaOS is client and practice management software for independent coaches —
-            not a course platform, not a coaching marketplace, and not workout- or
+            CoachevaOS is AI-powered coaching client management software for independent coaches
+            — not a course platform, not a coaching marketplace, and not workout- or
             meal-programming software. It's the operating system around your coaching: client
-            records, a branded portal, scheduling, billing, a lead pipeline, and an AI daily
-            briefing, in one connected workspace.
+            records, programs, chat, scheduling, billing, documents, a lead pipeline, and an AI
+            daily briefing that flags who needs your attention, all in one connected workspace.
           </p>
           <p>
             Most independent coaches run their practice across five tools that were never
