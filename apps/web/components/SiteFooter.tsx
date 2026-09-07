@@ -87,6 +87,13 @@ export default function SiteFooter() {
         <FooterColumn title="Legal" links={LEGAL_LINKS} />
       </div>
 
+      <p
+        aria-hidden
+        className="font-heading mx-auto max-w-5xl truncate pt-8 text-center text-[15vw] leading-none font-bold text-neutral-900/[0.06] select-none sm:text-[100px]"
+      >
+        CoachevaOS
+      </p>
+
       <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-3 pt-6 text-xs text-neutral-400 sm:flex-row">
         <p>© {new Date().getFullYear()} CoachevaOS. All rights reserved.</p>
         <a

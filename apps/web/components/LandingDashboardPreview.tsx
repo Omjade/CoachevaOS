@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   SquaresFourIcon as SquaresFour,
@@ -24,6 +25,7 @@ import {
   VideoCameraIcon as VideoCamera,
   TrendUpIcon as TrendUp,
   WarningIcon as Warning,
+  ArrowRightIcon as ArrowRight,
 } from "@phosphor-icons/react";
 import { GoogleMeetIcon } from "@/components/ProviderIcons";
 import { ClientGrowthChart, EngagementTrendChart, LeadFunnelChart, Sparkline } from "@/components/DashboardCharts";
@@ -592,14 +594,23 @@ function Sidebar<T extends string>({
       <nav className="scrollbar-thin flex flex-1 flex-row gap-1 overflow-x-auto md:flex-col md:overflow-y-auto">
         {items.map((item) => {
           const isActive = active === item.key;
+          // Only Dashboard switches content — every other item is shown for
+          // real (the full nav breadth a signed-up coach/client actually
+          // gets) but isn't clickable here, so the demo doesn't pretend to
+          // be a full working app.
+          const isClickable = item.key === "dashboard";
           return (
             <button
               key={item.key}
-              onClick={() => onSelect(item.key)}
+              onClick={isClickable ? () => onSelect(item.key) : undefined}
+              disabled={!isClickable}
+              title={isClickable ? undefined : "Available once you sign up"}
               className={`flex shrink-0 items-center gap-2 rounded-[10px] px-2.5 py-2 text-[11px] font-medium whitespace-nowrap transition-all duration-150 ${
                 isActive
                   ? "bg-white/10 text-white shadow-[inset_2px_0_0_0_var(--color-accent-500)]"
-                  : "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
+                  : isClickable
+                    ? "text-neutral-400 hover:bg-white/5 hover:text-neutral-200"
+                    : "cursor-default text-neutral-500 opacity-60"
               }`}
             >
               <item.Icon
@@ -710,6 +721,18 @@ export default function LandingDashboardPreview() {
         <div className="mx-auto mt-2 h-7 w-20 rounded-b-[8px] bg-gradient-to-b from-neutral-400 to-neutral-500" />
       </div>
       <div className="mx-auto mt-1 h-2.5 w-48 rounded-full bg-neutral-400/50 blur-[3px]" />
+
+      {tab === "coach" && (
+        <div className="mt-8 flex justify-center">
+          <Link
+            href="/signup"
+            className="group inline-flex items-center gap-2 rounded-full bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-600"
+          >
+            Get your personalized dashboard
+            <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

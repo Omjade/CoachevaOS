@@ -487,8 +487,7 @@ export default function LandingPage() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mx-auto mb-10 max-w-lg text-[13px] leading-relaxed text-neutral-600 md:text-sm"
           >
-            A branded portal makes a $500 coaching package feel like the real business it is —
-            and it's the same workspace, with dummy data, below. Click around it.
+            A branded portal makes a $500 coaching package feel like the real business it is.
           </motion.p>
 
           <motion.div

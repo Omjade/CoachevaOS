@@ -12,12 +12,20 @@ import {
   ChatCircleTextIcon as ChatCircleText,
   EyeIcon as Eye,
 } from "@phosphor-icons/react";
-import { TESTIMONIALS } from "@/lib/testimonials";
+import { TESTIMONIALS, type PainPoint } from "@/lib/testimonials";
 
-// Positional, not per-testimonial — every coach's painPoints array is
-// authored in this same order (hours saved, premium feel, nothing lost,
-// caught early), so the icon meaning stays fixed while the copy switches.
-const PAIN_POINT_ICONS = [Clock, Sparkle, ChatCircleText, Eye];
+// Keyed by the stat label itself so the right icon follows a given
+// testimonial's single pain point regardless of which one it is.
+const PAIN_POINT_ICONS: Record<string, typeof Clock> = {
+  "8-15 hrs saved": Clock,
+  "Premium feel": Sparkle,
+  "Nothing lost": ChatCircleText,
+  "Caught early": Eye,
+};
+
+function painPointIcon(p: PainPoint) {
+  return PAIN_POINT_ICONS[p.stat] ?? Sparkle;
+}
 
 export default function CoachMapCarousel() {
   const [active, setActive] = useState(0);
@@ -131,35 +139,34 @@ export default function CoachMapCarousel() {
               </p>
             </div>
 
-            {/* Pain points this coach's niche actually feels — switches with
-                the testimonial so this space always stays relevant, not a
-                fixed generic list. */}
-            <div className="relative mt-6 grid grid-cols-2 gap-4 border-t border-neutral-100 pt-5">
-              {testimonial.painPoints.map((p, i) => {
-                const Icon = PAIN_POINT_ICONS[i % PAIN_POINT_ICONS.length];
-                return (
-                  <motion.div
-                    key={p.label}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: 0.1 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                    className="flex items-start gap-2.5"
+            {/* This coach's own single pain point — one per testimonial, not
+                a generic 4-item checklist repeated for everyone. Sized to
+                actually fill the card now that it's the only item here. */}
+            {(() => {
+              const p = testimonial.painPoint;
+              const Icon = painPointIcon(p);
+              return (
+                <motion.div
+                  key={p.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  className="relative mt-6 flex items-center gap-4 rounded-[16px] border border-neutral-100 bg-neutral-50/70 p-4"
+                >
+                  <motion.span
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600"
+                    animate={{ boxShadow: ["0 0 0 0 rgba(255,75,56,0)", "0 0 0 8px rgba(255,75,56,0.08)", "0 0 0 0 rgba(255,75,56,0)"] }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
                   >
-                    <motion.span
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600"
-                      animate={{ boxShadow: ["0 0 0 0 rgba(255,75,56,0)", "0 0 0 6px rgba(255,75,56,0.08)", "0 0 0 0 rgba(255,75,56,0)"] }}
-                      transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut", delay: i * 0.35 }}
-                    >
-                      <Icon className="h-4 w-4" weight="fill" />
-                    </motion.span>
-                    <div>
-                      <p className="font-heading text-sm font-semibold text-neutral-900">{p.stat}</p>
-                      <p className="text-[11px] leading-snug text-neutral-500">{p.label}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
+                    <Icon className="h-6 w-6" weight="fill" />
+                  </motion.span>
+                  <div>
+                    <p className="font-heading text-base font-semibold text-neutral-900">{p.stat}</p>
+                    <p className="mt-0.5 text-[13px] leading-snug text-neutral-500">{p.label}</p>
+                  </div>
+                </motion.div>
+              );
+            })()}
           </motion.div>
         </AnimatePresence>
 
