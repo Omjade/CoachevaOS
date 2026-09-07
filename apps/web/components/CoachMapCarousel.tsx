@@ -106,6 +106,30 @@ export default function CoachMapCarousel() {
                 {testimonial.role}
               </p>
             </div>
+
+            {/* Pain points this coach's niche actually feels — switches with
+                the testimonial so this space always stays relevant, not a
+                fixed generic list. */}
+            <div className="mt-6 grid grid-cols-2 gap-3 border-t border-neutral-100 pt-5">
+              {testimonial.painPoints.map((p, i) => (
+                <motion.div
+                  key={p.label}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.1 + i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <p className="font-heading flex items-center gap-1.5 text-lg font-semibold text-accent-600">
+                    <motion.span
+                      className="inline-block h-1.5 w-1.5 rounded-full bg-accent-500"
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
+                    />
+                    {p.stat}
+                  </p>
+                  <p className="text-[11px] leading-snug text-neutral-500">{p.label}</p>
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
         </AnimatePresence>
 
