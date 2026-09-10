@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
   EnvelopeSimpleIcon as EnvelopeSimple,
   CaretDownIcon as CaretDown,
@@ -13,7 +13,7 @@ import {
   HeartbeatIcon as Heartbeat,
   SquaresFourIcon as SquaresFour,
   UserCircleIcon as UserCircle,
-  SparkleIcon as Sparkle,
+  CompassIcon as Compass,
   NotePencilIcon as NotePencil,
   ChatCircleIcon as ChatCircle,
   CalendarBlankIcon as CalendarBlank,
@@ -57,7 +57,7 @@ const capabilities = [
     n: "03",
     title: "AI daily briefing for you and your client",
     body: "Open the app to a morning briefing that already knows who needs you today, with a personalized dashboard, sessions, and everything else in one place.",
-    Icon: Sparkle,
+    Icon: Compass,
   },
   {
     n: "04",
@@ -81,32 +81,62 @@ const capabilities = [
 
 const HEADING_LINES = ["Every tool.", "Every client.", "One platform."];
 
-function CapabilityGrid() {
+// Each card sticks at the same viewport offset, so the next one (higher
+// z-index, later in DOM order) naturally comes up and covers the previous
+// one as you scroll past it — no manual scroll-snap wiring needed. The
+// per-card slide-right + rotate (driven by its own scroll progress) sells
+// the "getting swiped away" feel for the card underneath, like discarding
+// the top card of a deck.
+function CapabilityStack() {
   return (
-    <div className="grid grid-cols-1 gap-px overflow-hidden rounded-[22px] bg-neutral-200 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="relative">
       {capabilities.map((c, i) => (
-        <motion.div
-          key={c.n}
-          initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.3 }}
-          transition={{ duration: 0.4, delay: i * 0.05 }}
-          className={`flex flex-col gap-4 p-6 ${i % 2 === 0 ? "bg-white" : "bg-neutral-50"}`}
-        >
-          <div className="flex items-start justify-between">
-            <span className="font-heading text-xs font-semibold text-neutral-400">{c.n}</span>
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-100 text-accent-600">
-              <c.Icon className="h-5 w-5" weight="fill" />
-            </span>
-          </div>
-          <div>
-            <h4 className="font-heading mb-1.5 text-[15px] leading-snug font-semibold text-neutral-900">
-              {c.title}
-            </h4>
-            <p className="text-[12.5px] leading-relaxed text-neutral-500">{c.body}</p>
-          </div>
-        </motion.div>
+        <CapabilityStackCard key={c.n} c={c} index={i} />
       ))}
+    </div>
+  );
+}
+
+function CapabilityStackCard({
+  c,
+  index,
+}: {
+  c: (typeof capabilities)[number];
+  index: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+  const x = useTransform(scrollYProgress, [0, 1], [0, 140]);
+  const rotate = useTransform(scrollYProgress, [0, 1], [0, 7]);
+  const scale = useTransform(scrollYProgress, [0, 1], [1, 0.94]);
+  const opacity = useTransform(scrollYProgress, [0, 0.85, 1], [1, 1, 0]);
+
+  return (
+    <div
+      ref={ref}
+      className="sticky top-20 flex min-h-[46vh] items-center pb-8 md:top-24 md:min-h-[52vh]"
+      style={{ zIndex: index + 1 }}
+    >
+      <motion.div
+        style={{ x, rotate, scale, opacity }}
+        className="flex w-full flex-col gap-6 rounded-[26px] border border-neutral-200 bg-white p-8 shadow-[0_24px_60px_rgba(28,29,31,0.1)] md:flex-row md:items-center md:gap-10 md:p-12"
+      >
+        <div className="flex items-center gap-4 md:w-40 md:shrink-0 md:flex-col md:items-start md:gap-6">
+          <span className="font-heading text-sm font-semibold text-neutral-300">{c.n}</span>
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+            <c.Icon className="h-7 w-7" weight="fill" />
+          </span>
+        </div>
+        <div>
+          <h4 className="font-heading mb-2 text-xl leading-snug font-semibold text-neutral-900 md:text-2xl">
+            {c.title}
+          </h4>
+          <p className="max-w-lg text-[13px] leading-relaxed text-neutral-500 md:text-[15px]">{c.body}</p>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -525,14 +555,14 @@ export default function LandingPage() {
             </motion.p>
           </div>
 
-          <CapabilityGrid />
+          <CapabilityStack />
 
           <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ duration: 0.5 }}
-            className="font-heading mt-12 text-center text-xl font-semibold tracking-tight text-neutral-900 md:text-[28px]"
+            initial={{ opacity: 0, y: 56, scale: 0.94 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.6 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="font-heading relative z-10 mt-16 text-center text-2xl font-semibold tracking-tight text-neutral-900 md:text-[34px]"
           >
             One platform to run your entire coaching business.
           </motion.p>

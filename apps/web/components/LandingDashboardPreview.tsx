@@ -179,9 +179,12 @@ function CoachLeadsSection() {
     { label: "Lost", border: "border-t-neutral-300", items: [] },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+    <div className="scrollbar-thin flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-5 sm:overflow-visible">
       {stages.map((s) => (
-        <div key={s.label} className={`rounded-[12px] border border-t-2 border-neutral-200 bg-white p-3 ${s.border}`}>
+        <div
+          key={s.label}
+          className={`w-[132px] shrink-0 rounded-[12px] border border-t-2 border-neutral-200 bg-white p-3 sm:w-auto ${s.border}`}
+        >
           <p className="mb-2 text-[10px] font-semibold text-neutral-500 uppercase">{s.label}</p>
           <div className="flex flex-col gap-1.5">
             {s.items.length === 0 && <p className="text-[10px] text-neutral-300">—</p>}
@@ -219,9 +222,9 @@ function CoachFormsSection() {
 
 function CoachClientsSection() {
   const clients = [
-    { name: "Priya K.", status: "On track", note: "New revenue high this quarter — discuss scaling plan next." },
+    { name: "Karan M.", status: "On track", note: "3 straight weeks of logged check-ins — on pace in Strength + Conditioning." },
+    { name: "Priya K.", status: "On track", note: "Hit a new squat PR this week — worth celebrating on the next call." },
     { name: "Marcus T.", status: "At risk", note: "Missed last 2 check-ins, hasn't logged progress in 9 days." },
-    { name: "Elena R.", status: "On track", note: "3 interviews booked this week, prepping for final round." },
   ];
   return (
     <div className="flex flex-col gap-2">
@@ -535,7 +538,7 @@ function ClientKnowCoachSection() {
     <Card className="flex items-center gap-3">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-sm font-semibold text-white">A</span>
       <div>
-        <p className="text-xs font-semibold text-neutral-900">Coach Amara</p>
+        <p className="text-xs font-semibold text-neutral-900">Coach Alex</p>
         <p className="text-[11px] text-neutral-500">Certified strength & conditioning coach, 8 years experience.</p>
       </div>
     </Card>
@@ -682,7 +685,7 @@ export default function LandingDashboardPreview() {
 
           {/* Fixed-height frame — content scrolls internally so the display
               never resizes as you switch between sparse and dense sections. */}
-          <div className="flex flex-col gap-3 p-3 md:h-[560px] md:flex-row md:gap-4 md:p-5">
+          <div className="flex h-[430px] flex-col gap-3 p-3 sm:h-[480px] md:h-[560px] md:flex-row md:gap-4 md:p-5">
             {tab === "coach" ? (
               <Sidebar
                 items={COACH_SECTIONS}
@@ -699,7 +702,7 @@ export default function LandingDashboardPreview() {
                 onSelect={setClientSection}
                 identityName="Karan Malhotra"
                 identityRole="Client"
-                brandLabel="John Brookie Coaching"
+                brandLabel="Alex Fitness Coaching"
               />
             )}
             <div className="min-w-0 flex-1 overflow-y-auto md:pr-1">
