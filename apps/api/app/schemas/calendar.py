@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, model_validator
 
-from app.models.enums import MeetingStatus
+from app.models.enums import CalendarProvider, MeetingStatus, SessionType
 
 
 class AvailabilityDays(BaseModel):
@@ -89,5 +89,90 @@ class MeetingOut(BaseModel):
     meeting_url: str | None
     meeting_provider: str | None = None
     booking_source: str = "internal"
+    session_type: SessionType = SessionType.video
+    location: str | None = None
+    recurrence_group_id: uuid.UUID | None = None
 
     model_config = {"from_attributes": True}
+
+
+class SessionDateEntry(BaseModel):
+    date: str  # "YYYY-MM-DD"
+    time: str  # "HH:MM", coach-local wall clock
+
+
+class SessionBulkCreateRequest(BaseModel):
+    client_id: uuid.UUID
+    # Mode A ("Date Range"): start_date/end_date/weekdays/time all set.
+    # Mode B ("Specific Dates"): dates set, each with its own time.
+    # Exactly one style must be present.
+    start_date: str | None = None
+    end_date: str | None = None
+    weekdays: list[str] | None = None  # subset of mon/tue/wed/thu/fri/sat/sun
+    time: str | None = None
+    dates: list[SessionDateEntry] | None = None
+
+    session_type: SessionType
+    video_provider: CalendarProvider | None = None
+    # Cal.com/Calendly have no "create a meeting via API" capability here
+    # (they're inbound booking-page integrations) — when video_provider is
+    # one of those, the coach pastes their own link instead.
+    manual_meeting_url: str | None = None
+    location: str | None = None
+    duration_minutes: int = 60
+
+    @model_validator(mode="after")
+    def _validate(self) -> "SessionBulkCreateRequest":
+        range_mode = (
+            self.start_date is not None
+            and self.end_date is not None
+            and self.weekdays is not None
+            and self.time is not None
+        )
+        dates_mode = bool(self.dates)
+        if range_mode == dates_mode:
+            raise ValueError(
+                "Provide either (start_date, end_date, weekdays, time) or a dates list — not both/neither"
+            )
+        if self.session_type == SessionType.video and self.video_provider is None:
+            raise ValueError("video_provider is required when session_type is video")
+        if self.session_type == SessionType.in_person and not self.location:
+            raise ValueError("location is required when session_type is in_person")
+        if self.duration_minutes <= 0:
+            raise ValueError("duration_minutes must be positive")
+        return self
+
+
+class SessionBulkCreateResult(BaseModel):
+    recurrence_group_id: uuid.UUID
+    created: list[MeetingOut]
+
+
+class SessionUpdateRequest(BaseModel):
+    # Same "exactly one style" wall-clock-vs-instant reasoning as
+    # MeetingRescheduleRequest — plus a status-only update path for
+    # attendance marking, which touches neither date nor time.
+    starts_at: datetime | None = None
+    date: str | None = None
+    time: str | None = None
+    status: MeetingStatus | None = None
+
+    @model_validator(mode="after")
+    def _one_style(self) -> "SessionUpdateRequest":
+        has_instant = self.starts_at is not None
+        has_wall_clock = self.date is not None and self.time is not None
+        has_time_change = has_instant or has_wall_clock
+        if has_instant and has_wall_clock:
+            raise ValueError("Provide either starts_at, or date+time — not both")
+        if not has_time_change and self.status is None:
+            raise ValueError("Provide a time change and/or a status")
+        return self
+
+
+class AttendanceOverviewRow(BaseModel):
+    client_id: uuid.UUID
+    client_name: str
+    scheduled: int
+    attended: int
+    no_show: int
+    attendance_rate: float

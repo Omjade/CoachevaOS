@@ -2,6 +2,8 @@ import re
 
 from pydantic import BaseModel, field_validator
 
+from app.models.enums import CalendarProvider, CoachingMode
+
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$")
 
 
@@ -11,6 +13,17 @@ class OnboardingRequest(BaseModel):
     niche: str
     timezone: str = "UTC"
     billing_country_code: str | None = None
+    coaching_mode: CoachingMode = CoachingMode.online
+    # The coach's own declared client-billing currency (invoices, dashboard
+    # amounts, program pricing) — distinct from CoachevaOS's own platform
+    # pricing, which is still resolved from billing_country_code/region.
+    currency: str | None = None
+    # Which paid plan the coach picked on the pricing page before signing up,
+    # if any (e.g. "growth") — lets the trial reflect that plan's client
+    # limit instead of a flat free-trial cap, so they can properly evaluate
+    # the plan they intend to pay for. Purely informational: status stays
+    # "trialing" and no payment is taken until they actually check out.
+    intended_tier: str | None = None
 
     @field_validator("portal_slug")
     @classmethod
@@ -54,6 +67,8 @@ class CoachProfileOut(BaseModel):
     timezone: str
     billing_country_code: str | None = None
     currency: str = "usd"
+    coaching_mode: CoachingMode = CoachingMode.online
+    default_video_provider: CalendarProvider | None = None
     bio: str | None = None
     website_url: str | None = None
     instagram_url: str | None = None
@@ -70,6 +85,7 @@ class CoachProfileUpdate(BaseModel):
     niche: str | None = None
     billing_country_code: str | None = None
     currency: str | None = None
+    coaching_mode: CoachingMode | None = None
     bio: str | None = None
     website_url: str | None = None
     instagram_url: str | None = None
@@ -109,6 +125,10 @@ class CoachProfileUpdate(BaseModel):
     @classmethod
     def validate_profile_urls(cls, v: str | None) -> str | None:
         return _validate_profile_url(v)
+
+
+class DefaultVideoProviderUpdate(BaseModel):
+    provider: CalendarProvider
 
 
 class PortalPublicOut(BaseModel):

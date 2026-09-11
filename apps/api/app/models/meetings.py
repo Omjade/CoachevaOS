@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
-from app.models.enums import MeetingStatus
+from app.models.enums import MeetingStatus, SessionType
 from app.models.mixins import UUIDPk
 
 
@@ -38,3 +38,14 @@ class Meeting(Base, UUIDPk):
     # URI, Cal.com's booking uid) — used to find/update/cancel the matching
     # row on a later webhook delivery. Never set for internal bookings.
     external_event_uri: Mapped[str | None] = mapped_column(String(512), index=True)
+    session_type: Mapped[SessionType] = mapped_column(
+        Enum(SessionType, name="session_type"), default=SessionType.video
+    )
+    # Required (validated at the API layer) when session_type=in_person.
+    location: Mapped[str | None] = mapped_column(String(255))
+    # Links every Meeting bulk-created from one Schedule Builder range/date
+    # list — lets "cancel all remaining" and "detach on edit" operate on the
+    # whole batch without a separate join table.
+    recurrence_group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
+    marked_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
+    marked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

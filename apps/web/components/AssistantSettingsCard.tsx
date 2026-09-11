@@ -41,12 +41,12 @@ export default function AssistantSettingsCard() {
 
   return (
     <Card className="mt-6">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600">
             <Sparkle className="h-4.5 w-4.5" weight="fill" />
           </span>
-          <div>
+          <div className="min-w-0">
             <h3 className="font-heading text-sm font-semibold text-neutral-900">
               Client AI Assistant
             </h3>

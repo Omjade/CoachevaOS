@@ -70,6 +70,41 @@ body {
   font-family: var(--font-body);
 }
 
+/* Every native checkbox/radio in the app was unstyled (browser-default
+   blue), across ~16 call sites in 12 files — one global rule instead of
+   touching each one, and guarantees any future checkbox matches too. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-accent-600);
+}
+
+/* No global focus-visible rule existed — any interactive element without
+   its own focus: ring utility (icon buttons, plain text-link buttons, the
+   many ad-hoc buttons scattered across the app) fell back to the browser's
+   default blue keyboard-focus outline. This doesn't remove focus indication
+   (that would be an accessibility regression), it just recolors it to the
+   brand accent; components with their own focus:ring-* styling layer on
+   top of this unaffected. */
+:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+}
+
+/* MotionPreferences (app/layout.tsx) handles every Framer Motion animation
+   app-wide via reducedMotion="user" — this covers the separate pure-CSS
+   animation utilities (fade-up entrance, the marquee) that Framer Motion
+   doesn't touch. animate-spin-slow (loading spinners) is left alone: it's
+   functional feedback, not decorative motion. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none;
+  }
+  .animate-marquee {
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
+}
+
 h1,
 h2,
 h3,

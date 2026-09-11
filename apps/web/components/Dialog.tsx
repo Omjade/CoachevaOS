@@ -18,14 +18,19 @@ export default function Dialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
       <div
         className="absolute inset-0 bg-neutral-900/50"
         onClick={onClose}
         aria-hidden
       />
+      {/* Below sm: a near-full-screen sheet anchored to the bottom (no side
+          margins, most of the viewport height) instead of a small centered
+          card with cramped padding — every dialog in the app (Add Client,
+          Add Lead, Schedule Builder, ...) goes through this one component,
+          so this fixes mobile modal cramping app-wide from one place. */}
       <div
-        className={`relative flex max-h-[85vh] w-full flex-col ${widthClassName} rounded-(--radius-lg) bg-surface p-6 shadow-lg`}
+        className={`relative flex h-[92vh] w-full flex-col rounded-t-(--radius-lg) bg-surface p-5 shadow-lg sm:h-auto sm:max-h-[85vh] sm:rounded-(--radius-lg) sm:p-6 ${widthClassName}`}
       >
         <h2 className="font-heading mb-5 shrink-0 text-xl font-semibold">{title}</h2>
         <div className="overflow-y-auto">{children}</div>

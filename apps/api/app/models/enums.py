@@ -16,6 +16,12 @@ class ClientStatus(str, enum.Enum):
     # as the existing account-anonymize pattern), just hidden from every
     # client-list query by default.
     deleted = "deleted"
+    # A prospect who's had a single trial session but hasn't committed to a
+    # real engagement yet — deliberately its own bucket, not folded into
+    # "active": excluded from the billing sweep, the at-risk nightly sweep,
+    # and every existing ClientStatus.active-gated query, so this never
+    # silently changes behavior for a real, paying client.
+    trial_session = "trial_session"
 
 
 class LeadStage(str, enum.Enum):
@@ -49,6 +55,13 @@ class MeetingStatus(str, enum.Enum):
     scheduled = "scheduled"
     completed = "completed"
     canceled = "canceled"
+    # Attendance-tracking outcomes — written by the new attendance-marking
+    # flow (Session Log / dashboard quick-mark) going forward. "completed" is
+    # kept as a legacy value for rows written before attendance tracking
+    # existed; new code should write attended/no_show instead of completed.
+    attended = "attended"
+    no_show = "no_show"
+    rescheduled = "rescheduled"
 
 
 class CheckinType(str, enum.Enum):
@@ -104,6 +117,24 @@ class CalendarProvider(str, enum.Enum):
     zoom = "zoom"
     calendly = "calendly"
     cal_com = "cal_com"
+
+
+class CoachingMode(str, enum.Enum):
+    online = "online"
+    in_person = "in_person"
+    hybrid = "hybrid"
+
+
+class ClientType(str, enum.Enum):
+    remote = "remote"
+    in_person = "in_person"
+    hybrid = "hybrid"
+
+
+class SessionType(str, enum.Enum):
+    video = "video"
+    in_person = "in_person"
+    phone = "phone"
 
 
 class FormFieldType(str, enum.Enum):

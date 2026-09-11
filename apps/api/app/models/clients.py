@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.models.enums import ClientStatus
+from app.models.enums import ClientStatus, ClientType
 from app.models.mixins import UUIDPk
 
 
@@ -76,6 +76,13 @@ class Client(Base, UUIDPk):
     # invite_code, which is only for the pre-signup invite and stops working
     # once a password is set. This one never rotates once generated.
     portal_code: Mapped[str | None] = mapped_column(String(16), unique=True, index=True)
+    client_type: Mapped[ClientType] = mapped_column(
+        Enum(ClientType, name="client_type"), default=ClientType.remote
+    )
+    # Distinct from User.timezone: a client can exist (and have sessions
+    # scheduled) before they've accepted their invite and gotten a linked
+    # User row, so this can't just read off the shared account.
+    timezone: Mapped[str | None] = mapped_column(String(64))
 
     intake_response: Mapped["IntakeResponse | None"] = relationship(
         back_populates="client", uselist=False

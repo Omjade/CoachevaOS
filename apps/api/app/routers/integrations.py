@@ -572,12 +572,27 @@ async def create_video_call_link(
     starts_at: datetime,
     ends_at: datetime,
     topic: str,
+    provider: CalendarProvider | None = None,
 ) -> tuple[str | None, str | None]:
-    """Best-effort: if the coach has Google or Zoom connected (Google preferred),
-    create a real call and return (provider, join_url). Returns (None, None) if
-    neither is connected or the provider call fails — callers should treat
-    that as non-fatal, matching how meeting_url has always been optional."""
-    for provider in (CalendarProvider.google, CalendarProvider.zoom):
+    """Best-effort: if the coach has Google or Zoom connected, create a real
+    call and return (provider, join_url). With no explicit `provider`, tries
+    Google then Zoom (the original auto-pick behavior every existing caller
+    still gets). A caller that knows which one the coach actually chose (e.g.
+    the Schedule Builder) can pass it directly instead of relying on that
+    preference order. Returns (None, None) if the requested provider(s)
+    aren't connected or the call fails — non-fatal, matching how meeting_url
+    has always been optional."""
+    candidates = (
+        (provider,)
+        if provider is not None
+        else (CalendarProvider.google, CalendarProvider.zoom)
+    )
+    for provider in candidates:
+        if provider not in (CalendarProvider.google, CalendarProvider.zoom):
+            # Calendly/Cal.com are inbound booking-page integrations here, not
+            # a "create a meeting via API" capability — callers that want one
+            # of those must fall back to a manually-entered link instead.
+            continue
         connection = await _get_connection(db, coach_id, provider)
         if connection is None:
             continue

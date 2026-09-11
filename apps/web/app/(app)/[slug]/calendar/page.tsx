@@ -201,6 +201,7 @@ function CoachCalendar() {
   const [profile, setProfile] = useState<CoachProfile | null>(null);
   const [integrations, setIntegrations] = useState<IntegrationStatus[] | null>(null);
   const [disconnecting, setDisconnecting] = useState<CalendarProviderKey | null>(null);
+  const [settingDefault, setSettingDefault] = useState<CalendarProviderKey | null>(null);
   const [availError, setAvailError] = useState<string | null>(null);
   const [integrationError, setIntegrationError] = useState<string | null>(null);
   const [justConnected, setJustConnected] = useState<string | null>(null);
@@ -253,6 +254,19 @@ function CoachCalendar() {
       setIntegrationError(err instanceof ApiError ? err.message : "Couldn't disconnect. Try again.");
     } finally {
       setDisconnecting(null);
+    }
+  }
+
+  async function setDefault(provider: CalendarProviderKey) {
+    setSettingDefault(provider);
+    setIntegrationError(null);
+    try {
+      const updated = await api.setDefaultVideoProvider(provider);
+      setProfile(updated);
+    } catch (err) {
+      setIntegrationError(err instanceof ApiError ? err.message : "Couldn't set default. Try again.");
+    } finally {
+      setSettingDefault(null);
     }
   }
 
@@ -400,14 +414,30 @@ function CoachCalendar() {
                   </div>
                 </div>
                 {connected ? (
-                  <Button
-                    variant="secondary"
-                    className="!px-3 !py-1.5 text-xs"
-                    onClick={() => disconnect(key)}
-                    disabled={disconnecting === key}
-                  >
-                    {disconnecting === key ? "Disconnecting…" : "Disconnect"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {profile?.default_video_provider === key ? (
+                      <span className="rounded-full bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white">
+                        Default
+                      </span>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        className="!px-3 !py-1.5 text-xs"
+                        onClick={() => setDefault(key)}
+                        disabled={settingDefault === key}
+                      >
+                        {settingDefault === key ? "Setting…" : "Set as default"}
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      className="!px-3 !py-1.5 text-xs"
+                      onClick={() => disconnect(key)}
+                      disabled={disconnecting === key}
+                    >
+                      {disconnecting === key ? "Disconnecting…" : "Disconnect"}
+                    </Button>
+                  </div>
                 ) : (
                   <a href={`${API_URL}/integrations/${key}/connect`}>
                     <Button variant="secondary" className="!px-3 !py-1.5 text-xs">

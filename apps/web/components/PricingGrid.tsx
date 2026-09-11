@@ -124,7 +124,7 @@ export default function PricingGrid() {
                   </button>
                 </a>
               ) : (
-                <Link href="/signup" className="mt-6">
+                <Link href={`/signup?plan=${plan.tier}`} className="mt-6">
                   <button
                     className={`w-full rounded-full px-4 py-2.5 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
                       plan.popular

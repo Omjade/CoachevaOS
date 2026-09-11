@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import CookieConsent from "@/components/CookieConsent";
 import Analytics from "@/components/Analytics";
+import MotionPreferences from "@/components/MotionPreferences";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 const urbanist = Urbanist({
@@ -100,7 +101,7 @@ export default function RootLayout({
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
-        {children}
+        <MotionPreferences>{children}</MotionPreferences>
         <CookieConsent />
         <Analytics />
         {/* Google Preferred Sources — real, current Google mechanism (verified

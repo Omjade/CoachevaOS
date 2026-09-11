@@ -12,8 +12,9 @@ from app.models.checkins import Checkin
 from app.models.clients import Client
 from app.models.enums import ClientStatus, LeadStage
 from app.models.leads import Lead
+from app.models.programs import Program
 from app.models.tasks import Task
-from app.models.users import User
+from app.models.users import CoachProfile, User
 from app.schemas.analytics import (
     AnalyticsSummary,
     AnalyticsTimeseries,
@@ -86,11 +87,31 @@ async def get_analytics_summary(
     tasks_total = len(task_done_flags)
     tasks_done = sum(1 for d in task_done_flags if d)
 
+    profile = await db.get(CoachProfile, coach.id)
+    mrr_currency = (profile.currency if profile else "usd").upper()
+    mrr_result = await db.execute(
+        select(Program.price_amount, Program.price_currency)
+        .join(Client, Client.id == Program.client_id)
+        .where(
+            Client.coach_id == coach.id,
+            Client.status == ClientStatus.active,
+            Program.is_template.is_(False),
+            Program.billing_cadence == "monthly",
+            Program.price_amount.isnot(None),
+        )
+    )
+    mrr = sum(
+        float(amount)
+        for amount, currency in mrr_result.all()
+        if (currency or mrr_currency).upper() == mrr_currency
+    )
+
     summary = AnalyticsSummary(
         active_clients=sum(1 for s in statuses if s == ClientStatus.active),
         at_risk_clients=sum(1 for s in statuses if s == ClientStatus.at_risk),
         paused_clients=sum(1 for s in statuses if s == ClientStatus.paused),
         churned_clients=sum(1 for s in statuses if s == ClientStatus.churned),
+        trial_session_clients=sum(1 for s in statuses if s == ClientStatus.trial_session),
         lead_conversion_rate=round(leads_converted / leads_total, 3) if leads_total else 0.0,
         task_completion_rate=round(tasks_done / tasks_total, 3) if tasks_total else 0.0,
         leads_total=leads_total,
@@ -98,6 +119,8 @@ async def get_analytics_summary(
         leads_lost=leads_lost,
         tasks_total=tasks_total,
         tasks_done=tasks_done,
+        mrr=round(mrr, 2),
+        mrr_currency=mrr_currency,
     )
     _cache_set(cache_key, summary)
     return summary

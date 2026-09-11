@@ -34,6 +34,7 @@ import {
   NewspaperIcon as Newspaper,
 } from "@phosphor-icons/react";
 import { Button, Card, Eyebrow } from "@/components/ui";
+import { formatMoney } from "@/lib/currency";
 import { useViewerRole } from "@/lib/useViewerRole";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Sparkline } from "@/components/DashboardCharts";
@@ -42,6 +43,7 @@ import NewCoachChecklist from "@/components/NewCoachChecklist";
 import AboutCoachCard from "@/components/AboutCoachCard";
 import NewClientChecklist from "@/components/NewClientChecklist";
 import ProgressCard from "@/components/ProgressCard";
+import AttendanceOverviewCard from "@/components/AttendanceOverviewCard";
 
 const ClientGrowthChart = dynamic(() => import("@/components/DashboardCharts").then((m) => m.ClientGrowthChart), {
   ssr: false,
@@ -148,7 +150,11 @@ function CoachDashboard() {
     growth.length >= 2 ? growth[growth.length - 1].count - growth[growth.length - 2].count : 0;
 
   const stats = [
-    { label: "MRR", value: "$0", Icon: TrendUp },
+    {
+      label: "MRR",
+      value: analytics ? formatMoney(analytics.mrr, analytics.mrr_currency) : "—",
+      Icon: TrendUp,
+    },
     { label: "At-risk", value: String(analytics?.at_risk_clients ?? 0), Icon: Warning },
     { label: "Leads waiting", value: String(leadsWaiting), Icon: ArrowUpRight },
   ];
@@ -314,6 +320,8 @@ function CoachDashboard() {
           </Card>
         ))}
       </div>
+
+      {hasClients && <AttendanceOverviewCard />}
 
       {hasClients && (
         <div

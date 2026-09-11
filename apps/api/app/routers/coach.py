@@ -8,6 +8,7 @@ from app.db import get_db
 from app.deps import require_active_coach, require_coach
 from app.models.ai import AIInsight
 from app.models.billing import PlatformSubscription, RegionSignalLog
+from app.models.calendar_connections import CalendarConnection
 from app.models.checkins import Checkin
 from app.models.clients import Client
 from app.models.enums import (
@@ -22,9 +23,15 @@ from app.models.tasks import Task
 from app.models.users import CoachProfile, User
 from app.payments.geo import client_ip, lookup_country
 from app.rate_limit import limiter
+from app.routers.billing import TIER_CLIENT_LIMITS
 from app.schemas.attention import AttentionItem, NeedsAttentionOut
 from app.schemas.calendar import AvailabilityRules
-from app.schemas.coach import CoachProfileOut, CoachProfileUpdate, OnboardingRequest
+from app.schemas.coach import (
+    CoachProfileOut,
+    CoachProfileUpdate,
+    DefaultVideoProviderUpdate,
+    OnboardingRequest,
+)
 from app.storage import save_upload
 from app.utils.time import utcnow
 
@@ -65,7 +72,11 @@ async def complete_onboarding(
         business_name=body.business_name,
         niche=body.niche,
         billing_country_code=resolved_country,
-        currency="inr" if is_india else "usd",
+        # The coach's own explicit choice from onboarding, if given — falls
+        # back to the region-inferred default rather than silently defaulting
+        # everyone who skips it to USD.
+        currency=(body.currency or ("inr" if is_india else "usd")).lower(),
+        coaching_mode=body.coaching_mode,
     )
     db.add(profile)
     user.timezone = body.timezone
@@ -80,13 +91,26 @@ async def complete_onboarding(
         )
     )
 
+    # A plan picked on the pricing page before signup gets that plan's real
+    # client limit during the trial (still status=trialing, no charge yet),
+    # instead of a flat free-trial cap — so evaluating "can I actually run my
+    # practice on this plan" doesn't require paying first. Falls back to the
+    # old flat trial cap when no intended plan was carried through.
+    intended_tier: SubscriptionTier | None = None
+    if body.intended_tier:
+        try:
+            intended_tier = SubscriptionTier(body.intended_tier)
+        except ValueError:
+            intended_tier = None
+    trial_client_limit = TIER_CLIENT_LIMITS.get(intended_tier, 10) if intended_tier else 10
+
     db.add(
         PlatformSubscription(
             coach_id=user.id,
-            tier=SubscriptionTier.trial,
+            tier=intended_tier or SubscriptionTier.trial,
             status=SubscriptionStatus.trialing,
             trial_ends_at=utcnow() + timedelta(days=14),
-            client_limit=10,
+            client_limit=trial_client_limit,
             provider=PaymentProvider.paddle,
             currency="inr" if is_india else "usd",
         )
@@ -109,6 +133,8 @@ def _to_profile_out(profile: CoachProfile, user: User) -> CoachProfileOut:
         timezone=user.timezone,
         billing_country_code=profile.billing_country_code,
         currency=profile.currency,
+        coaching_mode=profile.coaching_mode,
+        default_video_provider=profile.default_video_provider,
         bio=profile.bio,
         website_url=profile.website_url,
         instagram_url=profile.instagram_url,
@@ -170,9 +196,36 @@ async def update_my_profile(
         profile.billing_country_code = body.billing_country_code
     if body.currency is not None:
         profile.currency = body.currency
+    if body.coaching_mode is not None:
+        profile.coaching_mode = body.coaching_mode
     await db.commit()
     await db.refresh(profile)
     await db.refresh(user)
+    return _to_profile_out(profile, user)
+
+
+@router.post("/integrations/default", response_model=CoachProfileOut)
+async def set_default_video_provider(
+    body: DefaultVideoProviderUpdate,
+    user: User = Depends(require_coach),
+    db: AsyncSession = Depends(get_db),
+) -> CoachProfileOut:
+    """Preselects the Schedule Builder's video-provider dropdown. Can only be
+    set to a provider the coach has actually connected — this is a UI
+    preference, not a connection step."""
+    profile = await db.get(CoachProfile, user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
+    connection = await db.execute(
+        select(CalendarConnection).where(
+            CalendarConnection.coach_id == user.id, CalendarConnection.provider == body.provider
+        )
+    )
+    if connection.scalar_one_or_none() is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Connect that provider first")
+    profile.default_video_provider = body.provider
+    await db.commit()
+    await db.refresh(profile)
     return _to_profile_out(profile, user)
 
 

@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { api, ApiError, User } from "@/lib/api";
 import { Button, Card, ErrorBanner, Eyebrow, Input, Label } from "@/components/ui";
 import { NICHES } from "@/lib/niches";
 import { COUNTRIES } from "@/lib/countries";
+import { CURRENCIES } from "@/lib/currencies";
 import Confetti from "@/components/Confetti";
 
-export default function OnboardingPage() {
+function OnboardingForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [celebrating, setCelebrating] = useState(false);
@@ -19,6 +21,8 @@ export default function OnboardingPage() {
   const [niche, setNiche] = useState<(typeof NICHES)[number]["value"]>("fitness");
   const [otherNiche, setOtherNiche] = useState("");
   const [billingCountry, setBillingCountry] = useState("");
+  const [currency, setCurrency] = useState("usd");
+  const [coachingMode, setCoachingMode] = useState<"online" | "in_person" | "hybrid">("online");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -44,6 +48,7 @@ export default function OnboardingPage() {
       .getRegion()
       .then((r) => {
         if (r.country_code) setBillingCountry(r.country_code);
+        if (r.region === "india") setCurrency("inr");
       })
       .catch(() => {});
   }, [router]);
@@ -59,6 +64,9 @@ export default function OnboardingPage() {
         niche: niche === "other" ? otherNiche || "other" : niche,
         timezone: user?.timezone,
         billing_country_code: billingCountry || undefined,
+        currency,
+        intended_tier: searchParams.get("plan") || undefined,
+        coaching_mode: coachingMode,
       });
       // Defensive — the onboarding form can take a while to fill out, so the
       // access token may be close to expiry by now. Touching an
@@ -160,6 +168,55 @@ export default function OnboardingPage() {
             </div>
 
             <div>
+              <Label>How do you coach?</Label>
+              <div className="grid grid-cols-3 gap-2.5">
+                {(
+                  [
+                    { value: "online", label: "Online" },
+                    { value: "in_person", label: "In-person" },
+                    { value: "hybrid", label: "Hybrid" },
+                  ] as const
+                ).map(({ value, label }) => {
+                  const active = coachingMode === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setCoachingMode(value)}
+                      className={`rounded-[14px] border px-3 py-3 text-center text-xs font-medium transition-all duration-200 ${
+                        active
+                          ? "border-neutral-900 bg-neutral-900 text-white shadow-md"
+                          : "border-neutral-200 bg-neutral-50/60 text-neutral-600 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="currency">What currency do you bill your clients in?</Label>
+              <select
+                id="currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className="w-full rounded-[10px] border border-neutral-200 bg-neutral-50/60 px-3 py-2.5 text-sm text-neutral-900 outline-none focus:border-accent-500 focus:bg-white"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-neutral-500">
+                Used everywhere you bill your clients — invoices, dashboard amounts, and program
+                pricing. You can change this later in Settings.
+              </p>
+            </div>
+
+            <div>
               <Label htmlFor="slug">Claim your portal link</Label>
               <div className="flex items-center overflow-hidden rounded-[12px] border border-neutral-200 bg-neutral-50/60 pl-3.5 transition-colors focus-within:border-accent-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-accent-100">
                 <span className="text-sm text-neutral-400">coachevaos.com/</span>
@@ -187,5 +244,13 @@ export default function OnboardingPage() {
         </Card>
       </motion.div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingForm />
+    </Suspense>
   );
 }

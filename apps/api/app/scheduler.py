@@ -9,14 +9,20 @@ from app.ai.context import build_briefing_context, build_client_risk_context
 from app.ai.limits import check_daily_quota
 from app.ai.prompts import churn_explanation_prompt, daily_briefing_prompt
 from app.db import async_session
+from datetime import timedelta
+
 from app.models.ai import AIInsight
 from app.models.billing import PlatformSubscription
 from app.models.clients import Client
-from app.models.enums import AIInsightType, ClientStatus, SubscriptionStatus
+from app.models.enums import AIInsightType, ClientStatus, MeetingStatus, SubscriptionStatus
+from app.models.meetings import Meeting
 from app.models.pending_imports import PendingImportRow
 from app.models.users import CoachProfile, User
 from app.notifications import _create_if_new, generate_coach_notifications
 from app.utils.time import utcnow
+
+NO_SHOW_AT_RISK_THRESHOLD = 2
+NO_SHOW_AT_RISK_WINDOW_DAYS = 30
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +172,45 @@ async def auto_transition_client_status() -> None:
                 await db.commit()
             except Exception:
                 logger.exception("Auto status transition failed for client %s", client.id)
+                await db.rollback()
+
+        # Second, independent trigger: 2+ no-shows in the trailing 30 days —
+        # reuses the same self-limiting pattern (only ever selects clients
+        # still `active`, so a client already flipped above or on a prior
+        # night isn't re-processed or re-notified).
+        cutoff = utcnow() - timedelta(days=NO_SHOW_AT_RISK_WINDOW_DAYS)
+        no_show_result = await db.execute(
+            select(Meeting.client_id, func.count())
+            .join(Client, Client.id == Meeting.client_id)
+            .where(
+                Client.status == ClientStatus.active,
+                Meeting.status == MeetingStatus.no_show,
+                Meeting.starts_at >= cutoff,
+            )
+            .group_by(Meeting.client_id)
+            .having(func.count() >= NO_SHOW_AT_RISK_THRESHOLD)
+        )
+        for client_id, no_show_count in no_show_result.all():
+            client = await db.get(Client, client_id)
+            if client is None or client.status != ClientStatus.active:
+                continue
+            try:
+                client.status = ClientStatus.at_risk
+                client_user = await db.get(User, client.user_id) if client.user_id else None
+                name = client_user.name if client_user else "A client"
+                await _create_if_new(
+                    db,
+                    client.coach_id,
+                    "client_no_show_pattern",
+                    str(client.id),
+                    {
+                        "message": f"{name} has {no_show_count} no-shows in the last {NO_SHOW_AT_RISK_WINDOW_DAYS} days. Worth a check-in.",
+                        "client_id": str(client.id),
+                    },
+                )
+                await db.commit()
+            except Exception:
+                logger.exception("No-show at-risk transition failed for client %s", client.id)
                 await db.rollback()
 
 

@@ -189,6 +189,8 @@ export interface CoachProfile {
   timezone: string;
   billing_country_code: string | null;
   currency: string;
+  coaching_mode: "online" | "in_person" | "hybrid";
+  default_video_provider: "google" | "zoom" | "calendly" | "cal_com" | null;
   bio: string | null;
   website_url: string | null;
   instagram_url: string | null;
@@ -500,7 +502,15 @@ export interface AvailabilityRules {
   slots: string[];
 }
 
-export type MeetingStatus = "scheduled" | "completed" | "canceled";
+export type MeetingStatus =
+  | "scheduled"
+  | "completed"
+  | "canceled"
+  | "attended"
+  | "no_show"
+  | "rescheduled";
+
+export type SessionType = "video" | "in_person" | "phone";
 
 export interface MeetingData {
   id: string;
@@ -513,7 +523,45 @@ export interface MeetingData {
   meeting_url: string | null;
   meeting_provider: "google" | "zoom" | null;
   booking_source: "internal" | "calendly" | "cal_com";
+  session_type: SessionType;
+  location: string | null;
+  recurrence_group_id: string | null;
 }
+
+export interface SessionDateEntry {
+  date: string; // "YYYY-MM-DD"
+  time: string; // "HH:MM"
+}
+
+export interface SessionBulkCreateRequest {
+  client_id: string;
+  start_date?: string;
+  end_date?: string;
+  weekdays?: string[];
+  time?: string;
+  dates?: SessionDateEntry[];
+  session_type: SessionType;
+  video_provider?: CalendarProviderKey;
+  manual_meeting_url?: string;
+  location?: string;
+  duration_minutes: number;
+}
+
+export interface SessionBulkCreateResult {
+  recurrence_group_id: string;
+  created: MeetingData[];
+}
+
+export interface AttendanceOverviewRow {
+  client_id: string;
+  client_name: string;
+  scheduled: number;
+  attended: number;
+  no_show: number;
+  attendance_rate: number;
+}
+
+export type AttendanceRange = "this_week" | "this_month" | "last_30_days" | "custom";
 
 export type CalendarProviderKey = "google" | "zoom" | "calendly" | "cal_com";
 
@@ -966,6 +1014,8 @@ export interface AnalyticsSummary {
   leads_lost: number;
   tasks_total: number;
   tasks_done: number;
+  mrr: number;
+  mrr_currency: string;
 }
 
 export interface WeekPoint {
@@ -1051,6 +1101,9 @@ export const api = {
     niche: string;
     timezone?: string;
     billing_country_code?: string;
+    currency?: string;
+    intended_tier?: string;
+    coaching_mode?: "online" | "in_person" | "hybrid";
   }) => request<CoachProfile>("/coach/onboarding", { method: "POST", body: JSON.stringify(body) }),
 
   myProfile: () => request<CoachProfile>("/coach/me/profile"),
@@ -1447,8 +1500,54 @@ export const api = {
   cancelMeeting: (meetingId: string) =>
     request<MeetingData>(`/meetings/${meetingId}/cancel`, { method: "POST" }),
 
+  // Sessions (Schedule Builder, Session Log, attendance)
+  listSessions: (params?: { client_id?: string; start?: string; end?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.client_id) qs.set("client_id", params.client_id);
+    if (params?.start) qs.set("start", params.start);
+    if (params?.end) qs.set("end", params.end);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<MeetingData[]>(`/sessions${suffix}`);
+  },
+
+  todaysSessions: (date: string) =>
+    request<MeetingData[]>(`/sessions/today?date=${encodeURIComponent(date)}`),
+
+  bulkCreateSessions: (body: SessionBulkCreateRequest) =>
+    request<SessionBulkCreateResult>("/sessions/bulk-create", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  updateSession: (
+    sessionId: string,
+    body: { starts_at?: string; date?: string; time?: string; status?: MeetingStatus }
+  ) =>
+    request<MeetingData>(`/sessions/${sessionId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+
+  cancelRemainingInSeries: (groupId: string) =>
+    request<MeetingData[]>(`/sessions/recurrence/${groupId}/cancel-remaining`, {
+      method: "PATCH",
+    }),
+
+  getAttendanceOverview: (range: AttendanceRange = "this_month", start?: string, end?: string) => {
+    const qs = new URLSearchParams({ range });
+    if (start) qs.set("start", start);
+    if (end) qs.set("end", end);
+    return request<AttendanceOverviewRow[]>(`/sessions/attendance-overview?${qs.toString()}`);
+  },
+
   // Integrations
   listIntegrations: () => request<IntegrationStatus[]>("/integrations"),
+
+  setDefaultVideoProvider: (provider: CalendarProviderKey) =>
+    request<CoachProfile>("/coach/integrations/default", {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    }),
 
   disconnectIntegration: (provider: CalendarProviderKey) =>
     request<void>(`/integrations/${provider}`, { method: "DELETE" }),

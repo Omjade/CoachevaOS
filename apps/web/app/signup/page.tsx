@@ -48,7 +48,8 @@ function SignupForm() {
       invalidateCurrentUser();
       invalidateOwnSlug();
       setRedirecting(true);
-      router.push("/onboarding");
+      const plan = searchParams.get("plan");
+      router.push(plan ? `/onboarding?plan=${plan}` : "/onboarding");
     } catch (err) {
       setError(
         err instanceof ApiError

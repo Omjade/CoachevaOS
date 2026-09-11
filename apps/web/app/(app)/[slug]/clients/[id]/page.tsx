@@ -40,6 +40,8 @@ import ProgramGenerator from "@/components/ProgramGenerator";
 import CustomFieldsCard from "@/components/CustomFieldsCard";
 import MetricsCard from "@/components/MetricsCard";
 import SessionsCard from "@/components/SessionsCard";
+import ScheduleBuilder from "@/components/ScheduleBuilder";
+import SessionAttendanceLog from "@/components/SessionAttendanceLog";
 import ClientSnapshotCard from "@/components/ClientSnapshotCard";
 import TimelineCard from "@/components/TimelineCard";
 import CopilotShell from "@/components/CopilotShell";
@@ -87,6 +89,7 @@ export default function ClientProfilePage({
   const { user: coach } = useCurrentUser();
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [scheduleBuilderOpen, setScheduleBuilderOpen] = useState(false);
   const [confirmName, setConfirmName] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -110,6 +113,7 @@ export default function ClientProfilePage({
   const [notesError, setNotesError] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [goalsRefreshKey, setGoalsRefreshKey] = useState(0);
+  const [sessionsRefreshKey, setSessionsRefreshKey] = useState(0);
   const [goalsText, setGoalsText] = useState("");
   const [programText, setProgramText] = useState("");
   const [nicheText, setNicheText] = useState("");
@@ -475,21 +479,26 @@ export default function ClientProfilePage({
               onDone={() => setGoalsRefreshKey((k) => k + 1)}
             />
           </div>
+          <div className="mt-2.5 w-full">
+            <Button variant="secondary" className="w-full" onClick={() => setScheduleBuilderOpen(true)}>
+              Schedule sessions
+            </Button>
+          </div>
           <div className="mt-3 w-full border-t border-neutral-100 pt-3">
             <p className="mb-1.5 text-xs font-medium text-neutral-500">Coaching period</p>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1.5">
               <Input
                 type="date"
                 value={coachingStart}
                 onChange={(e) => setCoachingStart(e.target.value)}
-                className="text-xs"
+                className="w-full text-xs"
               />
               <span className="text-xs text-neutral-400">to</span>
               <Input
                 type="date"
                 value={coachingEnd}
                 onChange={(e) => setCoachingEnd(e.target.value)}
-                className="text-xs"
+                className="w-full text-xs"
               />
             </div>
             <div className="mt-2 flex items-center gap-2">
@@ -537,6 +546,19 @@ export default function ClientProfilePage({
         >
           Delete {client.name}
         </Button>
+      </Dialog>
+
+      <Dialog
+        open={scheduleBuilderOpen}
+        onClose={() => setScheduleBuilderOpen(false)}
+        title="Schedule sessions"
+        widthClassName="max-w-lg"
+      >
+        <ScheduleBuilder
+          clientId={id}
+          onClose={() => setScheduleBuilderOpen(false)}
+          onCreated={() => setSessionsRefreshKey((k) => k + 1)}
+        />
       </Dialog>
 
       <div className="flex flex-1 flex-col gap-6">
@@ -680,6 +702,7 @@ export default function ClientProfilePage({
           createSession={(body) => api.createClientSession(id, body)}
           deleteSession={(noteId) => api.deleteClientSession(id, noteId)}
         />
+        <SessionAttendanceLog clientId={id} refreshKey={sessionsRefreshKey} />
         <ClientBillingCard clientId={id} threadId={client.thread_id} />
 
         <CopilotShell title="AI insights" subtitle="Churn risk, program, and full history for this client">

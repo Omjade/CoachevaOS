@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.models.enums import UserRole
+from app.models.enums import CalendarProvider, CoachingMode, UserRole
 from app.models.mixins import TimestampMixin, UUIDPk
 
 
@@ -67,5 +67,14 @@ class CoachProfile(Base):
     # pattern, same as avatar_url/logo_url) shown on the public portfolio
     # page (Phase 52) — a handful of images, not a full media library.
     gallery_image_urls: Mapped[list[str] | None] = mapped_column(JSONB)
+    coaching_mode: Mapped[CoachingMode] = mapped_column(
+        Enum(CoachingMode, name="coaching_mode"), default=CoachingMode.online
+    )
+    # Preselects the Schedule Builder's provider dropdown — reuses the same
+    # calendar_provider Postgres enum CalendarConnection.provider already
+    # uses, rather than creating a second enum type with equivalent values.
+    default_video_provider: Mapped[CalendarProvider | None] = mapped_column(
+        Enum(CalendarProvider, name="calendar_provider")
+    )
 
     user: Mapped["User"] = relationship(back_populates="coach_profile")

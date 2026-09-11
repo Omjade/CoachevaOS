@@ -6,6 +6,7 @@ class AnalyticsSummary(BaseModel):
     at_risk_clients: int
     paused_clients: int
     churned_clients: int
+    trial_session_clients: int = 0
     lead_conversion_rate: float
     task_completion_rate: float
     leads_total: int
@@ -15,6 +16,13 @@ class AnalyticsSummary(BaseModel):
     leads_lost: int = 0
     tasks_total: int
     tasks_done: int
+    # Sum of price_amount across active clients' real (non-template) programs
+    # billed monthly, in the coach's own declared currency — programs priced
+    # in a different currency than the coach's default are excluded rather
+    # than summed together, since converting between currencies here would
+    # be a guess.
+    mrr: float = 0.0
+    mrr_currency: str = "usd"
 
 
 class WeekPoint(BaseModel):
