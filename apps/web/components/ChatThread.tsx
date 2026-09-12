@@ -10,6 +10,7 @@ import {
   CalendarBlankIcon as CalendarBlank,
   FileTextIcon as FileText,
   MicrophoneIcon as Microphone,
+  CircleNotchIcon as CircleNotch,
 } from "@phosphor-icons/react";
 import { api, API_URL, ApiError, MessageData } from "@/lib/api";
 import { useChatSocket } from "@/lib/useChatSocket";
@@ -71,6 +72,7 @@ export default function ChatThread({
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [lightboxMedia, setLightboxMedia] = useState<LightboxMedia | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -186,17 +188,25 @@ export default function ChatThread({
   }
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files ?? []).slice(0, 6);
+    if (files.length === 0) return;
     setSendError(null);
-    try {
-      const message = await api.sendMediaMessage(threadId, file);
-      setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
-    } catch (err) {
-      setSendError(err instanceof ApiError ? err.message : "Couldn't send that file. Try again.");
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = "";
+    setUploadProgress({ done: 0, total: files.length });
+    // Sequential, not Promise.all — each send appends one message and the
+    // backend has no batch endpoint, so parallel sends would race message
+    // ordering in the thread for no real speed win on typically-small batches.
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const message = await api.sendMediaMessage(threadId, files[i]);
+        setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+      } catch (err) {
+        setSendError(err instanceof ApiError ? err.message : "Couldn't send that file. Try again.");
+      } finally {
+        setUploadProgress((prev) => (prev ? { done: prev.done + 1, total: prev.total } : null));
+      }
     }
+    setUploadProgress(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleSuggestReply() {
@@ -353,15 +363,33 @@ export default function ChatThread({
       {sendError && (
         <p className="border-t border-neutral-200/70 px-3 pt-2 text-xs text-accent-600">{sendError}</p>
       )}
+      {uploadProgress && (
+        <p className="flex items-center gap-1.5 border-t border-neutral-200/70 px-3 pt-2 text-xs text-neutral-500">
+          <CircleNotch className="h-3 w-3 animate-spin-slow" weight="bold" />
+          Sending {uploadProgress.done + 1} of {uploadProgress.total}…
+        </p>
+      )}
       <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-neutral-200/70 p-3">
-        <input ref={fileInputRef} type="file" className="hidden" onChange={handleFile} id="chat-attach" />
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleFile}
+          id="chat-attach"
+        />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100"
+          disabled={!!uploadProgress}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 disabled:cursor-wait disabled:opacity-50"
           aria-label="Attach file"
         >
-          <Paperclip className="h-4.5 w-4.5" />
+          {uploadProgress ? (
+            <CircleNotch className="h-4.5 w-4.5 animate-spin-slow" weight="bold" />
+          ) : (
+            <Paperclip className="h-4.5 w-4.5" />
+          )}
         </button>
         {showSuggestReply && (
           <button

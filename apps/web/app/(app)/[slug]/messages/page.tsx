@@ -37,7 +37,7 @@ export default function ClientMessagesPage() {
   }, [ok]);
 
   if (!ok) return null;
-  if (status === "loading") return <FullScreenLoader />;
+  if (status === "loading") return <FullScreenLoader fill />;
 
   return (
     <div className="flex h-[calc(100vh-9rem)] overflow-hidden rounded-[22px] border border-neutral-300/50 bg-white shadow-[0_20px_44px_rgba(28,29,31,0.06)]">

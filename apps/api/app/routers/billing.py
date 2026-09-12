@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
-from app.deps import get_platform_subscription as fetch_platform_subscription
+from app.deps import get_current_client, get_platform_subscription as fetch_platform_subscription
 from app.deps import require_active_coach, require_coach
 from app.models.billing import Invoice
 from app.models.clients import Client
@@ -67,6 +67,24 @@ async def _effective_currency(db: AsyncSession, coach: User, client: Client) -> 
         return client.billing_currency
     profile = await db.get(CoachProfile, coach.id)
     return (profile.currency if profile else "usd").upper()
+
+
+# Must be declared before /clients/{client_id}/billing below — same
+# route-ordering reason documented in ai_assistant.py/goals.py: FastAPI
+# would otherwise try to parse "me" as a client_id UUID for whichever
+# path-param route it matches first.
+@router.get("/clients/me/invoices", response_model=list[InvoiceOut])
+async def get_my_invoices(
+    client: Client = Depends(get_current_client),
+    db: AsyncSession = Depends(get_db),
+) -> list[Invoice]:
+    """Read-only mirror of the coach's own invoice ledger for this client —
+    same records, no separate/duplicate copy that could drift. A paid
+    invoice IS its own receipt here (paid + paid_at), no extra document."""
+    result = await db.execute(
+        select(Invoice).where(Invoice.client_id == client.id).order_by(Invoice.due_date.desc())
+    )
+    return list(result.scalars().all())
 
 
 @router.get("/clients/{client_id}/billing", response_model=ClientBillingOut)

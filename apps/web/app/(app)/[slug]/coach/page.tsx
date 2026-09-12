@@ -54,7 +54,7 @@ export default function KnowYourCoachPage() {
     );
   }
 
-  if (!portal) return <FullScreenLoader />;
+  if (!portal) return <FullScreenLoader fill />;
 
   const links: { href: string; label: string; Icon: typeof Globe }[] = [];
   if (portal.website_url) links.push({ href: portal.website_url, label: "Website", Icon: Globe });

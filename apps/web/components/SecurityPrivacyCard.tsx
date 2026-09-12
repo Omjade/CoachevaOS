@@ -118,8 +118,8 @@ export default function SecurityPrivacyCard({
   }
 
   return (
-    <>
-      <Card className="mt-6">
+    <div className="flex flex-col gap-6">
+      <Card>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-100 text-accent-600">
@@ -275,6 +275,6 @@ export default function SecurityPrivacyCard({
           Permanently delete my account
         </Button>
       </Dialog>
-    </>
+    </div>
   );
 }

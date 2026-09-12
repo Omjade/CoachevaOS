@@ -41,6 +41,7 @@
   --animate-fade-up: fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-spin-slow: spin 1s linear infinite;
   --animate-marquee: marquee 36s linear infinite;
+  --animate-banner-in: banner-in 1400ms cubic-bezier(0.16, 1, 0.3, 1) both;
 
   @keyframes fade-up {
     from {
@@ -50,6 +51,22 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  /* A gentle Ken-Burns-style settle for the public profile banner — starts
+     very slightly zoomed and drifts to rest, so a static header photo reads
+     as considered rather than inert. Purely decorative, so it's the one
+     added here that gets fully disabled (not just shortened) under reduced
+     motion, below. */
+  @keyframes banner-in {
+    from {
+      opacity: 0;
+      transform: scale(1.08);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 
@@ -102,6 +119,11 @@ input[type="radio"] {
   .animate-marquee {
     animation-duration: 1ms;
     animation-iteration-count: 1;
+  }
+  .animate-banner-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 

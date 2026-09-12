@@ -23,6 +23,7 @@ import {
   CreditCardIcon as CreditCard,
   SignOutIcon as SignOut,
   TrashIcon as Trash,
+  CircleNotchIcon as CircleNotch,
 } from "@phosphor-icons/react";
 import { api, ApiError, ClientSelfProfile, CoachProfile, User } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
@@ -93,6 +94,7 @@ function CoachSettings() {
   const [user, setUser] = useState<User | null>(null);
   const userId = user?.id ?? null;
   const [avatarVersion, setAvatarVersion] = useState(0);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [niche, setNiche] = useState<(typeof NICHES)[number]["value"] | "">("");
@@ -163,12 +165,14 @@ function CoachSettings() {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
+    setAvatarUploading(true);
     try {
       await api.uploadMyAvatar(file);
       setAvatarVersion((v) => v + 1);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Try again.");
     } finally {
+      setAvatarUploading(false);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   }
@@ -322,12 +326,14 @@ function CoachSettings() {
         </p>
       </div>
 
+      <div className="flex flex-col gap-6">
       <Card>
         <div className="mb-6 flex items-center gap-4">
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
-            className="group relative shrink-0"
+            disabled={avatarUploading}
+            className="group relative shrink-0 disabled:cursor-wait"
             aria-label="Change profile photo"
           >
             {userId && (
@@ -338,8 +344,16 @@ function CoachSettings() {
                 className="h-16 w-16 text-2xl"
               />
             )}
-            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white opacity-0 transition-opacity group-hover:bg-black/40 group-hover:opacity-100">
-              <Camera className="h-5 w-5" weight="bold" />
+            <span
+              className={`absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white transition-opacity ${
+                avatarUploading ? "bg-black/40! opacity-100" : "opacity-0 group-hover:bg-black/40 group-hover:opacity-100"
+              }`}
+            >
+              {avatarUploading ? (
+                <CircleNotch className="h-5 w-5 animate-spin-slow" weight="bold" />
+              ) : (
+                <Camera className="h-5 w-5" weight="bold" />
+              )}
             </span>
           </button>
           <input
@@ -506,8 +520,9 @@ function CoachSettings() {
                   type="button"
                   onClick={() => logoInputRef.current?.click()}
                   disabled={logoUploading}
-                  className="text-accent-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-accent-600 hover:underline disabled:cursor-wait disabled:opacity-50"
                 >
+                  {logoUploading && <CircleNotch className="h-3.5 w-3.5 animate-spin-slow" weight="bold" />}
                   {logoUploading ? "Uploading…" : profile.logo_url ? "Change logo" : "+ Add logo"}
                 </button>
               </div>
@@ -525,13 +540,18 @@ function CoachSettings() {
             </p>
             {logoError && <p className="mb-2 text-xs text-accent-600">{logoError}</p>}
             {profile.logo_url && (
-              <div className="h-16 w-16 overflow-hidden rounded-full border border-neutral-200">
+              <div className="relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={api.coachLogoUrl(profile.portal_slug)}
                   alt=""
                   className="h-full w-full object-cover"
                 />
+                {logoUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <CircleNotch className="h-5 w-5 animate-spin-slow text-white" weight="bold" />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -551,8 +571,9 @@ function CoachSettings() {
                   type="button"
                   onClick={() => bannerInputRef.current?.click()}
                   disabled={bannerUploading}
-                  className="text-accent-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex items-center gap-1.5 text-accent-600 hover:underline disabled:cursor-wait disabled:opacity-50"
                 >
+                  {bannerUploading && <CircleNotch className="h-3.5 w-3.5 animate-spin-slow" weight="bold" />}
                   {bannerUploading ? "Uploading…" : profile.banner_url ? "Change banner" : "+ Add banner"}
                 </button>
               </div>
@@ -571,13 +592,18 @@ function CoachSettings() {
             </p>
             {bannerError && <p className="mb-2 text-xs text-accent-600">{bannerError}</p>}
             {profile.banner_url && (
-              <div className="aspect-[3/1] w-full overflow-hidden rounded-[12px] border border-neutral-200">
+              <div className="relative aspect-[3/1] w-full overflow-hidden rounded-[12px] border border-neutral-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={api.coachBannerUrl(profile.portal_slug)}
                   alt=""
                   className="h-full w-full object-cover"
                 />
+                {bannerUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <CircleNotch className="h-6 w-6 animate-spin-slow text-white" weight="bold" />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -591,8 +617,9 @@ function CoachSettings() {
                 type="button"
                 onClick={() => galleryInputRef.current?.click()}
                 disabled={galleryUploading || (profile.gallery_image_urls ?? []).length >= 6}
-                className="text-xs font-medium text-accent-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex items-center gap-1.5 text-xs font-medium text-accent-600 hover:underline disabled:cursor-wait disabled:opacity-50"
               >
+                {galleryUploading && <CircleNotch className="h-3.5 w-3.5 animate-spin-slow" weight="bold" />}
                 {galleryUploading ? "Uploading…" : "+ Add photo"}
               </button>
               <input
@@ -605,7 +632,7 @@ function CoachSettings() {
               />
             </div>
             {galleryError && <p className="mb-2 text-xs text-accent-600">{galleryError}</p>}
-            {(profile.gallery_image_urls ?? []).length > 0 && (
+            {((profile.gallery_image_urls ?? []).length > 0 || galleryUploading) && (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {(profile.gallery_image_urls ?? []).map((_key, i) => (
                   <div key={i} className="group relative aspect-square overflow-hidden rounded-[10px]">
@@ -624,6 +651,11 @@ function CoachSettings() {
                     </button>
                   </div>
                 ))}
+                {galleryUploading && (
+                  <div className="flex aspect-square items-center justify-center rounded-[10px] bg-neutral-100">
+                    <CircleNotch className="h-5 w-5 animate-spin-slow text-neutral-400" weight="bold" />
+                  </div>
+                )}
               </div>
             )}
             <p className="mt-1 text-xs text-neutral-500">Shown on your public profile page.</p>
@@ -836,7 +868,7 @@ function CoachSettings() {
       </Card>
 
       {subscription && (
-        <Card className="mt-6">
+        <Card>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-100 text-accent-600">
@@ -866,6 +898,7 @@ function CoachSettings() {
       <LogoutCard />
 
       {user && <SecurityPrivacyCard user={user} onUserUpdate={setUser} />}
+      </div>
     </div>
   );
 }
@@ -895,6 +928,7 @@ export function ClientSettings() {
   const [user, setUser] = useState<User | null>(null);
   const userId = user?.id ?? null;
   const [avatarVersion, setAvatarVersion] = useState(0);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [name, setName] = useState("");
   const [timezone, setTimezone] = useState("");
   const [saving, setSaving] = useState(false);
@@ -921,12 +955,14 @@ export function ClientSettings() {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
+    setAvatarUploading(true);
     try {
       await api.uploadMyAvatar(file);
       setAvatarVersion((v) => v + 1);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Try again.");
     } finally {
+      setAvatarUploading(false);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   }
@@ -950,7 +986,7 @@ export function ClientSettings() {
   if (!profile) return null;
 
   return (
-    <div className="animate-fade-up mx-auto max-w-2xl">
+    <div className="animate-fade-up mx-auto max-w-4xl">
       <div className="mb-6">
         <Eyebrow className="mb-2">Your profile</Eyebrow>
         <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
@@ -959,12 +995,18 @@ export function ClientSettings() {
         <p className="mt-1 text-sm text-neutral-600">Coaching with {profile.coach_name}.</p>
       </div>
 
+      {/* Same Card component, spacing scale, and gap-6 rhythm as the coach's
+          settings page (SettingsPage above) — split into purpose-scoped
+          cards rather than one monolithic block, so both roles' settings
+          read as the same product with only the field content differing. */}
+      <div className="flex flex-col gap-6">
       <Card>
         <div className="mb-6 flex items-center gap-4">
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
-            className="group relative shrink-0"
+            disabled={avatarUploading}
+            className="group relative shrink-0 disabled:cursor-wait"
             aria-label="Change profile photo"
           >
             {userId && (
@@ -975,8 +1017,16 @@ export function ClientSettings() {
                 className="h-16 w-16 text-2xl"
               />
             )}
-            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white opacity-0 transition-opacity group-hover:bg-black/40 group-hover:opacity-100">
-              <Camera className="h-5 w-5" weight="bold" />
+            <span
+              className={`absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white transition-opacity ${
+                avatarUploading ? "bg-black/40! opacity-100" : "opacity-0 group-hover:bg-black/40 group-hover:opacity-100"
+              }`}
+            >
+              {avatarUploading ? (
+                <CircleNotch className="h-5 w-5 animate-spin-slow" weight="bold" />
+              ) : (
+                <Camera className="h-5 w-5" weight="bold" />
+              )}
             </span>
           </button>
           <input
@@ -1017,29 +1067,6 @@ export function ClientSettings() {
             </select>
           </div>
 
-          {profile.goals && (
-            <div>
-              <Label>Your goal</Label>
-              <p className="text-sm text-neutral-600">{profile.goals}</p>
-            </div>
-          )}
-
-          <div>
-            <Label>Your details</Label>
-            <div className="flex flex-col gap-1 text-sm text-neutral-600">
-              {profile.niche && (
-                <p>Focus area: {profile.niche.charAt(0).toUpperCase() + profile.niche.slice(1)}</p>
-              )}
-              {profile.phone && <p>Phone: {profile.phone}</p>}
-              <p>
-                Status:{" "}
-                <span className="font-medium text-neutral-900">
-                  {CLIENT_STATUS_LABEL[profile.status]}
-                </span>
-              </p>
-            </div>
-          </div>
-
           {error && <ErrorBanner>{error}</ErrorBanner>}
 
           <div className="flex items-center gap-3">
@@ -1056,9 +1083,34 @@ export function ClientSettings() {
         </form>
       </Card>
 
+      {(profile.goals || profile.niche || profile.phone) && (
+        <Card>
+          <h3 className="font-heading mb-3 text-sm font-semibold text-neutral-900">
+            About your coaching
+          </h3>
+          <div className="flex flex-col gap-3 text-sm text-neutral-600">
+            {profile.goals && (
+              <div>
+                <Label>Your goal</Label>
+                <p>{profile.goals}</p>
+              </div>
+            )}
+            {profile.niche && <p>Focus area: {profile.niche.charAt(0).toUpperCase() + profile.niche.slice(1)}</p>}
+            {profile.phone && <p>Phone: {profile.phone}</p>}
+            <p>
+              Status:{" "}
+              <span className="font-medium text-neutral-900">
+                {CLIENT_STATUS_LABEL[profile.status]}
+              </span>
+            </p>
+          </div>
+        </Card>
+      )}
+
       <LogoutCard />
 
       {user && <SecurityPrivacyCard user={user} onUserUpdate={setUser} />}
+      </div>
     </div>
   );
 }

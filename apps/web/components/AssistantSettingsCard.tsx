@@ -40,7 +40,7 @@ export default function AssistantSettingsCard() {
   if (!settings) return null;
 
   return (
-    <Card className="mt-6">
+    <Card>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600">

@@ -65,6 +65,7 @@ class ClientNotesUpdate(BaseModel):
 
 class ClientUpdate(BaseModel):
     name: str | None = None
+    email: str | None = None
     phone: str | None = None
     goals: str | None = None
     program: str | None = None

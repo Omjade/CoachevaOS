@@ -49,6 +49,7 @@ import ProgressCard from "@/components/ProgressCard";
 import AttendanceOverviewCard from "@/components/AttendanceOverviewCard";
 import TodaysSessionsPanel from "@/components/TodaysSessionsPanel";
 import TodoPanel from "@/components/TodoPanel";
+import ClientInvoicesCard from "@/components/ClientInvoicesCard";
 
 const ClientGrowthChart = dynamic(() => import("@/components/DashboardCharts").then((m) => m.ClientGrowthChart), {
   ssr: false,
@@ -541,6 +542,8 @@ export function ClientDashboard() {
         </Card>
       )}
 
+      <ClientInvoicesCard />
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <div className="mb-2 flex items-center gap-2">
@@ -549,12 +552,16 @@ export function ClientDashboard() {
           </div>
           {nextMeeting ? (
             <p className="text-sm text-neutral-700">
+              {/* Explicit stored User.timezone rather than the ambient
+                  browser zone — matches the calendar page's timeInZone tag
+                  for the same meeting data (see calendar/page.tsx). */}
               {new Date(nextMeeting.starts_at).toLocaleString([], {
                 weekday: "short",
                 month: "short",
                 day: "numeric",
                 hour: "numeric",
                 minute: "2-digit",
+                ...(user?.timezone ? { timeZone: user.timezone } : {}),
               })}
             </p>
           ) : (

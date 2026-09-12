@@ -80,7 +80,7 @@ export default function ClientDetailLayout({
   }, [role, clientId, slug, router, currentUser]);
 
   if (role === null || (role !== "anonymous" && !identity && !notFound)) {
-    return <FullScreenLoader />;
+    return <FullScreenLoader fill />;
   }
 
   if (notFound) {

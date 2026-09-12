@@ -101,6 +101,7 @@ export default function DocumentList({
           variant="secondary"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
+          loading={uploading}
         >
           {uploading ? "Uploading…" : "Upload"}
         </Button>

@@ -44,7 +44,7 @@ function ContactCard({ slug, coachName }: { slug: string; coachName: string }) {
 
   if (sent) {
     return (
-      <Card className="bg-neutral-900 text-center">
+      <Card className="animate-fade-up bg-neutral-900 text-center">
         <p className="text-sm text-white">
           Thanks, {name.split(" ")[0]}. {coachName} will be in touch.
         </p>
@@ -164,8 +164,15 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
       <div className="relative h-40 w-full overflow-hidden bg-gradient-to-br from-neutral-900 to-neutral-700 sm:h-56">
         {portal.banner_url && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={api.coachBannerUrl(slug)} alt="" className="h-full w-full object-cover" />
+          <img
+            src={api.coachBannerUrl(slug)}
+            alt=""
+            className="animate-banner-in h-full w-full object-cover"
+          />
         )}
+        {/* Soft fade at the base of the banner so the pulled-up avatar reads
+            as sitting on top of it rather than the two images just abutting. */}
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-neutral-100/80 to-transparent" />
       </div>
 
       <div className="flex flex-1 justify-center px-6 pb-16">
@@ -175,7 +182,7 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
               CoachevaOS mark in the coach's own sidebar). Uploading one must
               never change the other. Pulled up over the banner, classic
               profile-page overlap. */}
-          <div className="-mt-12 mb-4 flex items-end justify-between sm:-mt-16">
+          <div className="animate-fade-up -mt-12 mb-4 flex items-end justify-between sm:-mt-16">
             <Avatar
               userId={portal.coach_user_id}
               name={portal.coach_name}
@@ -189,19 +196,24 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
             )}
           </div>
 
-          <Eyebrow className="mb-3">{nicheDisplayLabel(portal.niche)}</Eyebrow>
-          <h1 className="font-heading mb-1 text-3xl font-semibold tracking-tight text-neutral-900">
-            {displayName}
-          </h1>
-          {portal.coach_name !== displayName && (
-            <p className="mb-2 text-sm text-neutral-500">{portal.coach_name}</p>
-          )}
-          {portal.tagline && (
-            <p className="mb-5 max-w-lg text-base leading-snug text-neutral-600">{portal.tagline}</p>
-          )}
+          <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>
+            <Eyebrow className="mb-3">{nicheDisplayLabel(portal.niche)}</Eyebrow>
+            <h1 className="font-heading mb-1 text-3xl font-semibold tracking-tight text-neutral-900">
+              {displayName}
+            </h1>
+            {portal.coach_name !== displayName && (
+              <p className="mb-2 text-sm text-neutral-500">{portal.coach_name}</p>
+            )}
+            {portal.tagline && (
+              <p className="mb-5 max-w-lg text-base leading-snug text-neutral-600">{portal.tagline}</p>
+            )}
+          </div>
 
           {socialLinks.length > 0 && (
-            <div className="mb-6 flex flex-wrap gap-2">
+            <div
+              className="animate-fade-up mb-6 flex flex-wrap gap-2"
+              style={{ animationDelay: "100ms" }}
+            >
               {socialLinks.map(({ href, label, Icon }) => (
                 <a
                   key={label}
@@ -209,7 +221,7 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={label}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-neutral-700 shadow-[0_4px_10px_rgba(28,29,31,0.08)] transition-colors duration-200 hover:bg-neutral-900 hover:text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-neutral-700 shadow-[0_4px_10px_rgba(28,29,31,0.08)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-neutral-900 hover:text-white"
                 >
                   <Icon className="h-4.5 w-4.5" weight="fill" />
                 </a>
@@ -218,15 +230,21 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
           )}
 
           {portal.bio && (
-            <Card className="mb-6">
+            <Card className="animate-fade-up mb-6" style={{ animationDelay: "120ms" }}>
               <p className="text-sm leading-relaxed text-neutral-700">{portal.bio}</p>
             </Card>
           )}
 
           {testimonials.length > 0 && (
-            <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div
+              className="animate-fade-up mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2"
+              style={{ animationDelay: "140ms" }}
+            >
               {testimonials.map((t, i) => (
-                <Card key={i} className="!p-4">
+                <Card
+                  key={i}
+                  className="!p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+                >
                   <Quotes className="mb-2 h-5 w-5 text-accent-300" weight="fill" />
                   <p className="mb-3 text-sm leading-relaxed text-neutral-700">{t.quote}</p>
                   <p className="text-xs font-medium text-neutral-500">{t.author}</p>
@@ -236,27 +254,34 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
           )}
 
           {gallery.length > 0 && (
-            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div
+              className="animate-fade-up mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3"
+              style={{ animationDelay: "160ms" }}
+            >
               {gallery.map((_key, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={i}
-                  src={api.galleryImageUrl(slug, i)}
-                  alt=""
-                  className="aspect-square w-full rounded-[14px] object-cover"
-                />
+                <div key={i} className="overflow-hidden rounded-[14px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={api.galleryImageUrl(slug, i)}
+                    alt=""
+                    className="aspect-square w-full object-cover transition-transform duration-300 hover:scale-[1.05]"
+                  />
+                </div>
               ))}
             </div>
           )}
 
           {packages.length > 0 && (
-            <div className="mb-6">
+            <div className="animate-fade-up mb-6" style={{ animationDelay: "180ms" }}>
               <h2 className="font-heading mb-3 text-lg font-semibold text-neutral-900">
                 Programs offered
               </h2>
               <div className="flex flex-col gap-3">
                 {packages.map((p) => (
-                  <Card key={p.id}>
+                  <Card
+                    key={p.id}
+                    className="transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+                  >
                     <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-neutral-900">{p.title}</h3>
                       {p.price_amount != null && (
@@ -279,7 +304,7 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
           )}
 
           {customLinks.length > 0 && (
-            <div className="mb-6 flex flex-col gap-2.5">
+            <div className="animate-fade-up mb-6 flex flex-col gap-2.5" style={{ animationDelay: "200ms" }}>
               {customLinks.map((link) => (
                 <a
                   key={link.url}
@@ -295,18 +320,20 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
             </div>
           )}
 
-          {portal.featured_form_slug ? (
-            <Card className="bg-neutral-900 text-center">
-              <p className="mb-4 text-sm text-white">
-                Want to work with {portal.coach_name}? Get started below.
-              </p>
-              <Link href={`/${slug}/${portal.featured_form_slug}`}>
-                <Button className="w-full">Get in touch</Button>
-              </Link>
-            </Card>
-          ) : (
-            <ContactCard slug={slug} coachName={portal.coach_name} />
-          )}
+          <div className="animate-fade-up" style={{ animationDelay: "220ms" }}>
+            {portal.featured_form_slug ? (
+              <Card className="bg-neutral-900 text-center">
+                <p className="mb-4 text-sm text-white">
+                  Want to work with {portal.coach_name}? Get started below.
+                </p>
+                <Link href={`/${slug}/${portal.featured_form_slug}`}>
+                  <Button className="w-full">Get in touch</Button>
+                </Link>
+              </Card>
+            ) : (
+              <ContactCard slug={slug} coachName={portal.coach_name} />
+            )}
+          </div>
         </div>
       </div>
     </div>

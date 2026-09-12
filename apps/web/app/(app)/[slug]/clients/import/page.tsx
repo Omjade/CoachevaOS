@@ -8,6 +8,7 @@ import {
   CheckCircleIcon as CheckCircle,
   WarningCircleIcon as WarningCircle,
   ArrowLeftIcon as ArrowLeft,
+  CircleNotchIcon as CircleNotch,
 } from "@phosphor-icons/react";
 import { api, ApiError, ImportCommitResult, ImportPreview } from "@/lib/api";
 import { Button, Card, ErrorBanner, Eyebrow } from "@/components/ui";
@@ -114,9 +115,17 @@ export default function ClientImportPage() {
             className="hidden"
             id="import-file"
           />
-          <label htmlFor="import-file">
-            <span className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5">
-              <UploadSimple className="h-4 w-4" weight="bold" />
+          <label htmlFor={loading ? undefined : "import-file"}>
+            <span
+              className={`inline-flex items-center gap-2 rounded-full bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200 ${
+                loading ? "cursor-wait opacity-70" : "cursor-pointer hover:-translate-y-0.5"
+              }`}
+            >
+              {loading ? (
+                <CircleNotch className="h-4 w-4 animate-spin-slow" weight="bold" />
+              ) : (
+                <UploadSimple className="h-4 w-4" weight="bold" />
+              )}
               {loading ? "Reading file…" : "Choose file"}
             </span>
           </label>

@@ -24,6 +24,8 @@ export default function NewCoachChecklist() {
   const params = useParams<{ slug: string }>();
   const [dismissed, setDismissed] = useState(true); // default hidden until localStorage read, avoids a flash
   const [ready, setReady] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
+  const [hasProgram, setHasProgram] = useState(false);
   const [hasForm, setHasForm] = useState(false);
   const [hasClient, setHasClient] = useState(false);
   const [hasMessaged, setHasMessaged] = useState(false);
@@ -35,6 +37,15 @@ export default function NewCoachChecklist() {
   }, []);
 
   useEffect(() => {
+    // Each step is meant to build on the one before it — a client added
+    // before the public profile/program exist would land on a blank
+    // profile with nothing to be assigned, so the checklist (and its
+    // "done" detection) follows that same 1-2-3 order end to end.
+    api
+      .myProfile()
+      .then((p) => setHasProfile(Boolean(p.bio || p.tagline)))
+      .catch(() => {});
+    api.listTemplates().then((t) => setHasProgram(t.length > 0)).catch(() => {});
     api.listForms().then((f) => setHasForm(f.length > 0)).catch(() => {});
     api.listClients().then((c) => setHasClient(c.length > 0)).catch(() => {});
     api
@@ -56,10 +67,16 @@ export default function NewCoachChecklist() {
 
   const steps: Step[] = [
     {
-      key: "form",
-      label: "Create a form with AI",
-      href: (slug) => `/${slug}/forms/new`,
-      done: hasForm,
+      key: "profile",
+      label: "Complete your public profile",
+      href: (slug) => `/${slug}/settings`,
+      done: hasProfile,
+    },
+    {
+      key: "program",
+      label: "Create a program or package",
+      href: (slug) => `/${slug}/programs`,
+      done: hasProgram,
     },
     {
       key: "client",
@@ -84,6 +101,12 @@ export default function NewCoachChecklist() {
       label: "Connect your calendar",
       href: (slug) => `/${slug}/calendar`,
       done: hasCalendar,
+    },
+    {
+      key: "form",
+      label: "Create a form with AI",
+      href: (slug) => `/${slug}/forms/new`,
+      done: hasForm,
     },
     {
       key: "document",

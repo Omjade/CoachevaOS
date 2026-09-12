@@ -345,6 +345,15 @@ async def update_client(
     client, user = await _get_owned_client(db, coach, client_id)
     if body.name is not None:
         user.name = body.name
+    if body.email is not None and body.email != user.email:
+        # Email doubles as this client's login credential (User.email is the
+        # unique lookup key in /auth/login) — reject a change that would
+        # collide with a different account rather than silently reassigning
+        # someone else's login.
+        existing = await db.execute(select(User).where(User.email == body.email))
+        if existing.scalar_one_or_none() is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "That email is already in use")
+        user.email = body.email
     if body.phone is not None:
         client.phone = body.phone
     if body.goals is not None:

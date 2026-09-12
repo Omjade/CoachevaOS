@@ -11,6 +11,8 @@ import {
   CameraIcon as Camera,
   FileTextIcon as FileText,
   CheckSquareIcon as CheckSquare,
+  CircleNotchIcon as CircleNotch,
+  PhoneIcon as Phone,
 } from "@phosphor-icons/react";
 import {
   api,
@@ -117,11 +119,13 @@ export default function ClientProfilePage({
   const [goalsText, setGoalsText] = useState("");
   const [programText, setProgramText] = useState("");
   const [nicheText, setNicheText] = useState("");
+  const [emailText, setEmailText] = useState("");
   const [phoneText, setPhoneText] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
+  const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [statusSaving, setStatusSaving] = useState(false);
@@ -180,12 +184,14 @@ export default function ClientProfilePage({
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarError(null);
+    setAvatarUploading(true);
     try {
       await api.uploadClientAvatar(id, file);
       setAvatarVersion((v) => v + 1);
     } catch (err) {
       setAvatarError(err instanceof ApiError ? err.message : "Couldn't upload that photo. Try again.");
     } finally {
+      setAvatarUploading(false);
       if (avatarInputRef.current) avatarInputRef.current.value = "";
     }
   }
@@ -205,6 +211,7 @@ export default function ClientProfilePage({
       setGoalsText(c.goals ?? "");
       setProgramText(c.program ?? "");
       setNicheText(c.niche ?? "");
+      setEmailText(c.email ?? "");
       setPhoneText(c.phone ?? "");
       setCoachingStart(c.coaching_start_date ?? "");
       setCoachingEnd(c.coaching_end_date ?? "");
@@ -243,6 +250,7 @@ export default function ClientProfilePage({
         goals: goalsText,
         program: programText,
         niche: nicheText,
+        email: emailText,
         phone: phoneText,
       });
       setClient(updated);
@@ -348,7 +356,8 @@ export default function ClientProfilePage({
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
-            className="group relative mb-4 shrink-0"
+            disabled={avatarUploading}
+            className="group relative mb-4 shrink-0 disabled:cursor-wait"
             aria-label="Change client photo"
           >
             <Avatar
@@ -357,8 +366,16 @@ export default function ClientProfilePage({
               name={client.name}
               className="h-35 w-35 text-3xl"
             />
-            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white opacity-0 transition-opacity group-hover:bg-black/40 group-hover:opacity-100">
-              <Camera className="h-6 w-6" weight="bold" />
+            <span
+              className={`absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-white transition-opacity ${
+                avatarUploading ? "bg-black/40! opacity-100" : "opacity-0 group-hover:bg-black/40 group-hover:opacity-100"
+              }`}
+            >
+              {avatarUploading ? (
+                <CircleNotch className="h-6 w-6 animate-spin-slow" weight="bold" />
+              ) : (
+                <Camera className="h-6 w-6" weight="bold" />
+              )}
             </span>
           </button>
           <input
@@ -370,8 +387,16 @@ export default function ClientProfilePage({
           />
           {avatarError && <p className="mb-2 text-xs text-accent-600">{avatarError}</p>}
           <h1 className="font-heading text-xl font-semibold text-neutral-900">{client.name}</h1>
-          <p className="text-sm text-neutral-600">{client.email}</p>
-          {client.phone && <p className="text-sm text-neutral-600">{client.phone}</p>}
+          <p className="flex items-center gap-1.5 text-sm text-neutral-600">
+            <EnvelopeSimple className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+            {client.email}
+          </p>
+          {client.phone && (
+            <p className="flex items-center gap-1.5 text-sm text-neutral-600">
+              <Phone className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+              {client.phone}
+            </p>
+          )}
           <p className="mb-3 text-xs text-neutral-500">
             {intake === null ? "Timezone not set yet" : clientLocalTime(client.timezone)}
           </p>
@@ -646,6 +671,18 @@ export default function ClientProfilePage({
                 </p>
               </div>
               <div>
+                <label className="mb-1 block text-xs font-semibold text-neutral-700">Email</label>
+                <Input
+                  type="email"
+                  value={emailText}
+                  onChange={(e) => setEmailText(e.target.value)}
+                />
+                <p className="mt-1 text-xs text-neutral-500">
+                  This is also their login — they&apos;ll need to sign in with the new address next
+                  time.
+                </p>
+              </div>
+              <div>
                 <label className="mb-1 block text-xs font-semibold text-neutral-700">Phone</label>
                 <Input value={phoneText} onChange={(e) => setPhoneText(e.target.value)} />
               </div>
@@ -661,6 +698,7 @@ export default function ClientProfilePage({
                     setProfileError(null);
                     setGoalsText(client.goals ?? "");
                     setProgramText(client.program ?? "");
+                    setEmailText(client.email ?? "");
                     setPhoneText(client.phone ?? "");
                   }}
                 >

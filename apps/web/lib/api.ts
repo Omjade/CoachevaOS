@@ -309,6 +309,7 @@ export interface InviteInfo {
 
 export interface ClientUpdate {
   name?: string;
+  email?: string;
   phone?: string;
   goals?: string;
   program?: string;
@@ -1644,6 +1645,9 @@ export const api = {
 
   // Client billing
   getClientBilling: (clientId: string) => request<ClientBilling>(`/clients/${clientId}/billing`),
+
+  // The client's own read-only view of the same invoice ledger the coach sees.
+  getMyInvoices: () => request<InvoiceData[]>("/clients/me/invoices"),
 
   updateClientSubscription: (
     clientId: string,
