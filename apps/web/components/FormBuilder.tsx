@@ -181,7 +181,7 @@ export function FormBuilder({
               className="hidden"
               onChange={handleImageChange}
             />
-            {imageError && <p className="mt-2 text-xs text-red-600">{imageError}</p>}
+            {imageError && <p className="mt-2 text-xs text-accent-600">{imageError}</p>}
           </Card>
         )}
 

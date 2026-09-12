@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { api, ApiError, ClientGoal, ProgressEntry } from "@/lib/api";
 import { Button, Card, Input } from "@/components/ui";
+import { todayStr } from "@/lib/dateStr";
 
 interface GoalsAndProgressProps {
   listGoals: () => Promise<ClientGoal[]>;
@@ -19,10 +20,6 @@ interface GoalsAndProgressProps {
   deleteGoal: (goalId: string) => Promise<void>;
   listProgress: () => Promise<ProgressEntry[]>;
   createProgress: (note: string, entryDate: string, file?: File | null) => Promise<ProgressEntry>;
-}
-
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export default function GoalsAndProgress(props: GoalsAndProgressProps) {

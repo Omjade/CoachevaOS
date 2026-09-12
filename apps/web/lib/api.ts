@@ -178,6 +178,16 @@ export function isCoachChoiceRequired(
   return "coach_choice_required" in result;
 }
 
+export interface CustomLink {
+  label: string;
+  url: string;
+}
+
+export interface Testimonial {
+  quote: string;
+  author: string;
+}
+
 export interface CoachProfile {
   portal_slug: string;
   business_name: string | null;
@@ -196,6 +206,10 @@ export interface CoachProfile {
   instagram_url: string | null;
   linkedin_url: string | null;
   gallery_image_urls: string[] | null;
+  tagline: string | null;
+  banner_url: string | null;
+  custom_links: CustomLink[] | null;
+  testimonials: Testimonial[] | null;
 }
 
 export interface CoachProfileUpdate {
@@ -209,6 +223,9 @@ export interface CoachProfileUpdate {
   website_url?: string;
   instagram_url?: string;
   linkedin_url?: string;
+  tagline?: string;
+  custom_links?: CustomLink[];
+  testimonials?: Testimonial[];
 }
 
 export interface ClientSelfProfile {
@@ -242,12 +259,17 @@ export interface PortalPublic {
   brand_color: string | null;
   logo_url: string | null;
   coach_name: string;
+  coach_user_id: string;
   bio: string | null;
   website_url: string | null;
   instagram_url: string | null;
   linkedin_url: string | null;
   gallery_image_urls: string[] | null;
   featured_form_slug: string | null;
+  tagline: string | null;
+  banner_url: string | null;
+  custom_links: CustomLink[] | null;
+  testimonials: Testimonial[] | null;
 }
 
 export type ClientStatus = "active" | "at_risk" | "paused" | "churned" | "deleted";
@@ -262,6 +284,9 @@ export interface ClientListItem {
   status: ClientStatus;
   joined_at: string;
   invite_pending: boolean;
+  niche: string | null;
+  client_type: "remote" | "in_person" | "hybrid";
+  subscription_valid_until: string | null;
 }
 
 export interface ClientDetail extends ClientListItem {
@@ -562,6 +587,19 @@ export interface AttendanceOverviewRow {
 }
 
 export type AttendanceRange = "this_week" | "this_month" | "last_30_days" | "custom";
+
+export type TodoCreatedVia = "manual" | "voice_ai";
+
+export interface TodoData {
+  id: string;
+  date: string;
+  text: string;
+  is_complete: boolean;
+  priority: "low" | "medium" | "high" | null;
+  time: string | null;
+  created_via: TodoCreatedVia;
+  carried_forward_from: string | null;
+}
 
 export type CalendarProviderKey = "google" | "zoom" | "calendly" | "cal_com";
 
@@ -1128,6 +1166,14 @@ export const api = {
 
   removeLogo: () => request<CoachProfile>("/coach/me/logo", { method: "DELETE" }),
 
+  uploadBanner: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return requestForm<CoachProfile>("/coach/me/banner", form);
+  },
+
+  removeBanner: () => request<CoachProfile>("/coach/me/banner", { method: "DELETE" }),
+
   portalBySlug: (slug: string) => request<PortalPublic>(`/portal/${slug}`),
 
   getPublicPackages: (slug: string) => request<ProgramTemplate[]>(`/portal/${slug}/packages`),
@@ -1135,6 +1181,8 @@ export const api = {
   galleryImageUrl: (slug: string, index: number) => `${API_URL}/portal/${slug}/gallery/${index}`,
 
   coachLogoUrl: (slug: string) => `${API_URL}/portal/${slug}/logo`,
+
+  coachBannerUrl: (slug: string) => `${API_URL}/portal/${slug}/banner`,
 
   // Clients
   listClients: () => request<ClientListItem[]>("/clients"),
@@ -1298,7 +1346,10 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  submitPortalContact: (slug: string, body: { name: string; email: string; message?: string }) =>
+  submitPortalContact: (
+    slug: string,
+    body: { name: string; email: string; phone?: string; message?: string }
+  ) =>
     request<{ ok: boolean }>(`/portal/${slug}/contact`, {
       method: "POST",
       body: JSON.stringify(body),
@@ -1539,6 +1590,28 @@ export const api = {
     if (end) qs.set("end", end);
     return request<AttendanceOverviewRow[]>(`/sessions/attendance-overview?${qs.toString()}`);
   },
+
+  // To-Do (coach's own dashboard checklist)
+  listTodos: (date: string) => request<TodoData[]>(`/todos?date=${encodeURIComponent(date)}`),
+
+  createTodo: (body: { date: string; text: string; priority?: string; time?: string }) =>
+    request<TodoData>("/todos", { method: "POST", body: JSON.stringify(body) }),
+
+  updateTodo: (
+    todoId: string,
+    body: { text?: string; is_complete?: boolean; priority?: string; time?: string }
+  ) => request<TodoData>(`/todos/${todoId}`, { method: "PATCH", body: JSON.stringify(body) }),
+
+  deleteTodo: (todoId: string) => request<void>(`/todos/${todoId}`, { method: "DELETE" }),
+
+  carryForwardTodos: (date: string) =>
+    request<TodoData[]>(`/todos/carry-forward?date=${encodeURIComponent(date)}`, { method: "POST" }),
+
+  voiceParseTodos: (transcript: string, date: string) =>
+    request<{ created: TodoData[] }>("/todos/voice-parse", {
+      method: "POST",
+      body: JSON.stringify({ transcript, date }),
+    }),
 
   // Integrations
   listIntegrations: () => request<IntegrationStatus[]>("/integrations"),
@@ -1802,6 +1875,12 @@ export const api = {
 
   applyCustomFieldTemplate: () =>
     request<ApplyTemplateResult>("/custom-field-definitions/apply-template", { method: "POST" }),
+
+  generateCustomFields: (prompt: string) =>
+    request<{ group: CustomFieldGroup; fields: CustomFieldDefinition[] }>(
+      "/custom-field-definitions/generate",
+      { method: "POST", body: JSON.stringify({ prompt }) }
+    ),
 
   getClientCustomFields: (clientId: string) =>
     request<ClientCustomFields>(`/clients/${clientId}/custom-fields`),

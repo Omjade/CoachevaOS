@@ -422,7 +422,7 @@ function CoachCalendar() {
                     ) : (
                       <Button
                         variant="secondary"
-                        className="!px-3 !py-1.5 text-xs"
+                        size="sm"
                         onClick={() => setDefault(key)}
                         disabled={settingDefault === key}
                       >
@@ -431,7 +431,7 @@ function CoachCalendar() {
                     )}
                     <Button
                       variant="secondary"
-                      className="!px-3 !py-1.5 text-xs"
+                      size="sm"
                       onClick={() => disconnect(key)}
                       disabled={disconnecting === key}
                     >
@@ -440,7 +440,7 @@ function CoachCalendar() {
                   </div>
                 ) : (
                   <a href={`${API_URL}/integrations/${key}/connect`}>
-                    <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
+                    <Button variant="secondary" size="sm">
                       <LinkIconGlyph className="h-3.5 w-3.5" />
                       Connect
                     </Button>
@@ -592,7 +592,7 @@ function CoachCalendar() {
                       className="w-auto text-xs"
                     />
                     <Button
-                      className="!px-3 !py-1.5 text-xs"
+                      size="sm"
                       onClick={() => confirmReschedule(m.id)}
                       disabled={busyMeetingId === m.id}
                     >

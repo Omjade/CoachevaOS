@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { PlusIcon as Plus, TrashIcon as Trash, NotebookIcon as Notebook } from "@phosphor-icons/react";
 import { ApiError, SessionNote } from "@/lib/api";
 import { Button, Card, Input } from "@/components/ui";
-
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayStr } from "@/lib/dateStr";
 
 interface SessionsCardProps {
   listSessions: () => Promise<SessionNote[]>;

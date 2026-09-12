@@ -55,6 +55,9 @@ export default function CustomFieldsSettingsPage() {
   const [definitions, setDefinitions] = useState<CustomFieldDefinition[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [showAiInput, setShowAiInput] = useState(false);
 
   const [newGroupName, setNewGroupName] = useState("");
   const [addingFieldGroup, setAddingFieldGroup] = useState<string | "ungrouped" | null>(null);
@@ -80,6 +83,23 @@ export default function CustomFieldsSettingsPage() {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
       setApplyingTemplate(false);
+    }
+  }
+
+  async function generateWithAi(e: React.FormEvent) {
+    e.preventDefault();
+    if (!aiPrompt.trim()) return;
+    setGenerating(true);
+    setError(null);
+    try {
+      await api.generateCustomFields(aiPrompt.trim());
+      setAiPrompt("");
+      setShowAiInput(false);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't generate fields. Try again.");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -225,26 +245,49 @@ export default function CustomFieldsSettingsPage() {
         </div>
       )}
 
-      {definitions.length === 0 && (
-        <Card className="mb-6 !border-accent-200 !bg-accent-100">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-accent-600">
-              <Sparkle className="h-4.5 w-4.5" weight="fill" />
-            </span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-neutral-900">
-                Use a starter template for your niche
-              </p>
-              <p className="text-xs text-neutral-600">
-                One click sets up a useful starting profile. Edit or remove anything after.
-              </p>
-            </div>
-            <Button onClick={applyTemplate} loading={applyingTemplate}>
-              Use template
-            </Button>
+      <Card className="mb-6 !border-accent-200 !bg-accent-100">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-accent-600">
+            <Sparkle className="h-4.5 w-4.5" weight="fill" />
+          </span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-neutral-900">Generate fields with AI</p>
+            <p className="mb-2 text-xs text-neutral-600">
+              Describe what you want to track in your own words — a new labeled group is created
+              from it, which you can edit, add to, or remove fields from afterward. Call this again
+              anytime for a fresh set.
+            </p>
+            {showAiInput ? (
+              <form onSubmit={generateWithAi} className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="e.g. Postpartum recovery clients — pelvic floor, sleep, energy"
+                  autoFocus
+                  className="flex-1"
+                />
+                <div className="flex gap-2">
+                  <Button type="submit" loading={generating} disabled={!aiPrompt.trim()}>
+                    Generate
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setShowAiInput(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button onClick={() => setShowAiInput(true)}>Generate with AI</Button>
+                {definitions.length === 0 && (
+                  <Button variant="secondary" onClick={applyTemplate} loading={applyingTemplate}>
+                    Use starter template instead
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
-        </Card>
-      )}
+        </div>
+      </Card>
 
       <div className="flex flex-col gap-4">
         {groups.map((group) => {

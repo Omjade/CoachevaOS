@@ -15,6 +15,7 @@ import { api, API_URL, ApiError, MessageData } from "@/lib/api";
 import { useChatSocket } from "@/lib/useChatSocket";
 import { Button, Input } from "@/components/ui";
 import Avatar from "@/components/Avatar";
+import MediaLightbox, { LightboxMedia } from "@/components/MediaLightbox";
 
 const MEDIA_ICON: Record<string, typeof FileText> = {
   pdf: FileText,
@@ -70,6 +71,7 @@ export default function ChatThread({
   const [lastSeenAt, setLastSeenAt] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [lightboxMedia, setLightboxMedia] = useState<LightboxMedia | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -269,19 +271,47 @@ export default function ChatThread({
                 {m.type === "text" && <p>{m.body}</p>}
 
                 {m.type === "image" && (
-                  <img
-                    src={`${mediaBaseUrl}/threads/messages/${m.id}/media`}
-                    alt={m.body ?? "Image"}
-                    className="max-h-64 rounded-lg"
-                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxMedia({
+                        url: `${mediaBaseUrl}/threads/messages/${m.id}/media`,
+                        type: "image",
+                        caption: m.body,
+                      })
+                    }
+                    className="block cursor-zoom-in"
+                  >
+                    <img
+                      src={`${mediaBaseUrl}/threads/messages/${m.id}/media`}
+                      alt={m.body ?? "Image"}
+                      className="max-h-64 rounded-lg"
+                    />
+                  </button>
                 )}
 
                 {m.type === "video" && (
-                  <video
-                    src={`${mediaBaseUrl}/threads/messages/${m.id}/media`}
-                    controls
-                    className="max-h-64 rounded-lg"
-                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxMedia({
+                        url: `${mediaBaseUrl}/threads/messages/${m.id}/media`,
+                        type: "video",
+                        caption: m.body,
+                      })
+                    }
+                    className="relative block cursor-zoom-in"
+                  >
+                    <video
+                      src={`${mediaBaseUrl}/threads/messages/${m.id}/media`}
+                      className="pointer-events-none max-h-64 rounded-lg"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/20">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-neutral-900">
+                        ▶
+                      </span>
+                    </span>
+                  </button>
                 )}
 
                 {(m.type === "pdf" || m.type === "voice") && Icon && (
@@ -357,6 +387,8 @@ export default function ChatThread({
           <PaperPlaneRight className="h-4 w-4" weight="fill" />
         </Button>
       </form>
+
+      <MediaLightbox media={lightboxMedia} onClose={() => setLightboxMedia(null)} />
     </div>
   );
 }

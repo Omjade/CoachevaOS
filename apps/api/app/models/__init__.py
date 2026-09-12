@@ -21,6 +21,7 @@ from app.models.programs import Program, ProgramItem
 from app.models.progress import ProgressEntry
 from app.models.sessions import SessionNote
 from app.models.tasks import Task
+from app.models.todos import Todo
 from app.models.users import CoachProfile, User
 
 __all__ = [
@@ -58,6 +59,7 @@ __all__ = [
     "ProgressEntry",
     "SessionNote",
     "Task",
+    "Todo",
     "CoachProfile",
     "User",
 ]

@@ -15,6 +15,8 @@ import {
   CheckSquareIcon as CheckSquare,
   ArrowsClockwiseIcon as ArrowsClockwise,
   ChartLineUpIcon as ChartLineUp,
+  CaretLeftIcon as CaretLeft,
+  CaretRightIcon as CaretRight,
 } from "@phosphor-icons/react";
 import {
   api,
@@ -35,6 +37,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { formatMoney } from "@/lib/currency";
+import { localDateStr, todayStr } from "@/lib/dateStr";
 import { useViewerRole } from "@/lib/useViewerRole";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { Sparkline } from "@/components/DashboardCharts";
@@ -44,6 +47,8 @@ import AboutCoachCard from "@/components/AboutCoachCard";
 import NewClientChecklist from "@/components/NewClientChecklist";
 import ProgressCard from "@/components/ProgressCard";
 import AttendanceOverviewCard from "@/components/AttendanceOverviewCard";
+import TodaysSessionsPanel from "@/components/TodaysSessionsPanel";
+import TodoPanel from "@/components/TodoPanel";
 
 const ClientGrowthChart = dynamic(() => import("@/components/DashboardCharts").then((m) => m.ClientGrowthChart), {
   ssr: false,
@@ -142,6 +147,19 @@ function CoachDashboard() {
     day: "numeric",
   });
 
+  const [selectedDate, setSelectedDate] = useState(() => todayStr());
+  const isToday = selectedDate === todayStr();
+  function shiftDate(days: number) {
+    const d = new Date(`${selectedDate}T00:00:00`);
+    d.setDate(d.getDate() + days);
+    setSelectedDate(localDateStr(d));
+  }
+  const selectedDateLabel = new Date(`${selectedDate}T00:00:00`).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   const leadsWaiting = analytics
     ? analytics.leads_total - analytics.leads_converted - analytics.leads_lost
     : 0;
@@ -168,6 +186,42 @@ function CoachDashboard() {
           {user ? `, ${user.name.split(" ")[0]}` : ""}
         </h1>
         <p className="mt-1 text-sm text-neutral-600">Here&apos;s what&apos;s happening today.</p>
+      </div>
+
+      <div className="animate-fade-up flex items-center gap-3">
+        <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1">
+          <button
+            type="button"
+            onClick={() => shiftDate(-1)}
+            aria-label="Previous day"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-500 hover:bg-white"
+          >
+            <CaretLeft className="h-3.5 w-3.5" weight="bold" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedDate(todayStr())}
+            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+              isToday ? "bg-neutral-900 text-white" : "text-neutral-600 hover:bg-white"
+            }`}
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={() => shiftDate(1)}
+            aria-label="Next day"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-neutral-500 hover:bg-white"
+          >
+            <CaretRight className="h-3.5 w-3.5" weight="bold" />
+          </button>
+        </div>
+        {!isToday && <span className="text-xs text-neutral-500">{selectedDateLabel}</span>}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <TodaysSessionsPanel date={selectedDate} />
+        <TodoPanel date={selectedDate} />
       </div>
 
       <NewCoachChecklist />
@@ -467,7 +521,7 @@ export function ClientDashboard() {
               <span
                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                   profile.billing_status === "overdue"
-                    ? "bg-red-100 text-red-700"
+                    ? "bg-accent-200 text-accent-800 font-semibold"
                     : "bg-accent-100 text-accent-700"
                 }`}
               >

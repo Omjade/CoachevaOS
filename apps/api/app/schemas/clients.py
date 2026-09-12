@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, EmailStr
 
-from app.models.enums import ClientStatus
+from app.models.enums import ClientStatus, ClientType
 
 
 class ClientCreate(BaseModel):
@@ -24,18 +24,19 @@ class ClientOut(BaseModel):
     status: ClientStatus
     joined_at: datetime
     invite_pending: bool
+    niche: str | None = None
+    client_type: ClientType = ClientType.remote
+    subscription_valid_until: date | None = None
 
     model_config = {"from_attributes": True}
 
 
 class ClientDetailOut(ClientOut):
     goals: str | None
-    subscription_valid_until: date | None
     tags: list[str] | None
     notes: str | None
     thread_id: uuid.UUID | None = None
     timezone: str = "UTC"
-    niche: str | None = None
     billing_currency: str | None = None
     coaching_start_date: date | None = None
     coaching_end_date: date | None = None

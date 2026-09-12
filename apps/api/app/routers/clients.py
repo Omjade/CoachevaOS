@@ -121,6 +121,9 @@ def _to_client_out(client: Client, user: User) -> ClientOut:
         # have a password from another coach's relationship while THIS
         # specific coach's invite is still unaccepted.
         invite_pending=client.invite_accepted_at is None,
+        niche=client.niche,
+        client_type=client.client_type,
+        subscription_valid_until=client.subscription_valid_until,
     )
 
 
@@ -322,12 +325,10 @@ async def get_client(
     return ClientDetailOut(
         **base.model_dump(),
         goals=client.goals,
-        subscription_valid_until=client.subscription_valid_until,
         tags=client.tags,
         notes=client.notes,
         thread_id=await _thread_id_for_client(db, client.id),
         timezone=user.timezone,
-        niche=client.niche,
         billing_currency=client.billing_currency,
         coaching_start_date=client.coaching_start_date,
         coaching_end_date=client.coaching_end_date,
@@ -365,12 +366,10 @@ async def update_client(
     return ClientDetailOut(
         **base.model_dump(),
         goals=client.goals,
-        subscription_valid_until=client.subscription_valid_until,
         tags=client.tags,
         notes=client.notes,
         thread_id=await _thread_id_for_client(db, client.id),
         timezone=user.timezone,
-        niche=client.niche,
         billing_currency=client.billing_currency,
         coaching_start_date=client.coaching_start_date,
         coaching_end_date=client.coaching_end_date,
@@ -391,12 +390,10 @@ async def update_client_notes(
     return ClientDetailOut(
         **base.model_dump(),
         goals=client.goals,
-        subscription_valid_until=client.subscription_valid_until,
         tags=client.tags,
         thread_id=await _thread_id_for_client(db, client.id),
         notes=client.notes,
         timezone=user.timezone,
-        niche=client.niche,
         billing_currency=client.billing_currency,
         coaching_start_date=client.coaching_start_date,
         coaching_end_date=client.coaching_end_date,
@@ -511,12 +508,10 @@ async def update_coaching_dates(
     return ClientDetailOut(
         **base.model_dump(),
         goals=client.goals,
-        subscription_valid_until=client.subscription_valid_until,
         tags=client.tags,
         notes=client.notes,
         thread_id=await _thread_id_for_client(db, client.id),
         timezone=user.timezone,
-        niche=client.niche,
         billing_currency=client.billing_currency,
         coaching_start_date=client.coaching_start_date,
         coaching_end_date=client.coaching_end_date,

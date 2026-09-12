@@ -56,6 +56,48 @@ def _validate_profile_url(v: str | None) -> str | None:
     return v
 
 
+class CustomLink(BaseModel):
+    label: str
+    url: str
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) > 60:
+            raise ValueError("Label must be 1-60 characters")
+        return v
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        v = (_validate_profile_url(v) or "").strip()
+        if not v:
+            raise ValueError("Must be a full URL starting with http:// or https://")
+        return v
+
+
+class Testimonial(BaseModel):
+    quote: str
+    author: str
+
+    @field_validator("quote")
+    @classmethod
+    def validate_quote(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) > 400:
+            raise ValueError("Quote must be 1-400 characters")
+        return v
+
+    @field_validator("author")
+    @classmethod
+    def validate_author(cls, v: str) -> str:
+        v = v.strip()
+        if not v or len(v) > 100:
+            raise ValueError("Author must be 1-100 characters")
+        return v
+
+
 class CoachProfileOut(BaseModel):
     portal_slug: str
     business_name: str | None
@@ -74,6 +116,10 @@ class CoachProfileOut(BaseModel):
     instagram_url: str | None = None
     linkedin_url: str | None = None
     gallery_image_urls: list[str] | None = None
+    tagline: str | None = None
+    banner_url: str | None = None
+    custom_links: list[CustomLink] | None = None
+    testimonials: list[Testimonial] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -90,6 +136,9 @@ class CoachProfileUpdate(BaseModel):
     website_url: str | None = None
     instagram_url: str | None = None
     linkedin_url: str | None = None
+    tagline: str | None = None
+    custom_links: list[CustomLink] | None = None
+    testimonials: list[Testimonial] | None = None
 
     @field_validator("billing_country_code")
     @classmethod
@@ -126,6 +175,30 @@ class CoachProfileUpdate(BaseModel):
     def validate_profile_urls(cls, v: str | None) -> str | None:
         return _validate_profile_url(v)
 
+    @field_validator("tagline")
+    @classmethod
+    def validate_tagline(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if len(v) > 150:
+            raise ValueError("Tagline must be 150 characters or fewer")
+        return v or None
+
+    @field_validator("custom_links")
+    @classmethod
+    def validate_custom_links(cls, v: list[CustomLink] | None) -> list[CustomLink] | None:
+        if v is not None and len(v) > 6:
+            raise ValueError("Up to 6 links")
+        return v
+
+    @field_validator("testimonials")
+    @classmethod
+    def validate_testimonials(cls, v: list[Testimonial] | None) -> list[Testimonial] | None:
+        if v is not None and len(v) > 6:
+            raise ValueError("Up to 6 testimonials")
+        return v
+
 
 class DefaultVideoProviderUpdate(BaseModel):
     provider: CalendarProvider
@@ -137,9 +210,19 @@ class PortalPublicOut(BaseModel):
     brand_color: str | None
     logo_url: str | None
     coach_name: str
+    # The coach's own personal photo (User.avatar_url) — this is what the
+    # public profile's headshot renders, deliberately separate from
+    # logo_url (a business/brand mark that also replaces the CoachevaOS
+    # mark in the coach's own sidebar). Uploading one must never change
+    # the other.
+    coach_user_id: str
     bio: str | None = None
     website_url: str | None = None
     instagram_url: str | None = None
     linkedin_url: str | None = None
     gallery_image_urls: list[str] | None = None
     featured_form_slug: str | None = None
+    tagline: str | None = None
+    banner_url: str | None = None
+    custom_links: list[CustomLink] | None = None
+    testimonials: list[Testimonial] | None = None

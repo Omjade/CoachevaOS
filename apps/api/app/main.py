@@ -38,6 +38,7 @@ from app.routers import (
     tasks,
     threads,
     timeline,
+    todos,
     webhooks,
 )
 from app.scheduler import start_scheduler, stop_scheduler
@@ -118,6 +119,7 @@ app.include_router(invite.router)
 app.include_router(documents.router)
 app.include_router(tasks.tasks_router)
 app.include_router(tasks.client_tasks_router)
+app.include_router(todos.router)
 app.include_router(threads.router)
 app.include_router(calendar.router)
 app.include_router(integrations.router)

@@ -35,6 +35,11 @@ function BillingPageInner() {
   const searchParams = useSearchParams();
   const { subscription: sub, refresh } = useSubscription();
   const [region, setRegion] = useState<"global" | "india" | null>(null);
+  // Fixed once, from the coach's resolved country (declared billing country
+  // wins over IP guesswork, per resolve_region()) — a non-India coach never
+  // sees the India(INR) option or the toggle at all, not just a default
+  // that happens to start on Global. An India-based coach keeps the choice.
+  const [indiaEligible, setIndiaEligible] = useState(false);
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [selecting, setSelecting] = useState<SubscriptionTier | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,10 +57,23 @@ function BillingPageInner() {
     // that disagrees with everything already known about them.
     api
       .getRegion()
-      .then((r) => setRegion(r.region))
+      .then((r) => {
+        setRegion(r.region);
+        setIndiaEligible(r.region === "india");
+      })
       .catch(() => setRegion("global"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Once a real (paid) subscription exists, the plan cards should default to
+  // whichever currency that subscription actually bills in — not re-guess
+  // from geo signals every load, which could disagree with a subscription
+  // created under an earlier region.
+  useEffect(() => {
+    if (sub?.currency) {
+      setRegion(sub.currency.toLowerCase() === "inr" ? "india" : "global");
+    }
+  }, [sub?.currency]);
 
   function flashSuccess(message: string) {
     setSuccessMessage(message);
@@ -243,7 +261,7 @@ function BillingPageInner() {
           )}
 
           {sub.status === "restricted" && (
-            <div className="mt-3 rounded-(--radius-md) border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700">
+            <div className="mt-3 rounded-(--radius-md) border border-accent-300 bg-accent-100 px-3.5 py-2.5 text-xs text-accent-800">
               Your payment couldn&apos;t be processed and the grace period has ended. Adding or
               editing data is paused until you update your plan below.
             </div>
@@ -319,7 +337,7 @@ function BillingPageInner() {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {!hasRealSubscription && region ? (
+        {!hasRealSubscription && region && indiaEligible ? (
           <div className="flex gap-1.5 text-xs">
             <button
               type="button"

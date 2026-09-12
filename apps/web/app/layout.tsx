@@ -13,7 +13,7 @@ const urbanist = Urbanist({
   weight: ["400", "500", "600", "700"],
 });
 
-const TITLE = "CoachevaOS: The operating system for coaches";
+const TITLE = "CoachevaOS: AI Operating System for Coaches";
 const DESCRIPTION =
   "Run the coaching practice your clients deserve from one calm dashboard. Client records, follow-ups, bookings, billing, and AI-guided coaching in one place.";
 

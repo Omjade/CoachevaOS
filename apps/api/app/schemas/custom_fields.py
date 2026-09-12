@@ -78,3 +78,14 @@ class ApplyTemplateResult(BaseModel):
     groups_created: int
     fields_created: int
     metrics_created: int
+
+
+class GenerateFieldsRequest(BaseModel):
+    # Free text describing what the coach wants to track, e.g. "postpartum
+    # recovery clients — pelvic floor progress, sleep, and energy levels".
+    prompt: str
+
+
+class GenerateFieldsResult(BaseModel):
+    group: GroupOut
+    fields: list[DefinitionOut]

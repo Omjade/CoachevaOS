@@ -186,7 +186,7 @@ function CoachClientCalendar({ slug, clientId }: { slug: string; clientId: strin
                       className="w-auto text-xs"
                     />
                     <Button
-                      className="!px-3 !py-1.5 text-xs"
+                      size="sm"
                       onClick={() => confirmReschedule(m.id)}
                       disabled={busyId === m.id}
                     >

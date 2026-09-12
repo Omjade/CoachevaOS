@@ -176,6 +176,21 @@ def form_ai_draft_prompt(description: str) -> tuple[str, str]:
     return system, description
 
 
+def custom_fields_ai_prompt(niche: str | None, prompt: str) -> tuple[str, str]:
+    niche_hint = f" This coach's niche is {niche}." if niche else ""
+    system = (
+        "You design custom client-tracking fields for a coaching practice."
+        + niche_hint
+        + " Given the coach's own description of what they want to track, return JSON: "
+        '{"group_name": string (short, e.g. "Postpartum Recovery"), "fields": '
+        '[{"name": string, "field_type": one of "text"|"textarea"|"number"|"currency"|'
+        '"percentage"|"date"|"dropdown"|"multi_select"|"checkbox"|"rating"|"url"|"email"|'
+        '"phone", "options": string[] (only for dropdown/multi_select), "unit": string or null, '
+        '"visible_to_client": bool}]} — 4-8 sensible fields, no duplicates.'
+    )
+    return system, prompt
+
+
 def client_assistant_prompt(
     client_name: str,
     coach_name: str,

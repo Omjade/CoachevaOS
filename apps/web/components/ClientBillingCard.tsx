@@ -6,9 +6,10 @@ import { api, ApiError, ClientBilling, ClientBillingStatus, Program } from "@/li
 import { Button, Card, ErrorBanner, Input } from "@/components/ui";
 import Dialog from "@/components/Dialog";
 import { formatMoney } from "@/lib/currency";
+import { localDateStr, todayStr } from "@/lib/dateStr";
 
 function isOverdue(dueDate: string, paid: boolean): boolean {
-  return !paid && dueDate < new Date().toISOString().slice(0, 10);
+  return !paid && dueDate < todayStr();
 }
 
 const STATUS_LABEL: Record<ClientBillingStatus, string> = {
@@ -113,7 +114,7 @@ export default function ClientBillingCard({
     const base = validUntil ? new Date(`${validUntil}T00:00:00`) : new Date();
     const from = validUntil && base > new Date() ? base : new Date();
     from.setDate(from.getDate() + days);
-    const nextValidUntil = from.toISOString().slice(0, 10);
+    const nextValidUntil = localDateStr(from);
     setBillingError(null);
     try {
       await api.updateClientSubscription(clientId, nextValidUntil, validFrom || null);

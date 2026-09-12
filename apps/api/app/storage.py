@@ -1,13 +1,27 @@
+import io
 import logging
 import uuid
 from pathlib import Path
 
 import boto3
 from fastapi import UploadFile
+from PIL import Image
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Long-edge cap for any uploaded image — a phone camera photo (often 3000px+)
+# was being stored and served at full resolution everywhere it appeared
+# (chat thumbnails, client grid cards, profile photos), the single biggest
+# per-request byte-size contributor to "images load slowly." 1920px is
+# already larger than any on-screen use in this app renders at.
+MAX_IMAGE_DIMENSION = 1920
+# 85+ is the generally-accepted "visually indistinguishable from the
+# original" floor for JPEG re-encoding — chosen deliberately over a more
+# aggressive value so compression never trades away visible quality for
+# extra byte savings.
+JPEG_QUALITY = 85
 
 UPLOAD_ROOT = Path(__file__).resolve().parent.parent / "uploads"
 UPLOAD_ROOT.mkdir(exist_ok=True)
@@ -47,14 +61,45 @@ def classify_type(filename: str, content_type: str | None) -> str:
     return "file"
 
 
+def _compress_image(content: bytes, ext: str, content_type: str | None) -> tuple[bytes, str, str]:
+    """Downscales anything larger than MAX_IMAGE_DIMENSION and re-encodes at
+    JPEG_QUALITY. Returns the original bytes/ext/content_type unchanged on
+    any failure, or for formats where re-encoding would lose real behavior
+    (animated GIFs would be flattened to their first frame). Never raises —
+    an upload must still succeed even if compression can't run."""
+    if ext.lower() == "gif":
+        return content, ext, content_type or "image/gif"
+    try:
+        img = Image.open(io.BytesIO(content))
+        img.load()
+        has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
+        if max(img.size) > MAX_IMAGE_DIMENSION:
+            img.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.LANCZOS)
+
+        buf = io.BytesIO()
+        if has_alpha:
+            img.convert("RGBA").save(buf, format="PNG", optimize=True)
+            return buf.getvalue(), "png", "image/png"
+        img.convert("RGB").save(buf, format="JPEG", quality=JPEG_QUALITY, optimize=True)
+        return buf.getvalue(), "jpg", "image/jpeg"
+    except Exception:
+        logger.exception("Image compression failed, storing original file unchanged")
+        return content, ext, content_type
+
+
 async def save_upload(file: UploadFile) -> tuple[str, str]:
     """Saves an uploaded file to S3 if configured (S3_BUCKET set), else local disk.
     Returns (storage_key, detected_type). The storage_key is provider-agnostic —
     callers never need to know which backend handled it."""
     ext = file.filename.rsplit(".", 1)[-1] if file.filename and "." in file.filename else "bin"
-    key = f"{uuid.uuid4()}.{ext}"
     content = await file.read()
+    content_type = file.content_type
     file_type = classify_type(file.filename or "", file.content_type)
+
+    if file_type == "image":
+        content, ext, content_type = _compress_image(content, ext, content_type)
+
+    key = f"{uuid.uuid4()}.{ext}"
 
     client = _get_s3_client()
     if client is not None:
@@ -63,7 +108,7 @@ async def save_upload(file: UploadFile) -> tuple[str, str]:
                 Bucket=settings.s3_bucket,
                 Key=_s3_key(key),
                 Body=content,
-                ContentType=file.content_type or "application/octet-stream",
+                ContentType=content_type or "application/octet-stream",
                 # Every key is a fresh uuid4 — never overwritten — so this is
                 # safe to cache aggressively/immutably. Previously unset
                 # entirely, meaning every re-fetch (page nav, React remount)

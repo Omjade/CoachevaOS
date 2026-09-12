@@ -368,7 +368,7 @@ export default function ClientProfilePage({
             className="hidden"
             onChange={handleAvatarChange}
           />
-          {avatarError && <p className="mb-2 text-xs text-red-600">{avatarError}</p>}
+          {avatarError && <p className="mb-2 text-xs text-accent-600">{avatarError}</p>}
           <h1 className="font-heading text-xl font-semibold text-neutral-900">{client.name}</h1>
           <p className="text-sm text-neutral-600">{client.email}</p>
           {client.phone && <p className="text-sm text-neutral-600">{client.phone}</p>}
@@ -387,7 +387,7 @@ export default function ClientProfilePage({
               </option>
             ))}
           </select>
-          {statusError && <p className="mb-4 text-xs text-red-600">{statusError}</p>}
+          {statusError && <p className="mb-4 text-xs text-accent-600">{statusError}</p>}
           <p className="mb-4 text-xs text-neutral-500">
             Joined {new Date(client.joined_at).toLocaleDateString()}
           </p>
@@ -504,7 +504,7 @@ export default function ClientProfilePage({
             <div className="mt-2 flex items-center gap-2">
               <Button
                 variant="secondary"
-                className="!px-3 !py-1.5 text-xs"
+                size="sm"
                 loading={coachingDatesSaving}
                 onClick={saveCoachingDates}
               >
@@ -512,7 +512,7 @@ export default function ClientProfilePage({
               </Button>
             </div>
             {coachingDatesError && (
-              <p className="mt-1.5 text-xs text-red-600">{coachingDatesError}</p>
+              <p className="mt-1.5 text-xs text-accent-600">{coachingDatesError}</p>
             )}
           </div>
           <button
@@ -537,7 +537,7 @@ export default function ClientProfilePage({
           onChange={(e) => setConfirmName(e.target.value)}
           placeholder={client.name}
         />
-        {deleteError && <p className="mb-3 text-xs text-red-600">{deleteError}</p>}
+        {deleteError && <p className="mb-3 text-xs text-accent-600">{deleteError}</p>}
         <Button
           variant="secondary"
           disabled={confirmName !== client.name}

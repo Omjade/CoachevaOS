@@ -22,6 +22,7 @@ import {
   CameraIcon as Camera,
   CreditCardIcon as CreditCard,
   SignOutIcon as SignOut,
+  TrashIcon as Trash,
 } from "@phosphor-icons/react";
 import { api, ApiError, ClientSelfProfile, CoachProfile, User } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
@@ -103,9 +104,21 @@ function CoachSettings() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [tagline, setTagline] = useState("");
+  const [customLinks, setCustomLinks] = useState<{ label: string; url: string }[]>([]);
+  const [testimonials, setTestimonials] = useState<{ quote: string; author: string }[]>([]);
+  const [bannerUploading, setBannerUploading] = useState(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Account & billing settings save independently from the public-profile
+  // form above them — two distinct actions, each scoped to its own section,
+  // rather than one shared "Save changes" covering unrelated fields.
+  const [accountSaving, setAccountSaving] = useState(false);
+  const [accountSaved, setAccountSaved] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [galleryError, setGalleryError] = useState<string | null>(null);
@@ -139,6 +152,9 @@ function CoachSettings() {
         setWebsiteUrl(p.website_url ?? "");
         setInstagramUrl(p.instagram_url ?? "");
         setLinkedinUrl(p.linkedin_url ?? "");
+        setTagline(p.tagline ?? "");
+        setCustomLinks(p.custom_links ?? []);
+        setTestimonials(p.testimonials ?? []);
       })
       .catch(() => {});
   }, []);
@@ -166,13 +182,13 @@ function CoachSettings() {
         name,
         business_name: businessName || undefined,
         niche: (niche === "other" ? otherNiche : niche) || undefined,
-        timezone,
-        billing_country_code: billingCountry || undefined,
-        currency,
         bio: bio || undefined,
         website_url: websiteUrl || undefined,
         instagram_url: instagramUrl || undefined,
         linkedin_url: linkedinUrl || undefined,
+        tagline: tagline || undefined,
+        custom_links: customLinks.filter((l) => l.label.trim() && l.url.trim()),
+        testimonials: testimonials.filter((t) => t.quote.trim() && t.author.trim()),
       });
       setProfile(updated);
       setSaved(true);
@@ -181,6 +197,26 @@ function CoachSettings() {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleAccountSettingsSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setAccountError(null);
+    setAccountSaving(true);
+    try {
+      const updated = await api.updateMyProfile({
+        timezone,
+        billing_country_code: billingCountry || undefined,
+        currency,
+      });
+      setProfile(updated);
+      setAccountSaved(true);
+      setTimeout(() => setAccountSaved(false), 2000);
+    } catch (err) {
+      setAccountError(err instanceof ApiError ? err.message : "Something went wrong");
+    } finally {
+      setAccountSaving(false);
     }
   }
 
@@ -233,6 +269,32 @@ function CoachSettings() {
       setProfile(updated);
     } catch (err) {
       setLogoError(err instanceof ApiError ? err.message : "Couldn't remove that logo. Try again.");
+    }
+  }
+
+  async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBannerError(null);
+    setBannerUploading(true);
+    try {
+      const updated = await api.uploadBanner(file);
+      setProfile(updated);
+    } catch (err) {
+      setBannerError(err instanceof ApiError ? err.message : "Couldn't upload that banner. Try again.");
+    } finally {
+      setBannerUploading(false);
+      if (bannerInputRef.current) bannerInputRef.current.value = "";
+    }
+  }
+
+  async function removeBanner() {
+    setBannerError(null);
+    try {
+      const updated = await api.removeBanner();
+      setProfile(updated);
+    } catch (err) {
+      setBannerError(err instanceof ApiError ? err.message : "Couldn't remove that banner. Try again.");
     }
   }
 
@@ -367,6 +429,18 @@ function CoachSettings() {
           </div>
 
           <div>
+            <Label htmlFor="tagline">Tagline</Label>
+            <Input
+              id="tagline"
+              maxLength={150}
+              placeholder="e.g. Helping busy parents build sustainable fitness habits"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+            />
+            <p className="mt-1 text-right text-xs text-neutral-400">{tagline.length}/150</p>
+          </div>
+
+          <div>
             <Label htmlFor="bio">Bio</Label>
             <textarea
               id="bio"
@@ -449,12 +523,58 @@ function CoachSettings() {
             <p className="mb-2 text-xs text-neutral-500">
               Replaces the CoachevaOS mark with your own in your portal and public profile.
             </p>
-            {logoError && <p className="mb-2 text-xs text-red-600">{logoError}</p>}
+            {logoError && <p className="mb-2 text-xs text-accent-600">{logoError}</p>}
             {profile.logo_url && (
               <div className="h-16 w-16 overflow-hidden rounded-full border border-neutral-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={api.coachLogoUrl(profile.portal_slug)}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <Label htmlFor="banner" className="mb-0">
+                Public profile banner
+              </Label>
+              <div className="flex items-center gap-3 text-xs font-medium">
+                {profile.banner_url && (
+                  <button type="button" onClick={removeBanner} className="text-neutral-500 hover:underline">
+                    Remove
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => bannerInputRef.current?.click()}
+                  disabled={bannerUploading}
+                  className="text-accent-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {bannerUploading ? "Uploading…" : profile.banner_url ? "Change banner" : "+ Add banner"}
+                </button>
+              </div>
+              <input
+                ref={bannerInputRef}
+                id="banner"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleBannerUpload}
+              />
+            </div>
+            <p className="mb-2 text-xs text-neutral-500">
+              A wide header image shown at the top of your public profile. Recommended: 1200×400 or
+              wider.
+            </p>
+            {bannerError && <p className="mb-2 text-xs text-accent-600">{bannerError}</p>}
+            {profile.banner_url && (
+              <div className="aspect-[3/1] w-full overflow-hidden rounded-[12px] border border-neutral-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={api.coachBannerUrl(profile.portal_slug)}
                   alt=""
                   className="h-full w-full object-cover"
                 />
@@ -484,7 +604,7 @@ function CoachSettings() {
                 onChange={handleGalleryUpload}
               />
             </div>
-            {galleryError && <p className="mb-2 text-xs text-red-600">{galleryError}</p>}
+            {galleryError && <p className="mb-2 text-xs text-accent-600">{galleryError}</p>}
             {(profile.gallery_image_urls ?? []).length > 0 && (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                 {(profile.gallery_image_urls ?? []).map((_key, i) => (
@@ -509,6 +629,136 @@ function CoachSettings() {
             <p className="mt-1 text-xs text-neutral-500">Shown on your public profile page.</p>
           </div>
 
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <Label className="mb-0">Links (up to 6)</Label>
+              {customLinks.length < 6 && (
+                <button
+                  type="button"
+                  onClick={() => setCustomLinks((prev) => [...prev, { label: "", url: "" }])}
+                  className="text-xs font-medium text-accent-600 hover:underline"
+                >
+                  + Add link
+                </button>
+              )}
+            </div>
+            <p className="mb-2 text-xs text-neutral-500">
+              Extra buttons on your public profile — a Linktree-style list for anything not covered
+              above (podcast, YouTube, a specific program page, etc).
+            </p>
+            <div className="flex flex-col gap-2">
+              {customLinks.map((link, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    placeholder="Label"
+                    value={link.label}
+                    onChange={(e) =>
+                      setCustomLinks((prev) => prev.map((l, j) => (j === i ? { ...l, label: e.target.value } : l)))
+                    }
+                    className="w-1/3"
+                  />
+                  <Input
+                    placeholder="https://…"
+                    value={link.url}
+                    onChange={(e) =>
+                      setCustomLinks((prev) => prev.map((l, j) => (j === i ? { ...l, url: e.target.value } : l)))
+                    }
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCustomLinks((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-neutral-400 hover:text-accent-600"
+                    aria-label="Remove link"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <Label className="mb-0">Testimonials (up to 6)</Label>
+              {testimonials.length < 6 && (
+                <button
+                  type="button"
+                  onClick={() => setTestimonials((prev) => [...prev, { quote: "", author: "" }])}
+                  className="text-xs font-medium text-accent-600 hover:underline"
+                >
+                  + Add testimonial
+                </button>
+              )}
+            </div>
+            <p className="mb-2 text-xs text-neutral-500">
+              Social proof shown on your public profile — a short quote and who said it.
+            </p>
+            <div className="flex flex-col gap-3">
+              {testimonials.map((t, i) => (
+                <div key={i} className="rounded-[12px] bg-neutral-50/60 p-3">
+                  <textarea
+                    rows={2}
+                    maxLength={400}
+                    placeholder="Quote"
+                    value={t.quote}
+                    onChange={(e) =>
+                      setTestimonials((prev) => prev.map((x, j) => (j === i ? { ...x, quote: e.target.value } : x)))
+                    }
+                    className="mb-2 w-full resize-none rounded-[10px] border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-accent-500"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="Author, e.g. Priya N."
+                      value={t.author}
+                      onChange={(e) =>
+                        setTestimonials((prev) => prev.map((x, j) => (j === i ? { ...x, author: e.target.value } : x)))
+                      }
+                      className="flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTestimonials((prev) => prev.filter((_, j) => j !== i))}
+                      className="text-neutral-400 hover:text-accent-600"
+                      aria-label="Remove testimonial"
+                    >
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {error && <ErrorBanner>{error}</ErrorBanner>}
+
+          <div className="flex items-center gap-3">
+            <Button type="submit" loading={saving}>
+              {saving ? "Saving…" : "Save changes"}
+            </Button>
+            {saved && (
+              <span className="flex items-center gap-1 text-xs font-medium text-accent-600">
+                <Check className="h-3.5 w-3.5" weight="bold" />
+                Saved
+              </span>
+            )}
+          </div>
+        </form>
+      </Card>
+
+      <div className="mt-8 mb-6">
+        <Eyebrow className="mb-2">Account &amp; billing</Eyebrow>
+        <h2 className="font-heading text-xl font-semibold tracking-tight text-neutral-900">
+          Account settings
+        </h2>
+        <p className="mt-1 text-sm text-neutral-600">
+          Your own operational settings — separate from what clients and visitors see on your
+          public profile above.
+        </p>
+      </div>
+
+      <Card>
+        <form onSubmit={handleAccountSettingsSubmit} className="flex flex-col gap-5">
           <div>
             <Label htmlFor="timezone">Timezone</Label>
             <select
@@ -569,13 +819,13 @@ function CoachSettings() {
             </p>
           </div>
 
-          {error && <ErrorBanner>{error}</ErrorBanner>}
+          {accountError && <ErrorBanner>{accountError}</ErrorBanner>}
 
           <div className="flex items-center gap-3">
-            <Button type="submit" loading={saving}>
-              {saving ? "Saving…" : "Save changes"}
+            <Button type="submit" loading={accountSaving}>
+              {accountSaving ? "Saving…" : "Save changes"}
             </Button>
-            {saved && (
+            {accountSaved && (
               <span className="flex items-center gap-1 text-xs font-medium text-accent-600">
                 <Check className="h-3.5 w-3.5" weight="bold" />
                 Saved

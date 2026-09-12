@@ -16,6 +16,7 @@ function cn(...classes: ClassValue[]) {
 
 export function Button({
   variant = "primary",
+  size = "md",
   loading = false,
   className,
   children,
@@ -23,10 +24,19 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost";
+  // "sm" replaces the ad-hoc `className="!px-3 !py-1.5 text-xs"` (and, in a
+  // couple of places, a slightly different `!px-2.5 !py-1`) that had been
+  // copy-pasted across ~14 call sites for every compact button in the app —
+  // one shared size instead of every screen re-deciding its own padding.
+  size?: "sm" | "md";
   loading?: boolean;
 }) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:hover:translate-y-0";
+    "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-200 ease-out hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:hover:translate-y-0";
+  const sizes = {
+    md: "px-5 py-2.5 text-sm",
+    sm: "px-3 py-1.5 text-xs",
+  };
   const variants = {
     primary: "bg-neutral-900 text-white shadow-[0_14px_26px_rgba(0,0,0,0.22)] hover:bg-neutral-800",
     secondary:
@@ -34,7 +44,11 @@ export function Button({
     ghost: "text-neutral-700 hover:bg-neutral-200/50",
   };
   return (
-    <button className={cn(base, variants[variant], className)} disabled={disabled || loading} {...props}>
+    <button
+      className={cn(base, sizes[size], variants[variant], className)}
+      disabled={disabled || loading}
+      {...props}
+    >
       {loading && <CircleNotch className="h-4 w-4 animate-spin-slow" weight="bold" />}
       {children}
     </button>

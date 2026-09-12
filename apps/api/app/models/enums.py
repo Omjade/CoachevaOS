@@ -137,6 +137,11 @@ class SessionType(str, enum.Enum):
     phone = "phone"
 
 
+class TodoCreatedVia(str, enum.Enum):
+    manual = "manual"
+    voice_ai = "voice_ai"
+
+
 class FormFieldType(str, enum.Enum):
     text = "text"
     textarea = "textarea"

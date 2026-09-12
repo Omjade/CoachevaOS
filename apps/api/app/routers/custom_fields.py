@@ -4,11 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.client import generate_json
+from app.ai.prompts import custom_fields_ai_prompt
 from app.custom_field_templates import metric_template_for_niche, template_for_niche
 from app.db import get_db
 from app.deps import get_current_client, require_active_coach
 from app.models.clients import Client
 from app.models.custom_fields import CustomFieldDefinition, CustomFieldGroup, CustomFieldValue
+from app.models.enums import CustomFieldType
 from app.models.metrics import MetricDefinition
 from app.models.users import CoachProfile, User
 from app.routers.clients import _get_owned_client
@@ -19,6 +22,8 @@ from app.schemas.custom_fields import (
     DefinitionCreate,
     DefinitionOut,
     DefinitionUpdate,
+    GenerateFieldsRequest,
+    GenerateFieldsResult,
     GroupCreate,
     GroupOut,
     GroupUpdate,
@@ -209,6 +214,63 @@ async def apply_template(
     return ApplyTemplateResult(
         groups_created=groups_created, fields_created=fields_created, metrics_created=metrics_created
     )
+
+
+@router.post("/custom-field-definitions/generate", response_model=GenerateFieldsResult)
+async def generate_fields(
+    body: GenerateFieldsRequest,
+    coach: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> GenerateFieldsResult:
+    """Real AI generation (not the static per-niche template above) — the
+    coach describes what they want to track in their own words, an LLM
+    proposes a named group of fields, and it's created as a normal
+    CustomFieldGroup/Definition set the coach can then edit, remove fields
+    from, or call this again on for a fresh regenerate. Never silently
+    replaces an existing group — each call always creates a new one."""
+    profile = await db.get(CoachProfile, coach.id)
+    niche = profile.niche if profile else None
+    system, user_prompt = custom_fields_ai_prompt(niche, body.prompt)
+    fallback = {"group_name": "AI-generated fields", "fields": []}
+    payload = await generate_json(
+        system, user_prompt, fallback, max_tokens=700, db=db, coach_id=coach.id, feature="custom_fields_ai"
+    )
+
+    valid_types = {t.value for t in CustomFieldType}
+    group_name = str(payload.get("group_name") or fallback["group_name"]).strip()[:255]
+    group = CustomFieldGroup(coach_id=coach.id, name=group_name or "AI-generated fields", order=0)
+    db.add(group)
+    await db.flush()
+
+    created: list[CustomFieldDefinition] = []
+    for order, f in enumerate(payload.get("fields", [])):
+        if not isinstance(f, dict):
+            continue
+        field_type = f.get("field_type")
+        if field_type not in valid_types:
+            field_type = "text"
+        name = str(f.get("name", "")).strip()
+        if not name:
+            continue
+        options = f.get("options") if field_type in ("dropdown", "multi_select") else None
+        definition = CustomFieldDefinition(
+            coach_id=coach.id,
+            group_id=group.id,
+            name=name[:255],
+            field_type=CustomFieldType(field_type),
+            options=options if isinstance(options, list) else None,
+            unit=(str(f["unit"]) if f.get("unit") else None),
+            visible_to_client=bool(f.get("visible_to_client", False)),
+            order=order,
+        )
+        db.add(definition)
+        created.append(definition)
+
+    await db.commit()
+    for d in created:
+        await db.refresh(d)
+    await db.refresh(group)
+    return GenerateFieldsResult(group=group, fields=created)
 
 
 async def _build_client_fields_out(

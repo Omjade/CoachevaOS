@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { api, ApiError, ClientListItem } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
+import { localDateStr, todayStr } from "@/lib/dateStr";
 import { Button, Card, Eyebrow, Input, Label } from "@/components/ui";
 import Dialog from "@/components/Dialog";
 import Avatar from "@/components/Avatar";
@@ -57,6 +58,11 @@ export default function ClientsPage() {
   const [sortBy, setSortBy] = useState<"joined_desc" | "joined_asc" | "name" | "program">(
     "joined_desc"
   );
+  const [nicheFilter, setNicheFilter] = useState<string>("all");
+  const [subscriptionFilter, setSubscriptionFilter] = useState<
+    "all" | "ending_soon" | "expired" | "none"
+  >("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [pendingCount, setPendingCount] = useState(0);
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
@@ -129,10 +135,30 @@ export default function ClientsPage() {
     }
   }
 
+  const niches = useMemo(() => {
+    if (!clients) return [];
+    return Array.from(new Set(clients.map((c) => c.niche).filter((n): n is string => !!n))).sort();
+  }, [clients]);
+
   const visibleClients = useMemo(() => {
     if (!clients) return [];
-    const filtered =
+    let filtered =
       statusFilter === "all" ? clients : clients.filter((c) => c.status === statusFilter);
+    if (nicheFilter !== "all") {
+      filtered = filtered.filter((c) => c.niche === nicheFilter);
+    }
+    if (subscriptionFilter !== "all") {
+      const today = todayStr();
+      const soon = new Date();
+      soon.setDate(soon.getDate() + 14);
+      const soonStr = localDateStr(soon);
+      filtered = filtered.filter((c) => {
+        if (subscriptionFilter === "none") return !c.subscription_valid_until;
+        if (!c.subscription_valid_until) return false;
+        if (subscriptionFilter === "expired") return c.subscription_valid_until < today;
+        return c.subscription_valid_until >= today && c.subscription_valid_until <= soonStr;
+      });
+    }
     const sorted = [...filtered];
     switch (sortBy) {
       case "joined_desc":
@@ -149,7 +175,7 @@ export default function ClientsPage() {
         break;
     }
     return sorted;
-  }, [clients, statusFilter, sortBy]);
+  }, [clients, statusFilter, sortBy, nicheFilter, subscriptionFilter]);
 
   if (!roleOk) return null;
 
@@ -188,13 +214,13 @@ export default function ClientsPage() {
             </p>
             <div className="flex shrink-0 items-center gap-2">
               <Link href={`/${params.slug}/billing`}>
-                <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
+                <Button variant="secondary" size="sm">
                   Upgrade plan
                 </Button>
               </Link>
               <Button
                 variant="secondary"
-                className="!px-3 !py-1.5 text-xs"
+                size="sm"
                 loading={retrying}
                 onClick={retryPendingImport}
               >
@@ -202,7 +228,7 @@ export default function ClientsPage() {
               </Button>
             </div>
           </div>
-          {retryError && <p className="mt-2 text-xs text-red-700">{retryError}</p>}
+          {retryError && <p className="mt-2 text-xs text-accent-700">{retryError}</p>}
         </Card>
       )}
 
@@ -259,16 +285,62 @@ export default function ClientsPage() {
               );
             })}
           </div>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 outline-none"
-          >
-            <option value="joined_desc">Newest first</option>
-            <option value="joined_asc">Oldest first</option>
-            <option value="name">Name (A-Z)</option>
-            <option value="program">Program (A-Z)</option>
-          </select>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {niches.length > 0 && (
+              <select
+                value={nicheFilter}
+                onChange={(e) => setNicheFilter(e.target.value)}
+                className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 outline-none"
+              >
+                <option value="all">All niches</option>
+                {niches.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              value={subscriptionFilter}
+              onChange={(e) => setSubscriptionFilter(e.target.value as typeof subscriptionFilter)}
+              className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 outline-none"
+            >
+              <option value="all">Any subscription end</option>
+              <option value="ending_soon">Ending within 14 days</option>
+              <option value="expired">Already expired</option>
+              <option value="none">No end date set</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 outline-none"
+            >
+              <option value="joined_desc">Newest first</option>
+              <option value="joined_asc">Oldest first</option>
+              <option value="name">Name (A-Z)</option>
+              <option value="program">Program (A-Z)</option>
+            </select>
+            <div className="flex items-center gap-1 rounded-full bg-neutral-100 p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  viewMode === "grid" ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500"
+                }`}
+              >
+                Grid
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  viewMode === "list" ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500"
+                }`}
+              >
+                List
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -280,9 +352,9 @@ export default function ClientsPage() {
         </Card>
       ) : visibleClients.length === 0 ? (
         <Card>
-          <p className="text-sm text-neutral-600">No clients in this status.</p>
+          <p className="text-sm text-neutral-600">No clients match these filters.</p>
         </Card>
-      ) : (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {visibleClients.map((c) => (
             <Link key={c.id} href={`/${params.slug}/clients/${c.id}`}>
@@ -308,6 +380,33 @@ export default function ClientsPage() {
             </Link>
           ))}
         </div>
+      ) : (
+        <Card className="!p-0 overflow-hidden">
+          <div className="divide-y divide-neutral-100">
+            {visibleClients.map((c) => (
+              <Link
+                key={c.id}
+                href={`/${params.slug}/clients/${c.id}`}
+                className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral-50"
+              >
+                <Avatar userId={c.user_id} name={c.name} className="h-9 w-9 text-xs" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-neutral-900">{c.name}</p>
+                  <p className="truncate text-xs text-neutral-500">{c.program ?? "No program set"}</p>
+                </div>
+                {c.niche && (
+                  <span className="hidden shrink-0 text-xs text-neutral-500 sm:block">{c.niche}</span>
+                )}
+                {c.subscription_valid_until && (
+                  <span className="hidden shrink-0 text-xs text-neutral-500 md:block">
+                    Ends {c.subscription_valid_until}
+                  </span>
+                )}
+                <StatusTag status={c.status} />
+              </Link>
+            ))}
+          </div>
+        </Card>
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} title="Add client">

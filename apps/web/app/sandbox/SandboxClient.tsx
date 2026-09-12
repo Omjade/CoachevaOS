@@ -115,7 +115,7 @@ function ClientsTab() {
           <h3 className="font-heading text-sm font-semibold text-neutral-900">{c.name}</h3>
           <span
             className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-              c.status === "On track" ? "bg-accent-100 text-accent-700" : "bg-red-100 text-red-700"
+              c.status === "On track" ? "bg-accent-100 text-accent-700" : "bg-accent-200 text-accent-800"
             }`}
           >
             {c.status}

@@ -265,7 +265,7 @@ export default function ProgramGenerator({ clientId }: { clientId: string }) {
                 </div>
                 <Button
                   variant="secondary"
-                  className="!px-3 !py-1.5 text-xs"
+                  size="sm"
                   onClick={() => saveDates(program.id)}
                   loading={savingDates}
                 >
@@ -420,7 +420,7 @@ export default function ProgramGenerator({ clientId }: { clientId: string }) {
               </div>
               <Button
                 variant="secondary"
-                className="!px-3 !py-1.5 text-xs"
+                size="sm"
                 onClick={() => assignTemplate(t.id)}
                 disabled={assigning !== null}
               >

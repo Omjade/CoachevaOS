@@ -252,7 +252,7 @@ function LeadsTable({
                   {lead.stage === "booked" && (
                     <Button
                       variant="secondary"
-                      className="!px-2.5 !py-1 text-xs"
+                      size="sm"
                       onClick={() => onConvert(lead)}
                       disabled={converting === lead.id}
                     >

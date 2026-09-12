@@ -83,7 +83,7 @@ export default function GoogleCalendarCard() {
         <div className="flex items-center justify-between gap-3 rounded-[12px] border border-neutral-200 bg-neutral-50/60 px-3.5 py-2.5">
           <p className="text-xs text-neutral-600">Not connected yet.</p>
           <Link href={`/${params.slug}/calendar`}>
-            <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
+            <Button variant="secondary" size="sm">
               Connect from Calendar
             </Button>
           </Link>
@@ -92,7 +92,7 @@ export default function GoogleCalendarCard() {
         <div className="flex items-center justify-between gap-3 rounded-[12px] border border-accent-200 bg-accent-100 px-3.5 py-2.5">
           <p className="text-xs text-neutral-700">Access expired. Reconnect to keep seeing your events.</p>
           <Link href={`/${params.slug}/calendar`}>
-            <Button variant="secondary" className="!px-3 !py-1.5 text-xs">
+            <Button variant="secondary" size="sm">
               Reconnect from Calendar
             </Button>
           </Link>

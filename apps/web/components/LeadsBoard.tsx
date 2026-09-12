@@ -146,7 +146,7 @@ function LeadCard({
           {lead.stage === "booked" && (
             <Button
               variant="secondary"
-              className="!px-2.5 !py-1 text-xs"
+              size="sm"
               onClick={(e) => {
                 e.stopPropagation();
                 onConvert(lead);

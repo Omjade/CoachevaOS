@@ -17,6 +17,7 @@ import {
   SessionType,
 } from "@/lib/api";
 import { Button, ErrorBanner, Input, Label } from "@/components/ui";
+import { localDateStr } from "@/lib/dateStr";
 
 const WEEKDAYS = [
   { key: "mon", label: "Mon" },
@@ -38,7 +39,7 @@ const PROVIDER_LABEL: Record<CalendarProviderKey, string> = {
 function addDays(dateStr: string, days: number): string {
   const d = new Date(`${dateStr}T00:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localDateStr(d);
 }
 
 function weekdayKey(dateStr: string): (typeof WEEKDAYS)[number]["key"] {
@@ -358,7 +359,7 @@ export default function ScheduleBuilder({
                   </button>
                 </div>
               ))}
-              <Button variant="secondary" className="!py-2 text-xs" onClick={addSpecificDate}>
+              <Button variant="secondary" size="sm" onClick={addSpecificDate}>
                 Add a date
               </Button>
             </div>

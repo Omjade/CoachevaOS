@@ -11,4 +11,5 @@ class LandingInterestCreate(BaseModel):
 class PortalContactRequest(BaseModel):
     name: str
     email: EmailStr
+    phone: str | None = None
     message: str | None = None

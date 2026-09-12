@@ -56,12 +56,17 @@ async def get_portal_by_slug(slug: str, db: AsyncSession = Depends(get_db)) -> P
         brand_color=profile.brand_color,
         logo_url=profile.logo_url,
         coach_name=user.name,
+        coach_user_id=str(user.id),
         bio=profile.bio,
         website_url=profile.website_url,
         instagram_url=profile.instagram_url,
         linkedin_url=profile.linkedin_url,
         gallery_image_urls=profile.gallery_image_urls,
         featured_form_slug=featured_form_slug,
+        tagline=profile.tagline,
+        banner_url=profile.banner_url,
+        custom_links=profile.custom_links,
+        testimonials=profile.testimonials,
     )
 
 
@@ -100,6 +105,25 @@ async def get_public_logo(slug: str, db: AsyncSession = Depends(get_db)):
     if content is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No logo set")
     content_type, _ = mimetypes.guess_type(profile.logo_url)
+    return Response(
+        content=content, media_type=content_type or "image/png", headers={"Content-Disposition": "inline"}
+    )
+
+
+@router.get("/{slug}/banner")
+async def get_public_banner(slug: str, db: AsyncSession = Depends(get_db)):
+    """Mirrors get_public_logo's exact pattern for the public profile's
+    banner image."""
+    profile, _user = await _get_coach_by_slug(db, slug)
+    if not profile.banner_url:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No banner set")
+    presigned = get_presigned_url(profile.banner_url)
+    if presigned:
+        return RedirectResponse(presigned)
+    content = await read_file(profile.banner_url)
+    if content is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No banner set")
+    content_type, _ = mimetypes.guess_type(profile.banner_url)
     return Response(
         content=content, media_type=content_type or "image/png", headers={"Content-Disposition": "inline"}
     )
@@ -289,6 +313,7 @@ async def submit_portal_contact(
         coach_id=profile.user_id,
         name=body.name,
         email=body.email,
+        phone=body.phone,
         stage=LeadStage.new,
         notes=body.message,
         source="public_profile",

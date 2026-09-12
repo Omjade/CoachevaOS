@@ -76,5 +76,14 @@ class CoachProfile(Base):
     default_video_provider: Mapped[CalendarProvider | None] = mapped_column(
         Enum(CalendarProvider, name="calendar_provider")
     )
+    # Public profile redesign fields — all optional, all additive.
+    tagline: Mapped[str | None] = mapped_column(String(200))
+    banner_url: Mapped[str | None] = mapped_column(String(1024))
+    # Linktree-style extra links: [{"label": str, "url": str}, ...].
+    custom_links: Mapped[list[dict] | None] = mapped_column(JSONB)
+    # Coach-entered social proof: [{"quote": str, "author": str}, ...]. Not
+    # verified/moderated — same trust model as bio/website_url, which are
+    # also coach-entered free text already shown publicly.
+    testimonials: Mapped[list[dict] | None] = mapped_column(JSONB)
 
     user: Mapped["User"] = relationship(back_populates="coach_profile")

@@ -140,6 +140,10 @@ def _to_profile_out(profile: CoachProfile, user: User) -> CoachProfileOut:
         instagram_url=profile.instagram_url,
         linkedin_url=profile.linkedin_url,
         gallery_image_urls=profile.gallery_image_urls,
+        tagline=profile.tagline,
+        banner_url=profile.banner_url,
+        custom_links=profile.custom_links,
+        testimonials=profile.testimonials,
     )
 
 
@@ -181,6 +185,12 @@ async def update_my_profile(
         profile.instagram_url = body.instagram_url
     if body.linkedin_url is not None:
         profile.linkedin_url = body.linkedin_url
+    if body.tagline is not None:
+        profile.tagline = body.tagline
+    if body.custom_links is not None:
+        profile.custom_links = [link.model_dump() for link in body.custom_links]
+    if body.testimonials is not None:
+        profile.testimonials = [t.model_dump() for t in body.testimonials]
     if body.billing_country_code is not None and body.billing_country_code != profile.billing_country_code:
         ip = client_ip(request.headers.get("x-forwarded-for"), request.client.host if request.client else None)
         ip_country = await lookup_country(ip)
@@ -295,6 +305,41 @@ async def remove_logo(
     if profile is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
     profile.logo_url = None
+    await db.commit()
+    await db.refresh(profile)
+    return _to_profile_out(profile, user)
+
+
+@router.post("/me/banner", response_model=CoachProfileOut)
+async def upload_banner(
+    file: UploadFile,
+    user: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> CoachProfileOut:
+    """Mirrors upload_logo's exact pattern — the public profile's wide
+    header image, distinct from both logo_url (brand mark) and the coach's
+    own avatar (personal photo)."""
+    profile = await db.get(CoachProfile, user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
+    key, file_type = await save_upload(file)
+    if file_type != "image":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Please upload an image file")
+    profile.banner_url = key
+    await db.commit()
+    await db.refresh(profile)
+    return _to_profile_out(profile, user)
+
+
+@router.delete("/me/banner", response_model=CoachProfileOut)
+async def remove_banner(
+    user: User = Depends(require_active_coach),
+    db: AsyncSession = Depends(get_db),
+) -> CoachProfileOut:
+    profile = await db.get(CoachProfile, user.id)
+    if profile is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
+    profile.banner_url = None
     await db.commit()
     await db.refresh(profile)
     return _to_profile_out(profile, user)

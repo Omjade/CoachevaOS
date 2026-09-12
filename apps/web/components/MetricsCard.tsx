@@ -5,10 +5,7 @@ import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
 import { ChartLineUpIcon as ChartLineUp } from "@phosphor-icons/react";
 import { ApiError, MetricDefinition, MetricEntry } from "@/lib/api";
 import { Button, Card, Input } from "@/components/ui";
-
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayStr } from "@/lib/dateStr";
 
 export default function MetricsCard({
   listDefinitions,

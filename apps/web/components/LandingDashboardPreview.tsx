@@ -232,7 +232,7 @@ function CoachClientsSection() {
         <div key={c.name} className="rounded-[12px] border border-neutral-200 bg-white p-3">
           <div className="mb-1 flex items-center justify-between">
             <p className="text-xs font-semibold text-neutral-800">{c.name}</p>
-            <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${c.status === "On track" ? "bg-accent-100 text-accent-700" : "bg-red-100 text-red-700"}`}>
+            <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${c.status === "On track" ? "bg-accent-100 text-accent-700" : "bg-accent-200 text-accent-800"}`}>
               {c.status}
             </span>
           </div>
