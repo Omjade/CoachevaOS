@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import get_db
 from app.deps import get_current_client, get_platform_subscription as fetch_platform_subscription
 from app.deps import require_active_coach, require_coach
+from app.routers.analytics import invalidate_summary_cache
 from app.models.billing import Invoice
 from app.models.clients import Client
 from app.models.enums import ClientStatus, SubscriptionStatus, SubscriptionTier
@@ -169,6 +170,7 @@ async def toggle_invoice_paid(
     invoice.paid_at = utcnow() if invoice.paid else None
     await db.commit()
     await db.refresh(invoice)
+    invalidate_summary_cache(coach.id)
     return invoice
 
 

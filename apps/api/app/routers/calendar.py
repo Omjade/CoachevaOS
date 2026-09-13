@@ -13,7 +13,11 @@ from app.models.clients import Client
 from app.models.enums import CalendarProvider, ClientStatus, MeetingStatus, SessionType, UserRole
 from app.models.meetings import Meeting
 from app.models.users import CoachProfile, User
-from app.routers.integrations import create_video_call_link, get_preferred_video_provider
+from app.routers.integrations import (
+    create_video_call_link,
+    delete_google_calendar_event,
+    get_preferred_video_provider,
+)
 from app.schemas.calendar import (
     AttendanceOverviewRow,
     AvailabilityRules,
@@ -116,7 +120,7 @@ async def create_meeting(
             status.HTTP_409_CONFLICT, "You already have a session booked at that time."
         )
 
-    provider, url = await create_video_call_link(
+    provider, url, google_event_id = await create_video_call_link(
         db,
         coach.id,
         starts_at=body.starts_at,
@@ -131,6 +135,7 @@ async def create_meeting(
         status=MeetingStatus.scheduled,
         meeting_url=url,
         meeting_provider=provider,
+        google_event_id=google_event_id,
     )
     db.add(meeting)
     await db.commit()
@@ -227,7 +232,7 @@ async def book_meeting(
     user = await db.get(User, client.user_id)
     assert user is not None
 
-    provider, url = await create_video_call_link(
+    provider, url, google_event_id = await create_video_call_link(
         db,
         client.coach_id,
         starts_at=starts_at,
@@ -242,6 +247,7 @@ async def book_meeting(
         status=MeetingStatus.scheduled,
         meeting_url=url,
         meeting_provider=provider,
+        google_event_id=google_event_id,
     )
     db.add(meeting)
     await db.commit()
@@ -332,14 +338,19 @@ async def reschedule_meeting(
     topic = f"Session with {client_user.name}" if client_user else "Coaching session"
 
     # The old join link is time-anchored on the provider's side — a reschedule
-    # needs a fresh one, not a stale link pointing at the old time.
-    provider, url = await create_video_call_link(
+    # needs a fresh one, not a stale link pointing at the old time. Delete the
+    # old Google event first (best-effort) so the coach's real calendar
+    # doesn't end up with both the stale and the new event.
+    if meeting.google_event_id:
+        await delete_google_calendar_event(db, meeting.coach_id, meeting.google_event_id)
+    provider, url, google_event_id = await create_video_call_link(
         db, meeting.coach_id, starts_at=new_starts_at, ends_at=new_ends_at, topic=topic
     )
     meeting.starts_at = new_starts_at
     meeting.ends_at = new_ends_at
     meeting.meeting_url = url
     meeting.meeting_provider = provider
+    meeting.google_event_id = google_event_id
     await db.commit()
     await db.refresh(meeting)
     return _to_out(meeting, client_user.name if client_user else "", client_user.timezone if client_user else None)
@@ -352,6 +363,8 @@ async def cancel_meeting(
     db: AsyncSession = Depends(get_db),
 ) -> MeetingOut:
     meeting = await _load_owned_meeting(db, meeting_id, user)
+    if meeting.google_event_id:
+        await delete_google_calendar_event(db, meeting.coach_id, meeting.google_event_id)
     meeting.status = MeetingStatus.canceled
     await db.commit()
     await db.refresh(meeting)
@@ -477,9 +490,10 @@ async def bulk_create_sessions(
 
         meeting_url: str | None = None
         meeting_provider: str | None = None
+        google_event_id: str | None = None
         if body.session_type == SessionType.video:
             if body.video_provider in (CalendarProvider.google, CalendarProvider.zoom):
-                meeting_provider, meeting_url = await create_video_call_link(
+                meeting_provider, meeting_url, google_event_id = await create_video_call_link(
                     db,
                     coach.id,
                     starts_at=starts_at,
@@ -499,6 +513,7 @@ async def bulk_create_sessions(
             status=MeetingStatus.scheduled,
             meeting_url=meeting_url,
             meeting_provider=meeting_provider,
+            google_event_id=google_event_id,
             session_type=body.session_type,
             location=body.location if body.session_type == SessionType.in_person else None,
             recurrence_group_id=recurrence_group_id,
@@ -585,6 +600,8 @@ async def cancel_remaining_in_series(
     )
     meetings = result.scalars().all()
     for m in meetings:
+        if m.google_event_id:
+            await delete_google_calendar_event(db, coach.id, m.google_event_id)
         m.status = MeetingStatus.canceled
     await db.commit()
 

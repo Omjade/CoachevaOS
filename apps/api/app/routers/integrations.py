@@ -573,15 +573,17 @@ async def create_video_call_link(
     ends_at: datetime,
     topic: str,
     provider: CalendarProvider | None = None,
-) -> tuple[str | None, str | None]:
+) -> tuple[str | None, str | None, str | None]:
     """Best-effort: if the coach has Google or Zoom connected, create a real
-    call and return (provider, join_url). With no explicit `provider`, tries
-    Google then Zoom (the original auto-pick behavior every existing caller
-    still gets). A caller that knows which one the coach actually chose (e.g.
-    the Schedule Builder) can pass it directly instead of relying on that
-    preference order. Returns (None, None) if the requested provider(s)
-    aren't connected or the call fails — non-fatal, matching how meeting_url
-    has always been optional."""
+    call and return (provider, join_url, google_event_id). With no explicit
+    `provider`, tries Google then Zoom (the original auto-pick behavior every
+    existing caller still gets). A caller that knows which one the coach
+    actually chose (e.g. the Schedule Builder) can pass it directly instead of
+    relying on that preference order. Returns (None, None, None) if the
+    requested provider(s) aren't connected or the call fails — non-fatal,
+    matching how meeting_url has always been optional. google_event_id is
+    only ever set for the google branch (needed later to cancel/reschedule
+    the real calendar event); Zoom's join link isn't calendar-event-backed."""
     candidates = (
         (provider,)
         if provider is not None
@@ -615,7 +617,8 @@ async def create_video_call_link(
                         },
                     )
                     if res.status_code in (200, 201):
-                        return "google", res.json().get("hangoutLink")
+                        data = res.json()
+                        return "google", data.get("hangoutLink"), data.get("id")
                 else:
                     res = await http.post(
                         "https://api.zoom.us/v2/users/me/meetings",
@@ -636,7 +639,26 @@ async def create_video_call_link(
                         },
                     )
                     if res.status_code in (200, 201):
-                        return "zoom", res.json().get("join_url")
+                        return "zoom", res.json().get("join_url"), None
         except httpx.HTTPError:
-            return None, None
-    return None, None
+            return None, None, None
+    return None, None, None
+
+
+async def delete_google_calendar_event(db: AsyncSession, coach_id: uuid.UUID, event_id: str) -> None:
+    """Best-effort cancel of a real Google Calendar event, mirroring the
+    revoke-is-optional posture used elsewhere in this file — a failed delete
+    (already removed by the coach, expired connection, etc.) must never block
+    the in-app cancel/reschedule it's cleaning up after."""
+    connection = await _get_connection(db, coach_id, CalendarProvider.google)
+    if connection is None:
+        return
+    try:
+        token = await ensure_fresh_token(db, connection)
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            await http.delete(
+                f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+    except httpx.HTTPError:
+        pass

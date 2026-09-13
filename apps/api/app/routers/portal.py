@@ -90,6 +90,29 @@ async def get_public_gallery_image(slug: str, index: int, db: AsyncSession = Dep
     )
 
 
+@router.get("/{slug}/avatar")
+async def get_public_avatar(slug: str, db: AsyncSession = Depends(get_db)):
+    """The coach's personal photo, servable to a fully anonymous visitor —
+    /auth/users/{id}/avatar (used everywhere inside the logged-in app)
+    requires a session, which is exactly right there but wrong here: the
+    bare /{slug} profile is deliberately reachable with no login at all, so
+    it needs its own unauthenticated route mirroring get_public_logo's old
+    pattern rather than reusing the authenticated one."""
+    _profile, user = await _get_coach_by_slug(db, slug)
+    if not user.avatar_url:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No avatar set")
+    presigned = get_presigned_url(user.avatar_url)
+    if presigned:
+        return RedirectResponse(presigned)
+    content = await read_file(user.avatar_url)
+    if content is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No avatar set")
+    content_type, _ = mimetypes.guess_type(user.avatar_url)
+    return Response(
+        content=content, media_type=content_type or "image/jpeg", headers={"Content-Disposition": "inline"}
+    )
+
+
 @router.get("/{slug}/banner")
 async def get_public_banner(slug: str, db: AsyncSession = Depends(get_db)):
     """Mirrors get_public_logo's exact pattern for the public profile's

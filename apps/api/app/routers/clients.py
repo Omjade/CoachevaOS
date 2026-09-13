@@ -26,6 +26,7 @@ from app.schemas.clients import (
     InviteInfoOut,
 )
 from app.schemas.intake import IntakeCreate, IntakeOut
+from app.routers.analytics import invalidate_summary_cache
 from app.routers.billing import _compute_status
 from app.utils.time import utcnow
 
@@ -370,6 +371,7 @@ async def update_client(
         if body.status == ClientStatus.active and client.status != ClientStatus.active:
             await check_client_cap(db, coach.id)
         client.status = body.status
+        invalidate_summary_cache(coach.id)  # active/inactive changes what counts toward MRR
     await db.commit()
     base = _to_client_out(client, user)
     return ClientDetailOut(

@@ -184,6 +184,7 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
             <Avatar
               userId={portal.coach_user_id}
               name={portal.coach_name}
+              publicSlug={slug}
               className="h-24 w-24 border-4 border-neutral-100 text-3xl shadow-lg sm:h-32 sm:w-32"
             />
           </div>

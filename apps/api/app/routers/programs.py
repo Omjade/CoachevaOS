@@ -16,6 +16,7 @@ from app.models.messaging import Thread
 from app.models.notifications import Notification
 from app.notifications import broadcast_notification
 from app.models.programs import Program, ProgramItem
+from app.routers.analytics import invalidate_summary_cache
 from app.models.tasks import Task
 from app.models.users import CoachProfile, User
 from app.routers.clients import _get_owned_client
@@ -179,6 +180,7 @@ async def _assign_template_to_client(
 
     await db.commit()
     await db.refresh(program)
+    invalidate_summary_cache(template.coach_id)  # a monthly package changes MRR
     return program
 
 

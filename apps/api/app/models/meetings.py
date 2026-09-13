@@ -29,6 +29,10 @@ class Meeting(Base, UUIDPk):
     # Which connected provider actually generated meeting_url ("google"/"zoom"),
     # so both coach and client can see what they'll be joining before it starts.
     meeting_provider: Mapped[str | None] = mapped_column(String(32))
+    # Google Calendar's own event id for the meeting_url above — needed to
+    # PATCH/DELETE the real calendar event on reschedule/cancel; never set
+    # for Zoom (Zoom's join link isn't backed by a calendar event here).
+    google_event_id: Mapped[str | None] = mapped_column(String(255))
     # Where the booking itself was created: "internal" (CoachevaOS's own
     # slot-picker/coach-scheduled flow) vs "calendly"/"cal_com" (booked on
     # the provider's own page, synced in here via their webhook). Distinct

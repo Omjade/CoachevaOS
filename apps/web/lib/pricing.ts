@@ -13,10 +13,12 @@ export interface PricingTier {
   // "Why you need to pay" — what's included at this tier, shown on the public
   // pricing page. Same copy across currencies; only the price differs.
   features: string[];
-  // Marketing "best for most people" pick shown on the public pricing page
-  // only — distinct from billing/page.tsx's recommendedTierFor(), which
+  // Marketing "best for most people" pick — shown as the floating "Most
+  // popular" badge on both the public pricing page and the in-app billing
+  // page. Distinct from billing/page.tsx's recommendedTierFor(), which
   // recommends based on a coach's actual client count once they have a real
-  // account. Only one tier should ever be true.
+  // account; the two can point at different tiers and both render at once.
+  // Only one tier should ever have this set true.
   popular?: boolean;
 }
 

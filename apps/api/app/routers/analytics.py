@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.deps import require_coach
+from app.models.billing import Invoice
 from app.models.checkins import Checkin
 from app.models.clients import Client
 from app.models.enums import ClientStatus, LeadStage
@@ -50,6 +51,13 @@ def _cache_set(key: tuple[str, uuid.UUID], value: Any) -> None:
     _cache[key] = (datetime.now(timezone.utc) + timedelta(seconds=CACHE_TTL_SECONDS), value)
 
 
+def invalidate_summary_cache(coach_id: uuid.UUID) -> None:
+    """Called from wherever MRR-affecting state changes (an invoice marked
+    paid, a package assigned, a client's status changed) so the dashboard
+    reflects it on the very next load instead of waiting out the TTL."""
+    _cache.pop(("summary", coach_id), None)
+
+
 def _week_start(dt: datetime) -> datetime:
     d = dt.astimezone(timezone.utc)
     return (d - timedelta(days=d.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -89,6 +97,11 @@ async def get_analytics_summary(
 
     profile = await db.get(CoachProfile, coach.id)
     mrr_currency = (profile.currency if profile else "usd").upper()
+    monthly_program_clients = select(Program.client_id).where(
+        Program.is_template.is_(False),
+        Program.billing_cadence == "monthly",
+        Program.price_amount.isnot(None),
+    )
     mrr_result = await db.execute(
         select(Program.price_amount, Program.price_currency)
         .join(Client, Client.id == Program.client_id)
@@ -103,6 +116,31 @@ async def get_analytics_summary(
     mrr = sum(
         float(amount)
         for amount, currency in mrr_result.all()
+        if (currency or mrr_currency).upper() == mrr_currency
+    )
+
+    # Most coaches bill month-to-month via ad-hoc invoices rather than a
+    # formal recurring Program — without this, MRR read $0 for them even
+    # while they were actively getting paid every month. Counts an active
+    # client's invoices actually paid this calendar month, skipping anyone
+    # already counted above via a monthly Program so a client billed both
+    # ways is never double-counted.
+    month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    invoice_mrr_result = await db.execute(
+        select(Invoice.amount, Invoice.currency)
+        .join(Client, Client.id == Invoice.client_id)
+        .where(
+            Client.coach_id == coach.id,
+            Client.status == ClientStatus.active,
+            Invoice.paid.is_(True),
+            Invoice.paid_at.isnot(None),
+            Invoice.paid_at >= month_start,
+            Invoice.client_id.notin_(monthly_program_clients),
+        )
+    )
+    mrr += sum(
+        float(amount)
+        for amount, currency in invoice_mrr_result.all()
         if (currency or mrr_currency).upper() == mrr_currency
     )
 

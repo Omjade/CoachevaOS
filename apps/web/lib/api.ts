@@ -40,6 +40,13 @@ export function avatarUrl(userId: string): string {
   return `${API_URL}/auth/users/${userId}/avatar`;
 }
 
+// The one avatar route reachable with no login at all — for the bare public
+// /{slug} profile page only. Everywhere else in the app the viewer is
+// already authenticated, so avatarUrl(userId) above is correct there.
+export function publicAvatarUrl(slug: string): string {
+  return `${API_URL}/portal/${slug}/avatar`;
+}
+
 export function formImageUrl(formId: string): string {
   return `${API_URL}/forms/${formId}/image`;
 }

@@ -117,8 +117,14 @@ export default function ScheduleBuilder({
   const connectedVideoProviders = (integrations ?? []).filter(
     (i) => i.connected && (i.provider === "google" || i.provider === "zoom")
   );
-  const connectedLinkProviders = (integrations ?? []).filter(
-    (i) => i.connected && (i.provider === "calendly" || i.provider === "cal_com")
+  // Calendly/Cal.com never auto-generate a link here (their API has no
+  // "create a meeting" call, only inbound booking-page sync) — pasting a
+  // link is always just a text field, so it's offered regardless of whether
+  // the coach has connected that integration, rather than hiding the whole
+  // provider until they do.
+  const linkOnlyProviders: CalendarProviderKey[] = ["calendly", "cal_com"];
+  const connectedLinkProviderKeys = new Set(
+    (integrations ?? []).filter((i) => i.connected).map((i) => i.provider)
   );
 
   const preview = useMemo(
@@ -409,30 +415,43 @@ export default function ScheduleBuilder({
                         {PROVIDER_LABEL[i.provider]}
                       </option>
                     ))}
-                    {connectedLinkProviders.map((i) => (
-                      <option key={i.provider} value={i.provider}>
-                        {PROVIDER_LABEL[i.provider]} (paste your own link)
+                    {linkOnlyProviders.map((provider) => (
+                      <option key={provider} value={provider}>
+                        {PROVIDER_LABEL[provider]} (paste your own link)
                       </option>
                     ))}
                   </select>
-                  {connectedVideoProviders.length === 0 && connectedLinkProviders.length === 0 && (
+                  {connectedVideoProviders.length === 0 && (
                     <p className="mt-1.5 text-xs text-neutral-500">
-                      Nothing connected yet —{" "}
+                      Want sessions to auto-generate a real meeting link, like Google Meet does?{" "}
                       <a href="../calendar" className="font-medium text-accent-600 underline">
-                        connect a provider
-                      </a>{" "}
-                      first.
+                        Connect Google or Zoom
+                      </a>
+                      . Calendly and Cal.com can&apos;t create links automatically — paste your own
+                      below either way.
                     </p>
                   )}
                   {videoProvider &&
                     videoProvider !== "google" &&
                     videoProvider !== "zoom" && (
-                      <Input
-                        className="mt-2"
-                        placeholder="Paste your scheduling link"
-                        value={manualMeetingUrl}
-                        onChange={(e) => setManualMeetingUrl(e.target.value)}
-                      />
+                      <>
+                        <Input
+                          className="mt-2"
+                          placeholder="Paste your scheduling link"
+                          value={manualMeetingUrl}
+                          onChange={(e) => setManualMeetingUrl(e.target.value)}
+                        />
+                        {!connectedLinkProviderKeys.has(videoProvider) && (
+                          <p className="mt-1.5 text-xs text-neutral-500">
+                            Haven&apos;t connected {PROVIDER_LABEL[videoProvider]} yet? Pasting a link
+                            here works regardless, but{" "}
+                            <a href="../calendar" className="font-medium text-accent-600 underline">
+                              connecting it
+                            </a>{" "}
+                            also syncs bookings from your public booking page automatically.
+                          </p>
+                        )}
+                      </>
                     )}
                 </div>
               )}

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckIcon as Check } from "@phosphor-icons/react";
+import { CheckIcon as Check, StarIcon as Star } from "@phosphor-icons/react";
 import { api, ApiError, BillingCycle, SubscriptionTier } from "@/lib/api";
 import { Button, Card, ErrorBanner, Eyebrow } from "@/components/ui";
 import { GLOBAL_PRICING_TIERS, INDIA_PRICING_TIERS, recommendedTierFor } from "@/lib/pricing";
@@ -390,13 +390,28 @@ function BillingPageInner() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-5 pt-3 sm:grid-cols-2 lg:grid-cols-5">
         {plans.map((plan) => {
           const isCurrent = sub?.tier === plan.tier && sub.status === "active";
           const isRecommended = plan.tier === recommendedTier;
           const price = cycle === "monthly" ? plan.monthlyPrice : plan.annualPrice;
           return (
-            <Card key={plan.tier} className={isCurrent ? "!border-accent-400" : undefined}>
+            <Card
+              key={plan.tier}
+              className={`relative ${
+                isCurrent
+                  ? "!border-accent-400"
+                  : plan.popular
+                    ? "!border-accent-500 !shadow-[0_20px_44px_rgba(255,75,56,0.16)] sm:scale-[1.04]"
+                    : undefined
+              }`}
+            >
+              {plan.popular && (
+                <span className="absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-accent-600 px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-white shadow-[0_6px_14px_rgba(255,75,56,0.35)]">
+                  <Star className="h-3 w-3" weight="fill" />
+                  Most popular
+                </span>
+              )}
               {isRecommended && (
                 <span className="mb-2 inline-block rounded-full bg-accent-100 px-2.5 py-0.5 text-xs font-medium text-accent-700">
                   Recommended for you
@@ -405,7 +420,9 @@ function BillingPageInner() {
               <h3 className="font-heading mb-1 text-lg font-semibold text-neutral-900">
                 {plan.name}
               </h3>
-              <p className="font-heading mb-1 text-xl font-semibold text-neutral-900">{price}</p>
+              <p className="font-heading mb-1 text-2xl font-bold tracking-tight text-neutral-900">
+                {price}
+              </p>
               <p className="mb-4 text-sm text-neutral-500">{plan.blurb}</p>
               {plan.tier === "enterprise" ? (
                 <a href={`mailto:${SALES_EMAIL}`}>

@@ -260,14 +260,21 @@ export default function ClientBillingCard({
                     AI reminder
                   </button>
                 )}
-                <button
-                  onClick={() => togglePaid(inv.id)}
-                  className={`rounded-full px-2.5 py-0.5 text-xs ${
+                {/* A dropdown rather than a click-to-toggle pill — the pill
+                    looked like a static status badge, giving no hint that
+                    it was actually the control for marking payment received. */}
+                <select
+                  value={inv.paid ? "paid" : "pending"}
+                  onChange={(e) => {
+                    if ((e.target.value === "paid") !== inv.paid) togglePaid(inv.id);
+                  }}
+                  className={`cursor-pointer rounded-full border-0 px-2.5 py-1 text-xs font-medium outline-none ${
                     inv.paid ? "bg-accent-100 text-accent-700" : "bg-neutral-200 text-neutral-700"
                   }`}
                 >
-                  {inv.paid ? "Paid" : "Pending"}
-                </button>
+                  <option value="pending">Pending</option>
+                  <option value="paid">Paid</option>
+                </select>
               </div>
             </div>
           ))

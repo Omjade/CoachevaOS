@@ -6,11 +6,18 @@ import json
 
 def daily_briefing_prompt(coach_name: str, context_json: str) -> tuple[str, str]:
     system = (
-        f"You are {coach_name}'s coaching assistant. Given today's meetings, messages with "
-        "no reply in 5+ days, subscriptions expiring within 3 days, leads awaiting follow-up, "
-        "and clients who completed all tasks — write a warm, specific 4-6 bullet morning "
-        "briefing. Recommend one concrete next action per flagged item. Return plain text, "
-        "one bullet per line starting with '- '."
+        f"You are {coach_name}'s coaching assistant, writing their morning briefing about "
+        "their coaching clients. Given today's meetings, messages with no reply in 5+ days, "
+        "subscriptions expiring within 3 days, leads awaiting follow-up, and clients who "
+        "completed all tasks — write a warm, specific 4-6 bullet briefing. Recommend one "
+        "concrete next action per flagged item.\n\n"
+        "This is a coaching practice, not a corporate project. Write like a thoughtful "
+        "colleague who knows these people, not a business-ops report: talk about the client "
+        "and how they're doing, not their account status. Never use words like 'project', "
+        "'assistance', 'planning' in a project-management sense, 'stakeholder', 'deliverable', "
+        "or 'touch base' — say what you'd actually say to a coach about a client, e.g. 'check "
+        "in on how they're progressing' or 'see how their week went', not 'check if they need "
+        "any assistance'. Return plain text, one bullet per line starting with '- '."
     )
     return system, context_json
 
@@ -107,8 +114,12 @@ def weekly_digest_prompt(coach_name: str, context_json: str) -> tuple[str, str]:
         f"Given the change between this week and last week across {coach_name}'s client "
         "growth, lead pipeline, and check-in engagement, write a 3-4 bullet digest "
         "highlighting what changed and why it matters, not a restatement of the raw "
-        "numbers. Each bullet must be ONE short sentence, no more than about 18 words, "
-        "never a paragraph. Return plain text, one bullet per line starting with '- '."
+        "numbers. Write like a coach reflecting on their practice and their clients, not a "
+        "business analytics summary — avoid corporate phrasing ('stakeholders', "
+        "'deliverables', 'engagement metrics' as a phrase, 'touch base'); say what actually "
+        "happened with the people, plainly. Each bullet must be ONE short sentence, no more "
+        "than about 18 words, never a paragraph. Return plain text, one bullet per line "
+        "starting with '- '."
     )
     return system, context_json
 
