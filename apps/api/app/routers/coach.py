@@ -127,7 +127,6 @@ def _to_profile_out(profile: CoachProfile, user: User) -> CoachProfileOut:
         business_name=profile.business_name,
         niche=profile.niche,
         brand_color=profile.brand_color,
-        logo_url=profile.logo_url,
         name=user.name,
         email=user.email,
         timezone=user.timezone,
@@ -273,38 +272,6 @@ async def remove_gallery_image(
     if index < 0 or index >= len(existing):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Image not found")
     profile.gallery_image_urls = existing[:index] + existing[index + 1 :]
-    await db.commit()
-    await db.refresh(profile)
-    return _to_profile_out(profile, user)
-
-
-@router.post("/me/logo", response_model=CoachProfileOut)
-async def upload_logo(
-    file: UploadFile,
-    user: User = Depends(require_active_coach),
-    db: AsyncSession = Depends(get_db),
-) -> CoachProfileOut:
-    profile = await db.get(CoachProfile, user.id)
-    if profile is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
-    key, file_type = await save_upload(file)
-    if file_type != "image":
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Please upload an image file")
-    profile.logo_url = key
-    await db.commit()
-    await db.refresh(profile)
-    return _to_profile_out(profile, user)
-
-
-@router.delete("/me/logo", response_model=CoachProfileOut)
-async def remove_logo(
-    user: User = Depends(require_active_coach),
-    db: AsyncSession = Depends(get_db),
-) -> CoachProfileOut:
-    profile = await db.get(CoachProfile, user.id)
-    if profile is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Onboarding not completed yet")
-    profile.logo_url = None
     await db.commit()
     await db.refresh(profile)
     return _to_profile_out(profile, user)

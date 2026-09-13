@@ -54,7 +54,6 @@ async def get_portal_by_slug(slug: str, db: AsyncSession = Depends(get_db)) -> P
         business_name=profile.business_name,
         niche=profile.niche,
         brand_color=profile.brand_color,
-        logo_url=profile.logo_url,
         coach_name=user.name,
         coach_user_id=str(user.id),
         bio=profile.bio,
@@ -88,25 +87,6 @@ async def get_public_gallery_image(slug: str, index: int, db: AsyncSession = Dep
     content_type, _ = mimetypes.guess_type(key)
     return Response(
         content=content, media_type=content_type or "image/jpeg", headers={"Content-Disposition": "inline"}
-    )
-
-
-@router.get("/{slug}/logo")
-async def get_public_logo(slug: str, db: AsyncSession = Depends(get_db)):
-    """Mirrors get_public_gallery_image's exact pattern for the coach's own
-    logo — serves the stored key rather than exposing it directly."""
-    profile, _user = await _get_coach_by_slug(db, slug)
-    if not profile.logo_url:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No logo set")
-    presigned = get_presigned_url(profile.logo_url)
-    if presigned:
-        return RedirectResponse(presigned)
-    content = await read_file(profile.logo_url)
-    if content is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "No logo set")
-    content_type, _ = mimetypes.guess_type(profile.logo_url)
-    return Response(
-        content=content, media_type=content_type or "image/png", headers={"Content-Disposition": "inline"}
     )
 
 

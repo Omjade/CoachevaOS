@@ -11,6 +11,7 @@ import { api, PortalPublic, ProgramTemplate } from "@/lib/api";
 import { Card, Eyebrow } from "@/components/ui";
 import { useRoleGuard } from "@/lib/useRoleGuard";
 import FullScreenLoader from "@/components/FullScreenLoader";
+import Avatar from "@/components/Avatar";
 
 // The full-page version of AboutCoachCard's content — that card only ever
 // shows on the dashboard and hides itself entirely when there's nothing to
@@ -66,12 +67,11 @@ export default function KnowYourCoachPage() {
   return (
     <div className="animate-fade-up">
       <div className="mb-6">
-        {portal.logo_url && (
-          <div className="mb-4 h-14 w-14 overflow-hidden rounded-full border border-neutral-200 bg-white">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={api.coachLogoUrl(params.slug)} alt="" className="h-full w-full object-cover" />
-          </div>
-        )}
+        <Avatar
+          userId={portal.coach_user_id}
+          name={portal.coach_name}
+          className="mb-4 h-14 w-14 border border-neutral-200"
+        />
         <Eyebrow className="mb-2">Know your coach</Eyebrow>
         <h1 className="font-heading text-[26px] font-semibold tracking-tight text-neutral-900">
           {portal.business_name ?? portal.coach_name}

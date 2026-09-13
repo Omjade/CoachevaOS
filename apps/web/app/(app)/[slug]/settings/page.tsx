@@ -124,11 +124,8 @@ function CoachSettings() {
   const [copied, setCopied] = useState(false);
   const [galleryUploading, setGalleryUploading] = useState(false);
   const [galleryError, setGalleryError] = useState<string | null>(null);
-  const [logoUploading, setLogoUploading] = useState(false);
-  const [logoError, setLogoError] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (cachedUser) setUser(cachedUser);
@@ -247,32 +244,6 @@ function CoachSettings() {
       setProfile(updated);
     } catch (err) {
       setGalleryError(err instanceof ApiError ? err.message : "Couldn't remove that image. Try again.");
-    }
-  }
-
-  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoError(null);
-    setLogoUploading(true);
-    try {
-      const updated = await api.uploadLogo(file);
-      setProfile(updated);
-    } catch (err) {
-      setLogoError(err instanceof ApiError ? err.message : "Couldn't upload that logo. Try again.");
-    } finally {
-      setLogoUploading(false);
-      if (logoInputRef.current) logoInputRef.current.value = "";
-    }
-  }
-
-  async function removeLogo() {
-    setLogoError(null);
-    try {
-      const updated = await api.removeLogo();
-      setProfile(updated);
-    } catch (err) {
-      setLogoError(err instanceof ApiError ? err.message : "Couldn't remove that logo. Try again.");
     }
   }
 
@@ -499,61 +470,6 @@ function CoachSettings() {
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
             />
-          </div>
-
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <Label htmlFor="logo" className="mb-0">
-                Your own logo
-              </Label>
-              <div className="flex items-center gap-3 text-xs font-medium">
-                {profile.logo_url && (
-                  <button
-                    type="button"
-                    onClick={removeLogo}
-                    className="text-neutral-500 hover:underline"
-                  >
-                    Remove
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={logoUploading}
-                  className="flex items-center gap-1.5 text-accent-600 hover:underline disabled:cursor-wait disabled:opacity-50"
-                >
-                  {logoUploading && <CircleNotch className="h-3.5 w-3.5 animate-spin-slow" weight="bold" />}
-                  {logoUploading ? "Uploading…" : profile.logo_url ? "Change logo" : "+ Add logo"}
-                </button>
-              </div>
-              <input
-                ref={logoInputRef}
-                id="logo"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleLogoUpload}
-              />
-            </div>
-            <p className="mb-2 text-xs text-neutral-500">
-              Replaces the CoachevaOS mark with your own in your portal and public profile.
-            </p>
-            {logoError && <p className="mb-2 text-xs text-accent-600">{logoError}</p>}
-            {profile.logo_url && (
-              <div className="relative h-16 w-16 overflow-hidden rounded-full border border-neutral-200">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={api.coachLogoUrl(profile.portal_slug)}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                {logoUploading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                    <CircleNotch className="h-5 w-5 animate-spin-slow text-white" weight="bold" />
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           <div>

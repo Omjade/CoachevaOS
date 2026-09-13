@@ -48,7 +48,6 @@ export default function CoachShell({ children }: { children: ReactNode }) {
   const { user: currentUser, loading: userLoading, error: userError } = useCurrentUser();
   const [user, setUser] = useState<User | null>(null);
   const [niche, setNiche] = useState<string | null>(null);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
@@ -72,7 +71,6 @@ export default function CoachShell({ children }: { children: ReactNode }) {
           return;
         }
         setNiche(profile.niche);
-        setLogoUrl(profile.logo_url ? api.coachLogoUrl(profile.portal_slug) : null);
         setUser(currentUser);
         setChecking(false);
       })
@@ -116,7 +114,11 @@ export default function CoachShell({ children }: { children: ReactNode }) {
         <Sidebar
           slug={params.slug}
           brandLabel="CoachevaOS"
-          logoUrl={logoUrl}
+          // Always the CoachevaOS mark here, permanently — a coach's own
+          // uploaded photo shows on their public profile and on their
+          // clients' sidebars (see PortalShell), never on their own
+          // dashboard's top-left brand mark.
+          logoUrl={null}
           navItems={navItems}
           identityUserId={user.id}
           identityName={user.name}

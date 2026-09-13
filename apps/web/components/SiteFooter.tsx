@@ -4,6 +4,7 @@ import {
   InstagramLogoIcon as InstagramLogo,
   LinkedinLogoIcon as LinkedinLogo,
 } from "@phosphor-icons/react/dist/ssr";
+import AskAiRow from "@/components/AskAiRow";
 
 const COMPANY_LINKS = [
   { href: "/about", label: "About" },
@@ -85,6 +86,10 @@ export default function SiteFooter() {
         <FooterColumn title="Company" links={COMPANY_LINKS} />
         <FooterColumn title="Free resources" links={RESOURCE_LINKS} />
         <FooterColumn title="Legal" links={LEGAL_LINKS} />
+      </div>
+
+      <div className="mx-auto max-w-5xl pt-8">
+        <AskAiRow />
       </div>
 
       <p

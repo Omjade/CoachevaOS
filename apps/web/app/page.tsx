@@ -39,6 +39,7 @@ import DemoVideoDialog from "@/components/DemoVideoDialog";
 import LandingDashboardPreview from "@/components/LandingDashboardPreview";
 import CoachMapCarousel from "@/components/CoachMapCarousel";
 import FAQAccordion from "@/components/FAQAccordion";
+import FitCheckSection from "@/components/FitCheckSection";
 
 const capabilities = [
   {
@@ -568,6 +569,8 @@ export default function LandingPage() {
           </motion.p>
         </div>
       </section>
+
+      <FitCheckSection />
 
       {/* FAQ */}
       <section id="faq" className="bg-neutral-100 px-6 py-14 md:px-9">

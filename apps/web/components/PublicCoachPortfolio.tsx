@@ -177,23 +177,15 @@ export default function PublicCoachPortfolio({ slug }: { slug: string }) {
 
       <div className="flex flex-1 justify-center px-6 pb-16">
         <div className="w-full max-w-2xl">
-          {/* The coach's own personal photo — deliberately separate from
-              logo_url (a business/brand mark that also replaces the
-              CoachevaOS mark in the coach's own sidebar). Uploading one must
-              never change the other. Pulled up over the banner, classic
-              profile-page overlap. */}
-          <div className="animate-fade-up -mt-12 mb-4 flex items-end justify-between sm:-mt-16">
+          {/* The coach's own personal photo — the single image used to
+              represent them everywhere (this page, their clients' sidebars).
+              Pulled up over the banner, classic profile-page overlap. */}
+          <div className="animate-fade-up -mt-12 mb-4 sm:-mt-16">
             <Avatar
               userId={portal.coach_user_id}
               name={portal.coach_name}
               className="h-24 w-24 border-4 border-neutral-100 text-3xl shadow-lg sm:h-32 sm:w-32"
             />
-            {portal.logo_url && (
-              <div className="mb-1 h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-neutral-100 bg-white shadow-sm">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={api.coachLogoUrl(slug)} alt="" className="h-full w-full object-cover" />
-              </div>
-            )}
           </div>
 
           <div className="animate-fade-up" style={{ animationDelay: "60ms" }}>

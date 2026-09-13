@@ -103,7 +103,6 @@ class CoachProfileOut(BaseModel):
     business_name: str | None
     niche: str | None
     brand_color: str | None
-    logo_url: str | None
     name: str
     email: str
     timezone: str
@@ -208,13 +207,9 @@ class PortalPublicOut(BaseModel):
     business_name: str | None
     niche: str | None
     brand_color: str | None
-    logo_url: str | None
     coach_name: str
-    # The coach's own personal photo (User.avatar_url) — this is what the
-    # public profile's headshot renders, deliberately separate from
-    # logo_url (a business/brand mark that also replaces the CoachevaOS
-    # mark in the coach's own sidebar). Uploading one must never change
-    # the other.
+    # The coach's own personal photo (User.avatar_url) — the one image used
+    # to represent them everywhere (this profile, their clients' sidebars).
     coach_user_id: str
     bio: str | None = None
     website_url: str | None = None

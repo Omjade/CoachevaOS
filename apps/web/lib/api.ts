@@ -193,7 +193,6 @@ export interface CoachProfile {
   business_name: string | null;
   niche: string | null;
   brand_color: string | null;
-  logo_url: string | null;
   name: string;
   email: string;
   timezone: string;
@@ -257,7 +256,6 @@ export interface PortalPublic {
   business_name: string | null;
   niche: string | null;
   brand_color: string | null;
-  logo_url: string | null;
   coach_name: string;
   coach_user_id: string;
   bio: string | null;
@@ -1159,14 +1157,6 @@ export const api = {
   removeGalleryImage: (index: number) =>
     request<CoachProfile>(`/coach/me/gallery/${index}`, { method: "DELETE" }),
 
-  uploadLogo: (file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    return requestForm<CoachProfile>("/coach/me/logo", form);
-  },
-
-  removeLogo: () => request<CoachProfile>("/coach/me/logo", { method: "DELETE" }),
-
   uploadBanner: (file: File) => {
     const form = new FormData();
     form.append("file", file);
@@ -1180,8 +1170,6 @@ export const api = {
   getPublicPackages: (slug: string) => request<ProgramTemplate[]>(`/portal/${slug}/packages`),
 
   galleryImageUrl: (slug: string, index: number) => `${API_URL}/portal/${slug}/gallery/${index}`,
-
-  coachLogoUrl: (slug: string) => `${API_URL}/portal/${slug}/logo`,
 
   coachBannerUrl: (slug: string) => `${API_URL}/portal/${slug}/banner`,
 

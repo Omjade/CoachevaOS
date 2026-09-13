@@ -17,7 +17,7 @@ import {
   PackageIcon as Package,
   UserCircleIcon as UserCircle,
 } from "@phosphor-icons/react";
-import { api, PortalPublic, User } from "@/lib/api";
+import { api, avatarUrl, PortalPublic, User } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import Sidebar, { NavItem } from "@/components/Sidebar";
 import { useCurrentUser } from "@/lib/useCurrentUser";
@@ -160,7 +160,12 @@ export default function PortalShell({
       <Sidebar
         slug={slug}
         brandLabel={portal?.business_name ?? portal?.coach_name ?? "CoachevaOS"}
-        logoUrl={portal?.logo_url ? api.coachLogoUrl(slug) : null}
+        // The client's own sidebar shows their coach's identity, not
+        // CoachevaOS's — the coach's profile photo is the one image field
+        // used everywhere for this (public profile, this sidebar), no
+        // separate uploadable "logo" anymore. Falls back to the CoachevaOS
+        // mark via Sidebar's own onError handling if the coach has no photo.
+        logoUrl={portal?.coach_user_id ? avatarUrl(portal.coach_user_id) : null}
         navItems={navItems}
         identityUserId={user.id}
         identityName={user.name}
