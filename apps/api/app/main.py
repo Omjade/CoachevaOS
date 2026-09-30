@@ -8,6 +8,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.config import settings
 from app.rate_limit import limiter
 from app.routers import (
+    admin,
     ai,
     ai_assistant,
     analytics,
@@ -39,6 +40,7 @@ from app.routers import (
     threads,
     timeline,
     todos,
+    track,
     webhooks,
 )
 from app.scheduler import start_scheduler, stop_scheduler
@@ -133,6 +135,8 @@ app.include_router(ai_assistant.router)
 app.include_router(automation.router)
 app.include_router(notifications.router)
 app.include_router(analytics.router)
+app.include_router(admin.router)
+app.include_router(track.router)
 
 
 @app.on_event("startup")

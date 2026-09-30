@@ -62,6 +62,10 @@ services:
         value: https://api.coachevaos.com/auth/google/callback
       - key: GOOGLE_CALENDAR_REDIRECT_URI
         value: https://api.coachevaos.com/integrations/google/callback
+      # The one account allowed into /admin — see deps.require_platform_owner.
+      # Set manually in the Render dashboard, never committed.
+      - key: PLATFORM_OWNER_EMAIL
+        sync: false
       - key: ZOOM_CLIENT_ID
         sync: false
       - key: ZOOM_CLIENT_SECRET

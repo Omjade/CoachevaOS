@@ -1085,6 +1085,80 @@ export interface AnalyticsTimeseries {
   checkin_rate: CheckinWeekPoint[];
 }
 
+// Admin (owner-only) dashboard types — mirror apps/api/app/schemas/admin.py.
+export interface AdminOverview {
+  visits_today: number;
+  unique_visits_today: number;
+  signups_today: number;
+  total_coaches: number;
+  trialing_count: number;
+  active_paid_count: number;
+  past_due_count: number;
+  canceled_count: number;
+  mrr: number;
+  mrr_currency: string;
+  // INR-billed revenue, shown separately rather than merged into mrr — the
+  // app never does FX conversion, so the two currencies can't be summed.
+  mrr_inr: number;
+  churned_this_month: number;
+}
+
+export interface AdminDayPoint {
+  date: string;
+  visits: number;
+  unique_visits: number;
+  signups: number;
+  trialing: number;
+  active_paid: number;
+  mrr: number;
+}
+
+export interface AdminTimeseries {
+  points: AdminDayPoint[];
+}
+
+export interface AdminBreakdownItem {
+  label: string;
+  count: number;
+}
+
+export interface AdminBreakdowns {
+  by_country: AdminBreakdownItem[];
+  by_timezone: AdminBreakdownItem[];
+  by_niche: AdminBreakdownItem[];
+  by_tier: AdminBreakdownItem[];
+}
+
+export interface AdminCoachRow {
+  id: string;
+  name: string;
+  email: string;
+  business_name: string | null;
+  niche: string | null;
+  country: string | null;
+  tier: string;
+  status: string;
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  signed_up_at: string;
+  active_client_count: number;
+  mrr: number;
+  mrr_currency: string;
+}
+
+export interface AdminCoachList {
+  coaches: AdminCoachRow[];
+  total: number;
+}
+
+export interface AdminCoachDetail {
+  coach: AdminCoachRow;
+  timezone: string;
+  portal_slug: string | null;
+  provider: string | null;
+  processor_customer_id: string | null;
+}
+
 export const api = {
   register: (body: {
     email: string;
@@ -2013,4 +2087,33 @@ export const api = {
   getAnalyticsSummary: () => request<AnalyticsSummary>("/analytics/summary"),
 
   getAnalyticsTimeseries: () => request<AnalyticsTimeseries>("/analytics/timeseries"),
+
+  // Admin (owner-only) — every call 404s server-side for anyone but the
+  // hardcoded PLATFORM_OWNER_EMAIL account, see apps/api/app/deps.py.
+  getAdminOverview: () => request<AdminOverview>("/admin/overview"),
+
+  getAdminTimeseries: (days = 30) => request<AdminTimeseries>(`/admin/timeseries?days=${days}`),
+
+  getAdminBreakdowns: () => request<AdminBreakdowns>("/admin/breakdowns"),
+
+  listAdminCoaches: (params?: { search?: string; status?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set("search", params.search);
+    if (params?.status) qs.set("status_filter", params.status);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<AdminCoachList>(`/admin/coaches${suffix}`);
+  },
+
+  getAdminCoachDetail: (id: string) => request<AdminCoachDetail>(`/admin/coaches/${id}`),
+
+  trackVisit: (path: string) =>
+    fetch(`${API_URL}/track/visit`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+      keepalive: true,
+    }).catch(() => {
+      // Fire-and-forget — a failed visit ping must never surface to the user.
+    }),
 };

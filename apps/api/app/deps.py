@@ -4,6 +4,7 @@ from fastapi import Cookie, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db import get_db
 from app.models.billing import PlatformSubscription
 from app.models.clients import Client
@@ -35,6 +36,16 @@ async def get_current_user(
 def require_coach(user: User = Depends(get_current_user)) -> User:
     if user.role != UserRole.coach:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Coach access required")
+    return user
+
+
+def require_platform_owner(user: User = Depends(get_current_user)) -> User:
+    """Gates /admin — deliberately independent of the coach/client role system
+    (see PLATFORM_OWNER_EMAIL comment in config.py). 404, not 403: a
+    logged-in coach or client hitting this by guessing the URL should see
+    "not found", never a response that confirms the route exists at all."""
+    if not settings.platform_owner_email or user.email != settings.platform_owner_email:
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
     return user
 
 

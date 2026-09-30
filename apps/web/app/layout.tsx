@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import CookieConsent from "@/components/CookieConsent";
 import Analytics from "@/components/Analytics";
+import VisitTracker from "@/components/VisitTracker";
 import MotionPreferences from "@/components/MotionPreferences";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 
@@ -104,6 +105,7 @@ export default function RootLayout({
         <MotionPreferences>{children}</MotionPreferences>
         <CookieConsent />
         <Analytics />
+        <VisitTracker />
         {/* Google Preferred Sources — real, current Google mechanism (verified
             against Search Central docs) that surfaces a "preferred" badge on
             citations in Top Stories, AI Mode, and AI Overviews once a reader

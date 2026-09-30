@@ -82,6 +82,13 @@ class Settings(BaseSettings):
     # allowlist by sending its own X-Forwarded-For.
     paddle_webhook_trust_proxy_header: bool = False
 
+    # The single account allowed into /admin (see deps.require_platform_owner).
+    # Deliberately not a role/flag stored in mutable app data — gating on the
+    # exact email of one real, pre-existing account means there is no
+    # self-serve path for anyone (coach, client, or a future bug in role
+    # assignment) to ever gain access.
+    platform_owner_email: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         # FRONTEND_URL is included so a staging/preview deploy that sets only

@@ -1,5 +1,6 @@
 from app.models.ai import AIInsight, AIUsageLog
 from app.models.ai_assistant import AIAssistantMessage, CoachAIAssistantSettings
+from app.models.analytics_admin import DailyPageView
 from app.models.automation import CoachAutomationSettings
 from app.models.billing import Invoice, PaymentWebhookEvent, PlatformSubscription, RegionSignalLog
 from app.models.calendar_connections import CalendarConnection
@@ -29,6 +30,7 @@ __all__ = [
     "AIUsageLog",
     "AIAssistantMessage",
     "CoachAIAssistantSettings",
+    "DailyPageView",
     "CoachAutomationSettings",
     "Invoice",
     "PlatformSubscription",
