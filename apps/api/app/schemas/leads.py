@@ -27,6 +27,11 @@ class LeadStageUpdate(BaseModel):
     stage: LeadStage
 
 
+class LeadScheduleRequest(BaseModel):
+    starts_at: datetime
+    ends_at: datetime
+
+
 class LeadOut(BaseModel):
     id: uuid.UUID
     name: str

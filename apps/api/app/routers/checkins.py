@@ -5,12 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.safety import check_escalation
 from app.db import get_db
 from app.deps import get_current_client, require_coach
 from app.models.checkins import Checkin
 from app.models.clients import Client
 from app.models.enums import CheckinType
 from app.models.users import User
+from app.notifications import _create_if_new
 from app.schemas.checkins import CheckinCreate, CheckinOut
 from app.utils.time import utcnow
 
@@ -75,6 +77,30 @@ async def submit_my_checkin(
     db.add(checkin)
     await db.commit()
     await db.refresh(checkin)
+
+    # Safety backstop: a check-in is the one place a client regularly writes
+    # free text with no coach watching in real time — scan it the same way
+    # agent-drafted messages are scanned, and alert the coach immediately on
+    # a hit rather than waiting for any nightly job to notice.
+    flagged_text = " ".join(
+        t for t in (body.one_liner, body.progress_notes, body.challenges, body.wins) if t
+    )
+    if check_escalation(flagged_text):
+        client_user = await db.get(User, client.user_id) if client.user_id else None
+        name = client_user.name if client_user else "A client"
+        await _create_if_new(
+            db,
+            client.coach_id,
+            "checkin_safety_concern",
+            str(checkin.id),
+            {
+                "message": f"{name}'s check-in may need your immediate attention — please "
+                "read it directly rather than relying on a summary.",
+                "client_id": str(client.id),
+            },
+        )
+        await db.commit()
+
     return checkin
 
 

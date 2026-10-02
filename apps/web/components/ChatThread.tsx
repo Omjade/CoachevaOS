@@ -168,6 +168,7 @@ export default function ChatThread({
       media_url: null,
       created_at: new Date().toISOString(),
       read_at: null,
+      is_agent_sent: false,
     };
     setMessages((prev) => [...prev, optimistic]);
 
@@ -278,6 +279,16 @@ export default function ChatThread({
                   mine ? "bg-accent-600 text-white" : "bg-neutral-100 text-neutral-900"
                 } ${pending ? "opacity-60" : ""}`}
               >
+                {m.is_agent_sent && (
+                  <p
+                    className={`mb-1 flex items-center gap-1 text-[10px] font-medium tracking-wide uppercase ${
+                      mine ? "text-white/70" : "text-neutral-400"
+                    }`}
+                  >
+                    <Sparkle className="h-2.5 w-2.5" weight="fill" />
+                    Your AI Team
+                  </p>
+                )}
                 {m.type === "text" && <p>{m.body}</p>}
 
                 {m.type === "image" && (

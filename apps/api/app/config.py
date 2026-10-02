@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     cors_extra_origins: list[str] = ["https://coachevaos.com", "https://www.coachevaos.com"]
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    # Transactional email — truthiness-gated like every other integration
+    # secret here (openai_api_key, zoom_client_id, etc.): inert/no-op until
+    # set, never an error. from_email must be on a domain verified in Resend.
+    resend_api_key: str = ""
+    resend_from_email: str = "CoachevaOS <notifications@coachevaos.com>"
     s3_bucket: str = ""
     s3_prefix: str = ""
     aws_access_key_id: str = ""

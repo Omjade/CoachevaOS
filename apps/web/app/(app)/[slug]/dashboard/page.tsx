@@ -34,6 +34,7 @@ import {
 import {
   CalendarCheckIcon as CalendarCheck,
   NewspaperIcon as Newspaper,
+  SparkleIcon as Sparkle,
 } from "@phosphor-icons/react";
 import { Button, Card, Eyebrow } from "@/components/ui";
 import { formatMoney } from "@/lib/currency";
@@ -288,14 +289,30 @@ function CoachDashboard() {
               Prep for today&apos;s sessions
             </h2>
           </div>
-          <ul className="flex flex-col gap-2.5">
+          <ul className="flex flex-col gap-3">
             {prepMyDay.items.map((item, i) => (
-              <li key={i} className="flex items-start justify-between gap-3 text-sm">
-                <span className="text-neutral-700">
-                  <span className="font-medium text-neutral-900">{item.client_name}:</span>{" "}
-                  {item.reminder}
-                </span>
-                <span className="shrink-0 text-xs text-neutral-400">{item.meeting_time}</span>
+              <li key={i} className="text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-neutral-700">
+                    <span className="font-medium text-neutral-900">{item.client_name}:</span>{" "}
+                    {item.reminder}
+                    {item.risk_level !== "low" && (
+                      <span
+                        className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          item.risk_level === "high"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {item.risk_level} attention
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-xs text-neutral-400">{item.meeting_time}</span>
+                </div>
+                {item.suggested_focus && (
+                  <p className="mt-0.5 text-xs text-neutral-500">Focus: {item.suggested_focus}</p>
+                )}
               </li>
             ))}
           </ul>
@@ -438,6 +455,66 @@ function CoachDashboard() {
 // Exported so the new /{slug}/client/[clientId]/dashboard route can render
 // the exact same client-facing content — the URL's clientId is a display
 // convenience only, the data here is still entirely session-derived.
+function CompanionConsentCard({
+  profile,
+  onUpdated,
+}: {
+  profile: ClientSelfProfile;
+  onUpdated: (p: ClientSelfProfile) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const enabled = profile.companion_consent_at !== null;
+
+  async function toggle() {
+    setSaving(true);
+    try {
+      const updated = enabled ? await api.revokeCompanionConsent() : await api.grantCompanionConsent();
+      onUpdated(updated);
+    } catch {
+      // no-op — leave the toggle as-is on failure, consistent with other
+      // best-effort settings saves in this app
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+            <Sparkle className="h-4 w-4" weight="fill" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-heading truncate text-sm font-semibold text-neutral-900">
+              {profile.coach_name}&apos;s Companion
+            </h3>
+            <p className="text-xs text-neutral-500">
+              Reminders, check-in prompts, and progress updates between sessions.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          onClick={toggle}
+          disabled={saving}
+          className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+            enabled ? "bg-accent-600" : "bg-neutral-300"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+              enabled ? "translate-x-5" : "translate-x-0.5"
+            }`}
+          />
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 export function ClientDashboard() {
   const router = useRouter();
   const params = useParams<{ slug: string }>();
@@ -619,6 +696,8 @@ export function ClientDashboard() {
           </Link>
         </Card>
       </div>
+
+      {profile && <CompanionConsentCard profile={profile} onUpdated={setProfile} />}
 
       <AboutCoachCard />
     </div>

@@ -86,6 +86,11 @@ services:
         value: https://api.coachevaos.com/integrations/calcom/callback
       - key: OPENAI_API_KEY
         sync: false
+      # Transactional email (daily briefing opt-in, approved agent sends) —
+      # inert/no-op until set, same truthiness-gated pattern as every other
+      # integration secret in this file.
+      - key: RESEND_API_KEY
+        sync: false
       - key: S3_BUCKET
         sync: false
       - key: AWS_ACCESS_KEY_ID

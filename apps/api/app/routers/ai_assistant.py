@@ -50,6 +50,19 @@ def _settings_out(settings: CoachAIAssistantSettings) -> AssistantSettingsOut:
         custom_instructions=settings.custom_instructions,
         daily_query_limit=settings.daily_query_limit,
         platform_query_ceiling=PLATFORM_QUERY_CEILING,
+        languages=settings.languages,
+        sample_messages=settings.sample_messages,
+        sign_off=settings.sign_off,
+        say_phrases=settings.say_phrases,
+        never_say_phrases=settings.never_say_phrases,
+        checkin_questions_json=settings.checkin_questions_json,
+        quiet_hours_start=settings.quiet_hours_start,
+        quiet_hours_end=settings.quiet_hours_end,
+        agents_paused=settings.agents_paused,
+        briefing_freedom=settings.briefing_freedom,
+        client_agent_freedom=settings.client_agent_freedom,
+        companion_freedom=settings.companion_freedom,
+        drift_sensitivity=settings.drift_sensitivity,
     )
 
 
@@ -80,6 +93,32 @@ async def update_assistant_settings(
         # The coach's number can only ever lower the effective limit, never raise
         # it past the platform ceiling — protects against a misconfigured cost blowup.
         settings.daily_query_limit = max(1, min(body.daily_query_limit, PLATFORM_QUERY_CEILING))
+    if body.languages is not None:
+        settings.languages = body.languages
+    if body.sample_messages is not None:
+        settings.sample_messages = body.sample_messages
+    if body.sign_off is not None:
+        settings.sign_off = body.sign_off
+    if body.say_phrases is not None:
+        settings.say_phrases = body.say_phrases
+    if body.never_say_phrases is not None:
+        settings.never_say_phrases = body.never_say_phrases
+    if body.checkin_questions_json is not None:
+        settings.checkin_questions_json = body.checkin_questions_json
+    if body.quiet_hours_start is not None:
+        settings.quiet_hours_start = body.quiet_hours_start
+    if body.quiet_hours_end is not None:
+        settings.quiet_hours_end = body.quiet_hours_end
+    if body.agents_paused is not None:
+        settings.agents_paused = body.agents_paused
+    if body.briefing_freedom is not None:
+        settings.briefing_freedom = body.briefing_freedom
+    if body.client_agent_freedom is not None:
+        settings.client_agent_freedom = body.client_agent_freedom
+    if body.companion_freedom is not None:
+        settings.companion_freedom = body.companion_freedom
+    if body.drift_sensitivity is not None:
+        settings.drift_sensitivity = body.drift_sensitivity
     await db.commit()
     await db.refresh(settings)
     return _settings_out(settings)

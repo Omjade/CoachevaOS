@@ -21,3 +21,11 @@ class CoachAutomationSettings(Base):
     auto_assign_template_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("programs.id", ondelete="SET NULL")
     )
+    # Opt-in: email the coach their pre-generated daily briefing each morning,
+    # on top of (not instead of) the in-app version. No separate per-channel
+    # preference system — this one toggle is the whole feature for now.
+    email_daily_briefing: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Opt-in gate for the Drift Detector / retention agent (apps/api/app/routers/agent_actions.py)
+    # — coach-level, matching how CoachAIAssistantSettings' tone/style has no
+    # separate per-client consent step today either.
+    retention_agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -59,6 +59,10 @@ async def update_automation_settings(
         settings.auto_assign_template_id = None
     elif body.auto_assign_template_id is not None:
         settings.auto_assign_template_id = body.auto_assign_template_id
+    if body.email_daily_briefing is not None:
+        settings.email_daily_briefing = body.email_daily_briefing
+    if body.retention_agent_enabled is not None:
+        settings.retention_agent_enabled = body.retention_agent_enabled
     await db.commit()
     await db.refresh(settings)
     return settings

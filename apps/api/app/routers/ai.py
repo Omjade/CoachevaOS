@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
@@ -10,11 +10,12 @@ from app.ai.client import generate_json, generate_text
 from app.ai.context import (
     build_briefing_context,
     build_client_history_context,
-    build_client_snapshot_context,
+    build_client_memory,
     build_prep_my_day_context,
     build_thread_context,
 )
 from app.ai.embeddings import embed_text
+from app.ai.limits import check_daily_quota
 from app.ai.onboarding import draft_onboarding
 from app.ai.prompts import (
     client_snapshot_prompt,
@@ -37,7 +38,7 @@ from app.models.billing import Invoice
 from app.models.clients import Client
 from app.models.document_chunks import DocumentChunk
 from app.models.documents import Document
-from app.models.enums import AIInsightType, MessageType
+from app.models.enums import AIInsightType, ClientStatus, MessageType
 from app.models.goals import ClientGoal
 from app.models.messaging import Thread
 from app.models.sessions import SessionNote
@@ -133,6 +134,14 @@ async def _latest_progress_signal_at(db: AsyncSession, client_id: uuid.UUID):
     return max(candidates) if candidates else None
 
 
+#  "Refresh" on the dashboard is a real manual action a coach can click
+#  repeatedly, not a background job — it has no 1/day limit, but it still
+#  needs a sane ceiling so repeated clicking (or a stuck client retrying)
+#  can't run away through the OpenAI bill. 10/day is generous for genuine
+#  use (several refreshes across a busy day) while still being a real bound.
+DAILY_BRIEFING_REFRESH_LIMIT = 10
+
+
 @router.get("/briefing", response_model=BriefingOut)
 async def get_briefing(
     force: bool = False, coach: User = Depends(require_coach), db: AsyncSession = Depends(get_db)
@@ -141,9 +150,33 @@ async def get_briefing(
     if cached:
         return BriefingOut(bullets=cached.payload_json["bullets"], generated_at=cached.created_at)
 
+    if force and not await check_daily_quota(
+        db, coach.id, "daily_briefing_refresh", DAILY_BRIEFING_REFRESH_LIMIT
+    ):
+        # Quota hit for today's manual refreshes — serve whatever's cached
+        # (even if stale) rather than hard-erroring; there's always at least
+        # the nightly pre-generated one once the coach's first day has passed.
+        fallback = await _get_cached(db, coach.id, None, AIInsightType.briefing, min_data_at=None)
+        if fallback is None:
+            fallback_result = await db.execute(
+                select(AIInsight)
+                .where(AIInsight.coach_id == coach.id, AIInsight.type == AIInsightType.briefing)
+                .order_by(AIInsight.created_at.desc())
+                .limit(1)
+            )
+            fallback = fallback_result.scalar_one_or_none()
+        if fallback is not None:
+            return BriefingOut(bullets=fallback.payload_json["bullets"], generated_at=fallback.created_at)
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "You've refreshed your briefing several times today — try again tomorrow.",
+        )
+
     context = await build_briefing_context(db, coach.id)
     system, user_prompt = daily_briefing_prompt(coach.name, context)
-    text = await generate_text(system, user_prompt)
+    text = await generate_text(
+        system, user_prompt, db=db, coach_id=coach.id, feature="daily_briefing_refresh"
+    )
     bullets = [line.lstrip("- ").strip() for line in text.splitlines() if line.strip()]
 
     insight = AIInsight(
@@ -377,8 +410,12 @@ async def get_client_snapshot(
 
     user = await db.get(User, client.user_id)
     assert user is not None
-    context = await build_client_snapshot_context(db, client)
-    system, user_prompt = client_snapshot_prompt(user.name, context)
+    # build_client_memory is the shared "Your AI Team" context every agent
+    # reads — Client Agent's snapshot now agrees with Drift Detector,
+    # Companion, and Briefing rather than each agent assembling its own
+    # slightly different picture of the same client.
+    memory = await build_client_memory(db, client)
+    system, user_prompt = client_snapshot_prompt(user.name, json.dumps(memory))
     narrative = await generate_text(
         system, user_prompt, max_tokens=400, db=db, coach_id=coach.id, feature="client_snapshot"
     )
@@ -466,12 +503,34 @@ async def get_weekly_digest(
     timeseries = await get_analytics_timeseries(coach=coach, db=db)
     growth = timeseries.client_growth
     checkins = timeseries.checkin_rate
+    today = utcnow().date()
+    at_risk_count = await db.scalar(
+        select(func.count())
+        .select_from(Client)
+        .where(Client.coach_id == coach.id, Client.status == ClientStatus.at_risk)
+    ) or 0
+    renewals_result = await db.execute(
+        select(Client.subscription_valid_until, User.name)
+        .join(User, User.id == Client.user_id)
+        .where(
+            Client.coach_id == coach.id,
+            Client.subscription_valid_until.is_not(None),
+            Client.subscription_valid_until >= today,
+            Client.subscription_valid_until <= today + timedelta(days=14),
+        )
+    )
+    renewals_coming_up = [
+        {"client": name, "renews_on": valid_until.isoformat()}
+        for valid_until, name in renewals_result.all()
+    ]
     diff = {
         "client_count_this_week": growth[-1].count if growth else 0,
         "client_count_last_week": growth[-2].count if len(growth) >= 2 else None,
         "checkin_rate_this_week": checkins[-1].rate if checkins else None,
         "checkin_rate_last_week": checkins[-2].rate if len(checkins) >= 2 else None,
         "lead_funnel": [{"stage": f.stage, "count": f.count} for f in timeseries.lead_funnel],
+        "at_risk_clients_count": at_risk_count,
+        "renewals_coming_up": renewals_coming_up,
     }
     system, user_prompt = weekly_digest_prompt(coach.name, json.dumps(diff))
     text = await generate_text(

@@ -1,4 +1,4 @@
-from app.models.ai import AIInsight, AIUsageLog
+from app.models.ai import AgentAction, AIInsight, AIUsageLog
 from app.models.ai_assistant import AIAssistantMessage, CoachAIAssistantSettings
 from app.models.analytics_admin import DailyPageView
 from app.models.automation import CoachAutomationSettings
@@ -28,6 +28,7 @@ from app.models.users import CoachProfile, User
 __all__ = [
     "AIInsight",
     "AIUsageLog",
+    "AgentAction",
     "AIAssistantMessage",
     "CoachAIAssistantSettings",
     "DailyPageView",

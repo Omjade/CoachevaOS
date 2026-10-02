@@ -207,9 +207,15 @@ async def _create_and_broadcast(
     type_: MessageType,
     body: str | None,
     media_url: str | None,
+    is_agent_sent: bool = False,
 ) -> Message:
     message = Message(
-        thread_id=thread.id, sender_id=sender.id, type=type_, body=body, media_url=media_url
+        thread_id=thread.id,
+        sender_id=sender.id,
+        type=type_,
+        body=body,
+        media_url=media_url,
+        is_agent_sent=is_agent_sent,
     )
     db.add(message)
     thread.last_message_at = utcnow()
@@ -237,6 +243,7 @@ async def _create_and_broadcast(
             "media_url": message.media_url,
             "created_at": message.created_at.isoformat(),
             "read_at": None,
+            "is_agent_sent": message.is_agent_sent,
         },
     }
     await manager.send_to_user(other_user_id, payload)

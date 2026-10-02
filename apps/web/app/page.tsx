@@ -40,6 +40,7 @@ import LandingDashboardPreview from "@/components/LandingDashboardPreview";
 import CoachMapCarousel from "@/components/CoachMapCarousel";
 import FAQAccordion from "@/components/FAQAccordion";
 import FitCheckSection from "@/components/FitCheckSection";
+import AiTeamSection from "@/components/AiTeamSection";
 
 const capabilities = [
   {
@@ -569,6 +570,8 @@ export default function LandingPage() {
           </motion.p>
         </div>
       </section>
+
+      <AiTeamSection />
 
       <FitCheckSection />
 

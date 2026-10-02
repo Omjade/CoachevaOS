@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -37,5 +37,11 @@ class Message(Base, UUIDPk, TimestampMixin):
     body: Mapped[str | None] = mapped_column(Text)
     media_url: Mapped[str | None] = mapped_column(Text)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # True for a message sent through an approved AgentAction (Drift Detector
+    # nudge, Companion send, etc.) even though sender_id is still the coach —
+    # lets the client's Companion feed visually distinguish "your AI team,
+    # approved by your coach" from the coach's own typed messages, without
+    # a second sender identity or a fake system user.
+    is_agent_sent: Mapped[bool] = mapped_column(Boolean, default=False)
 
     thread: Mapped["Thread"] = relationship(back_populates="messages")

@@ -41,7 +41,8 @@ const sections = [
   {
     heading: "AI features and third-party AI providers",
     body: [
-      "CoachevaOS's AI features (daily briefings, session-note follow-ups, smart replies, progress insights, program drafting) are powered by OpenAI's standard API (not ChatGPT, not a fine-tuning or model-training product). We send only the specific account data needed to generate that feature's output (e.g. a client's recent check-ins for a progress summary), never a full data export.",
+      "CoachevaOS's AI features (daily briefings, session-note follow-ups, smart replies, progress insights, program drafting, the retention and Companion agents described in-app as \"Your AI Team\") are powered by OpenAI's standard API (not ChatGPT, not a fine-tuning or model-training product). We send only the specific account data needed to generate that feature's output (e.g. a client's recent check-ins for a progress summary), never a full data export.",
+      "Every AI feature is purpose-built and scoped to a specific coaching task — none of them are a general-purpose chatbot. Each is instructed to only discuss what it was built for (a specific client's coaching data, a coach's own uploaded documents, or a draft message in the coach's voice) and to decline anything outside that scope, including general knowledge questions, requests unrelated to the coaching relationship, or attempts to use a feature as an open AI assistant. Messages an AI feature drafts for a client are reviewed and approved by the coach before being sent, except where a coach has explicitly turned on fully automatic sending for that feature.",
       "Per OpenAI's API data usage policy, data submitted through the API is not used to train or improve OpenAI's models, and is retained only briefly for abuse monitoring before deletion. CoachevaOS does not use any other third-party AI/ML provider, aggregator, or model gateway, and does not operate any self-hosted or offline model.",
       "Where a coach connects a Google Calendar, Zoom, Calendly, or Cal.com account, that integration's data (e.g. calendar events, meeting links) is used only to provide the scheduling/video feature itself and is never passed to any AI model or used to train or improve any AI/ML system.",
       "Limited Use compliance statement: The use of raw or derived user data received from Google Workspace APIs (including Google Calendar) will adhere to the Google API Services User Data Policy, including the Limited Use requirements.",
@@ -104,7 +105,7 @@ export default function PrivacyPage() {
           <h1 className="font-heading mb-2 text-[36px] font-semibold tracking-tight text-neutral-900 md:text-[44px]">
             Privacy Policy
           </h1>
-          <p className="mb-12 text-sm text-neutral-500">Last updated September 14, 2026</p>
+          <p className="mb-12 text-sm text-neutral-500">Last updated October 2, 2026</p>
 
           <div className="flex flex-col gap-10">
             {sections.map((s) => (

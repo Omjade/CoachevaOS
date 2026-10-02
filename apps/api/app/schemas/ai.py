@@ -74,6 +74,8 @@ class PrepMyDayItem(BaseModel):
     client_name: str
     meeting_time: str
     reminder: str
+    risk_level: str = "low"
+    suggested_focus: str = ""
 
 
 class PrepMyDayOut(BaseModel):

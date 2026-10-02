@@ -9,6 +9,7 @@ from app.config import settings
 from app.rate_limit import limiter
 from app.routers import (
     admin,
+    agent_actions,
     ai,
     ai_assistant,
     analytics,
@@ -137,6 +138,7 @@ app.include_router(notifications.router)
 app.include_router(analytics.router)
 app.include_router(admin.router)
 app.include_router(track.router)
+app.include_router(agent_actions.router)
 
 
 @app.on_event("startup")

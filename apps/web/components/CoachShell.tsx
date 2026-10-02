@@ -14,6 +14,7 @@ import {
   ListIcon as ListMenu,
   SlidersHorizontalIcon as SlidersHorizontal,
   StackIcon as Stack,
+  SparkleIcon as Sparkle,
 } from "@phosphor-icons/react";
 import { api, User } from "@/lib/api";
 import SubscriptionBanner from "@/components/SubscriptionBanner";
@@ -33,6 +34,7 @@ const NAV: NavItem[] = [
   { seg: "chat", label: "Chat", Icon: ChatCircle },
   { seg: "calendar", label: "Calendar", Icon: CalendarBlank },
   { seg: "documents", label: "Documents", Icon: FileText },
+  { seg: "agents", label: "Your AI Team", Icon: Sparkle },
   { seg: "settings/custom-fields", label: "Custom Fields", Icon: SlidersHorizontal },
   { seg: "settings", label: "Profile", Icon: GearSix },
 ];

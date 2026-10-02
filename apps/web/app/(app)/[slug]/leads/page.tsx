@@ -14,6 +14,7 @@ import {
   ListIcon as ListView,
   CaretDownIcon as CaretDown,
   CaretUpDownIcon as CaretUpDown,
+  CalendarBlankIcon as CalendarBlank,
 } from "@phosphor-icons/react";
 import { api, ApiError, Lead, LeadStage } from "@/lib/api";
 import { Button, Eyebrow, Input, Label } from "@/components/ui";
@@ -94,6 +95,7 @@ function LeadsTable({
   onConvert,
   converting,
   onView,
+  onSchedule,
   query,
 }: {
   leads: Lead[];
@@ -101,6 +103,7 @@ function LeadsTable({
   onConvert: (lead: Lead) => void;
   converting: string | null;
   onView: (lead: Lead) => void;
+  onSchedule: (lead: Lead) => void;
   query: string;
 }) {
   const [sortKey, setSortKey] = useState<SortKey>("days");
@@ -249,16 +252,24 @@ function LeadsTable({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {lead.stage === "booked" && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => onConvert(lead)}
-                      disabled={converting === lead.id}
-                    >
-                      {converting === lead.id ? "Converting…" : "Convert"}
-                    </Button>
-                  )}
+                  <div className="flex items-center justify-end gap-2">
+                    {lead.stage !== "converted" && lead.stage !== "lost" && lead.email && (
+                      <Button variant="ghost" size="sm" onClick={() => onSchedule(lead)}>
+                        <CalendarBlank className="h-3.5 w-3.5" />
+                        Schedule
+                      </Button>
+                    )}
+                    {lead.stage === "booked" && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => onConvert(lead)}
+                        disabled={converting === lead.id}
+                      >
+                        {converting === lead.id ? "Converting…" : "Convert"}
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -292,6 +303,12 @@ export default function LeadsPage() {
     null
   );
   const [restoring, setRestoring] = useState(false);
+  const [schedulingLead, setSchedulingLead] = useState<Lead | null>(null);
+  const [scheduleStarts, setScheduleStarts] = useState("");
+  const [scheduleDuration, setScheduleDuration] = useState(30);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduledToast, setScheduledToast] = useState<string | null>(null);
 
   function refresh() {
     api.listLeads().then(setLeads).catch(() => setLeads([]));
@@ -361,6 +378,30 @@ export default function LeadsPage() {
       alert(err instanceof ApiError ? err.message : "Couldn't undo. Try again.");
     } finally {
       setRestoring(false);
+    }
+  }
+
+  async function handleSchedule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!schedulingLead || !scheduleStarts) return;
+    setScheduleSaving(true);
+    setScheduleError(null);
+    try {
+      const startsAt = new Date(scheduleStarts);
+      const endsAt = new Date(startsAt.getTime() + scheduleDuration * 60 * 1000);
+      await api.scheduleLeadMeeting(schedulingLead.id, {
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+      });
+      setScheduledToast(`Discovery call booked with ${schedulingLead.name}`);
+      setTimeout(() => setScheduledToast(null), 6000);
+      setSchedulingLead(null);
+      setScheduleStarts("");
+      refresh();
+    } catch (err) {
+      setScheduleError(err instanceof ApiError ? err.message : "Couldn't schedule that call. Try again.");
+    } finally {
+      setScheduleSaving(false);
     }
   }
 
@@ -439,6 +480,7 @@ export default function LeadsPage() {
           onConvert={convert}
           converting={converting}
           onView={setViewingLead}
+          onSchedule={setSchedulingLead}
         />
       ) : (
         <LeadsTable
@@ -447,6 +489,7 @@ export default function LeadsPage() {
           onConvert={convert}
           converting={converting}
           onView={setViewingLead}
+          onSchedule={setSchedulingLead}
           query={query}
         />
       )}
@@ -466,6 +509,61 @@ export default function LeadsPage() {
           </button>
         </div>
       )}
+
+      {scheduledToast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-neutral-200 bg-neutral-900 px-4 py-2.5 text-sm text-white shadow-lg">
+          {scheduledToast}
+        </div>
+      )}
+
+      <Dialog
+        open={schedulingLead !== null}
+        onClose={() => {
+          setSchedulingLead(null);
+          setScheduleError(null);
+        }}
+        title={schedulingLead ? `Schedule a call with ${schedulingLead.name}` : "Schedule"}
+      >
+        <form onSubmit={handleSchedule} className="flex flex-col gap-4">
+          <div>
+            <Label htmlFor="sched_starts">Date &amp; time</Label>
+            <Input
+              id="sched_starts"
+              type="datetime-local"
+              value={scheduleStarts}
+              onChange={(e) => setScheduleStarts(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="sched_duration">Duration</Label>
+            <select
+              id="sched_duration"
+              value={scheduleDuration}
+              onChange={(e) => setScheduleDuration(Number(e.target.value))}
+              className="w-full rounded-[10px] border border-neutral-200 bg-neutral-50/60 px-3 py-2 text-sm text-neutral-900 outline-none focus:border-accent-500 focus:bg-white"
+            >
+              <option value={15}>15 minutes</option>
+              <option value={30}>30 minutes</option>
+              <option value={45}>45 minutes</option>
+              <option value={60}>60 minutes</option>
+            </select>
+          </div>
+          <p className="text-xs text-neutral-500">
+            Creates a real meeting on your calendar with a video link, using whichever provider
+            you have connected — same as scheduling a session with a client.
+          </p>
+          {scheduleError && <p className="text-sm text-accent-700">{scheduleError}</p>}
+          <div className="mt-2 flex justify-end gap-3">
+            <Button type="button" variant="ghost" onClick={() => setSchedulingLead(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={scheduleSaving}>
+              {scheduleSaving ? "Scheduling…" : "Schedule call"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} title="Add lead">
         <form onSubmit={handleAdd} className="flex flex-col gap-4">

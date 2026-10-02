@@ -252,6 +252,7 @@ export interface ClientSelfProfile {
   billing_currency: string | null;
   coaching_start_date: string | null;
   coaching_end_date: string | null;
+  companion_consent_at: string | null;
 }
 
 export interface ClientSelfProfileUpdate {
@@ -497,6 +498,7 @@ export interface MessageData {
   media_url: string | null;
   created_at: string;
   read_at: string | null;
+  is_agent_sent: boolean;
 }
 
 export interface ThreadData {
@@ -747,6 +749,8 @@ export interface PrepMyDayItem {
   client_name: string;
   meeting_time: string;
   reminder: string;
+  risk_level: "low" | "medium" | "high";
+  suggested_focus: string;
 }
 
 export interface PrepMyDayData {
@@ -872,11 +876,38 @@ export interface AssistantSettings {
   custom_instructions: string | null;
   daily_query_limit: number;
   platform_query_ceiling: number;
+  // --- Your Voice & Rules ---
+  languages: string | null;
+  sample_messages: string[] | null;
+  sign_off: string | null;
+  say_phrases: string[] | null;
+  never_say_phrases: string[] | null;
+  checkin_questions_json: Record<string, unknown>[] | null;
+  quiet_hours_start: string | null; // "HH:MM:SS"
+  quiet_hours_end: string | null;
+  agents_paused: boolean;
+  briefing_freedom: "suggest" | "ask_first" | "run_alone";
+  client_agent_freedom: "suggest" | "ask_first" | "run_alone";
+  companion_freedom: "suggest" | "ask_first" | "run_alone";
+  drift_sensitivity: "gentle" | "normal" | "strict";
 }
 
 export interface AutomationSettings {
   auto_onboarding_enabled: boolean;
   auto_assign_template_id: string | null;
+  email_daily_briefing: boolean;
+  retention_agent_enabled: boolean;
+}
+
+export interface AgentAction {
+  id: string;
+  client_id: string;
+  client_name: string;
+  kind: string;
+  draft_message: string;
+  status: string;
+  created_at: string;
+  sent_at: string | null;
 }
 
 export interface AssistantMessage {
@@ -1381,6 +1412,12 @@ export const api = {
 
   getMyClientProfile: () => request<ClientSelfProfile>("/clients/me/profile"),
 
+  grantCompanionConsent: () =>
+    request<ClientSelfProfile>("/clients/me/companion-consent", { method: "POST" }),
+
+  revokeCompanionConsent: () =>
+    request<ClientSelfProfile>("/clients/me/companion-consent/revoke", { method: "POST" }),
+
   updateMyClientProfile: (body: ClientSelfProfileUpdate) =>
     request<ClientSelfProfile>("/clients/me/profile", {
       method: "PATCH",
@@ -1432,6 +1469,9 @@ export const api = {
     request<ClientListItem>(`/leads/${id}/convert`, { method: "POST" }),
 
   restoreLead: (id: string) => request<Lead>(`/leads/${id}/restore`, { method: "POST" }),
+
+  scheduleLeadMeeting: (id: string, body: { starts_at: string; ends_at: string }) =>
+    request<MeetingData>(`/leads/${id}/schedule`, { method: "POST", body: JSON.stringify(body) }),
 
   uploadClientAvatar: (clientId: string, file: File) => {
     const form = new FormData();
@@ -2060,6 +2100,19 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+
+  // Your AI Team — unified Approvals/Activity inbox
+  listPendingAgentActions: () => request<AgentAction[]>("/agent-actions/pending"),
+
+  listAgentActivity: (limit = 100) => request<AgentAction[]>(`/agent-actions/activity?limit=${limit}`),
+
+  approveAgentAction: (id: string, editedMessage?: string) =>
+    request<void>(`/agent-actions/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ edited_message: editedMessage ?? null }),
+    }),
+
+  skipAgentAction: (id: string) => request<void>(`/agent-actions/${id}/skip`, { method: "POST" }),
 
   listMyAssistantMessages: () => request<AssistantMessage[]>("/clients/me/assistant/messages"),
 

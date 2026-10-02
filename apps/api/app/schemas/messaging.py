@@ -19,6 +19,7 @@ class MessageOut(BaseModel):
     media_url: str | None
     created_at: datetime
     read_at: datetime | None
+    is_agent_sent: bool = False
 
     model_config = {"from_attributes": True}
 

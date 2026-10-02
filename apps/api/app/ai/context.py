@@ -3,10 +3,11 @@ import uuid
 from datetime import timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.ai import AIInsight
+from app.models.ai import AgentAction, AIInsight
+from app.models.billing import Invoice
 from app.models.checkins import Checkin
 from app.models.clients import Client, IntakeResponse
 from app.models.enums import AIInsightType, LeadStage, MeetingStatus
@@ -81,6 +82,7 @@ async def build_briefing_context(db: AsyncSession, coach_id: uuid.UUID) -> str:
         select(Client, User).join(User, User.id == Client.user_id).where(Client.coach_id == coach_id)
     )
     all_clients = clients_result.all()
+    name_by_client_id = {client.id: user.name for client, user in all_clients}
 
     expiring_soon = [
         {"client": u.name, "valid_until": c.subscription_valid_until.isoformat()}
@@ -111,6 +113,41 @@ async def build_briefing_context(db: AsyncSession, coach_id: uuid.UUID) -> str:
             if client_tasks and all(t.done for t in client_tasks):
                 completed_all_tasks.append({"client": user.name})
 
+    pending_approvals = await db.scalar(
+        select(func.count())
+        .select_from(AgentAction)
+        .where(AgentAction.coach_id == coach_id, AgentAction.status == "pending")
+    ) or 0
+
+    overdue_invoices = []
+    if all_clients:
+        client_ids = [client.id for client, _user in all_clients]
+        invoices_result = await db.execute(
+            select(Invoice).where(Invoice.client_id.in_(client_ids), Invoice.paid.is_(False))
+        )
+        for invoice in invoices_result.scalars().all():
+            if invoice.due_date < now.date():
+                overdue_invoices.append(
+                    {
+                        "client": name_by_client_id.get(invoice.client_id, "A client"),
+                        "amount": float(invoice.amount),
+                        "currency": invoice.currency,
+                    }
+                )
+
+    recent_checkin_highlights = []
+    if all_clients:
+        client_ids = [client.id for client, _user in all_clients]
+        checkins_result = await db.execute(
+            select(Checkin.client_id, Checkin.mood, Checkin.one_liner)
+            .where(Checkin.client_id.in_(client_ids), Checkin.submitted_at >= now - timedelta(days=1))
+        )
+        for client_id, mood, one_liner in checkins_result.all():
+            if mood or one_liner:
+                recent_checkin_highlights.append(
+                    {"client": name_by_client_id.get(client_id, "A client"), "mood": mood, "note": one_liner}
+                )
+
     return json.dumps(
         {
             "todays_meetings": todays_meetings,
@@ -118,6 +155,9 @@ async def build_briefing_context(db: AsyncSession, coach_id: uuid.UUID) -> str:
             "subscriptions_expiring_soon": expiring_soon,
             "leads_awaiting_followup": waiting_leads,
             "clients_completed_all_tasks": completed_all_tasks,
+            "pending_approvals_count": pending_approvals,
+            "overdue_invoices": overdue_invoices,
+            "recent_checkin_highlights": recent_checkin_highlights,
         }
     )
 
@@ -251,6 +291,82 @@ async def build_client_snapshot_context(db: AsyncSession, client: Client) -> str
     )
 
 
+async def build_client_memory(db: AsyncSession, client: Client) -> dict:
+    """The one canonical "what do we know about this client" assembly —
+    superset of build_client_risk_context + build_client_snapshot_context,
+    returned as a dict (not a JSON string) so callers can both read specific
+    fields directly (e.g. days_since_last_message for threshold checks) and
+    json.dumps() the whole thing straight into a prompt. New agent code
+    (Drift Detector, Session Wrap, Companion sends) should call this instead
+    of the older narrower builders, so every agent reads the same facts and
+    can't disagree with each other — see "Your AI Team" plan §1."""
+    now = utcnow()
+
+    thread_result = await db.execute(select(Thread).where(Thread.client_id == client.id))
+    thread = thread_result.scalar_one_or_none()
+    days_since_last_message = (
+        (now - thread.last_message_at).days if thread and thread.last_message_at else None
+    )
+
+    meetings_result = await db.execute(
+        select(Meeting).where(Meeting.client_id == client.id).order_by(Meeting.starts_at.desc()).limit(5)
+    )
+    recent_meetings = list(meetings_result.scalars().all())
+    attended = sum(1 for m in recent_meetings if m.status == MeetingStatus.completed)
+    canceled = sum(1 for m in recent_meetings if m.status == MeetingStatus.canceled)
+    next_meeting = next(
+        (m for m in sorted(recent_meetings, key=lambda m: m.starts_at) if m.starts_at >= now), None
+    )
+
+    tasks_result = await db.execute(select(Task).where(Task.client_id == client.id))
+    tasks = list(tasks_result.scalars().all())
+    open_tasks = [
+        {"title": t.title, "due_date": t.due_date.isoformat() if t.due_date else None}
+        for t in tasks
+        if not t.done
+    ]
+
+    goals_result = await db.execute(select(ClientGoal).where(ClientGoal.client_id == client.id))
+    goals = list(goals_result.scalars().all())
+
+    checkins_result = await db.execute(
+        select(Checkin).where(Checkin.client_id == client.id).order_by(Checkin.submitted_at.desc()).limit(5)
+    )
+    recent_checkins = list(checkins_result.scalars().all())
+
+    sessions_result = await db.execute(
+        select(SessionNote)
+        .where(SessionNote.client_id == client.id)
+        .order_by(SessionNote.session_date.desc())
+        .limit(3)
+    )
+    recent_sessions = [
+        {"date": s.session_date.isoformat(), "discussion_notes": s.discussion_notes, "wins": s.wins}
+        for s in sessions_result.scalars().all()
+    ]
+
+    return {
+        "program": client.program,
+        "goals_text": client.goals,
+        "status": client.status.value,
+        "days_since_last_message": days_since_last_message,
+        "recent_meetings_attended": attended,
+        "recent_meetings_canceled": canceled,
+        "next_meeting_starts_at": next_meeting.starts_at.isoformat() if next_meeting else None,
+        "next_meeting_url": next_meeting.meeting_url if next_meeting else None,
+        "tasks_done": sum(1 for t in tasks if t.done),
+        "tasks_total": len(tasks),
+        "open_tasks": open_tasks,
+        "structured_goals_done": sum(1 for g in goals if g.done),
+        "structured_goals_total": len(goals),
+        "recent_checkins": [
+            {"type": c.type.value, "mood": c.mood, "notes": c.progress_notes} for c in recent_checkins
+        ],
+        "latest_checkin_notes": recent_checkins[0].progress_notes if recent_checkins else None,
+        "recent_sessions": recent_sessions,
+    }
+
+
 async def build_thread_context(db: AsyncSession, thread_id: uuid.UUID, limit: int = 10) -> str:
     result = await db.execute(
         select(Message).where(Message.thread_id == thread_id).order_by(Message.created_at.desc()).limit(limit)
@@ -306,11 +422,20 @@ async def build_prep_my_day_context(db: AsyncSession, coach_id: uuid.UUID) -> tu
             .limit(1)
         )
         note = note_result.scalar_one_or_none()
+        # Pulls from the same shared memory Drift Detector/Companion/snapshot
+        # read, so "what's changed since last time" and risk level in the
+        # prep brief agree with what those agents already know, not a
+        # separately-assembled (and possibly stale-feeling) picture.
+        memory = await build_client_memory(db, client)
         meetings.append(
             {
                 "client_name": user.name,
                 "meeting_time": meeting.starts_at.astimezone(coach_tz).strftime("%H:%M"),
                 "last_session_summary": note.payload_json.get("summary") if note else None,
+                "open_commitments": memory["open_tasks"],
+                "days_since_last_message": memory["days_since_last_message"],
+                "recent_meetings_canceled": memory["recent_meetings_canceled"],
+                "latest_checkin_notes": memory["latest_checkin_notes"],
             }
         )
 

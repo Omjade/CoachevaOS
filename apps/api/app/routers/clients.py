@@ -64,6 +64,7 @@ async def create_client_with_user(
     goals: str | None,
     tags: list[str] | None = None,
     notes: str | None = None,
+    status: ClientStatus = ClientStatus.active,
 ) -> Client:
     # Coach-scoped dedup, not global — the same email may legitimately already
     # be a client of a DIFFERENT coach (switched coaches, or works with two at
@@ -96,7 +97,7 @@ async def create_client_with_user(
         program=program,
         tags=tags,
         notes=notes,
-        status=ClientStatus.active,
+        status=status,
         joined_at=utcnow(),
     )
     db.add(client)
@@ -215,7 +216,30 @@ async def get_my_client_profile(
         billing_currency=client.billing_currency,
         coaching_start_date=client.coaching_start_date,
         coaching_end_date=client.coaching_end_date,
+        companion_consent_at=client.companion_consent_at,
     )
+
+
+@router.post("/me/companion-consent", response_model=ClientSelfProfileOut)
+async def grant_companion_consent(
+    client: Client = Depends(get_current_client), db: AsyncSession = Depends(get_db)
+) -> ClientSelfProfileOut:
+    """Explicit, separate opt-in for the Client Companion's proactive
+    messages — deliberately its own endpoint rather than a field on the
+    general profile PATCH, so granting consent is always a clear, dedicated
+    action, never an incidental side effect of editing something else."""
+    client.companion_consent_at = utcnow()
+    await db.commit()
+    return await get_my_client_profile(client=client, db=db)
+
+
+@router.post("/me/companion-consent/revoke", response_model=ClientSelfProfileOut)
+async def revoke_companion_consent(
+    client: Client = Depends(get_current_client), db: AsyncSession = Depends(get_db)
+) -> ClientSelfProfileOut:
+    client.companion_consent_at = None
+    await db.commit()
+    return await get_my_client_profile(client=client, db=db)
 
 
 @router.patch("/me/profile", response_model=ClientSelfProfileOut)
@@ -253,6 +277,7 @@ async def update_my_client_profile(
         billing_currency=client.billing_currency,
         coaching_start_date=client.coaching_start_date,
         coaching_end_date=client.coaching_end_date,
+        companion_consent_at=client.companion_consent_at,
     )
 
 

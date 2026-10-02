@@ -19,6 +19,7 @@ import {
   EnvelopeSimpleIcon as EnvelopeSimple,
   ClockIcon as Clock,
   WarningIcon as Warning,
+  CalendarBlankIcon as CalendarBlank,
 } from "@phosphor-icons/react";
 import { Lead, LeadStage } from "@/lib/api";
 import { Button, Card } from "@/components/ui";
@@ -46,12 +47,14 @@ function LeadCard({
   onConvert,
   converting,
   onView,
+  onSchedule,
   dragging,
 }: {
   lead: Lead;
   onConvert: (lead: Lead) => void;
   converting: boolean;
   onView: (lead: Lead) => void;
+  onSchedule: (lead: Lead) => void;
   dragging?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -143,19 +146,33 @@ function LeadCard({
             {stale ? <Warning className="h-3 w-3" weight="fill" /> : <Clock className="h-3 w-3" />}
             {days === 0 ? "Today" : `${days}d in stage`}
           </span>
-          {lead.stage === "booked" && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onConvert(lead);
-              }}
-              disabled={converting}
-            >
-              {converting ? "Converting…" : "Convert"}
-            </Button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {lead.stage !== "converted" && lead.stage !== "lost" && lead.email && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSchedule(lead);
+                }}
+              >
+                <CalendarBlank className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {lead.stage === "booked" && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConvert(lead);
+                }}
+                disabled={converting}
+              >
+                {converting ? "Converting…" : "Convert"}
+              </Button>
+            )}
+          </div>
         </div>
       </Card>
     </div>
@@ -172,6 +189,7 @@ function StageColumn({
   onConvert: (lead: Lead) => void;
   converting: string | null;
   onView: (lead: Lead) => void;
+  onSchedule: (lead: Lead) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.key });
 
@@ -198,6 +216,7 @@ function StageColumn({
             onConvert={cardProps.onConvert}
             converting={cardProps.converting === lead.id}
             onView={cardProps.onView}
+            onSchedule={cardProps.onSchedule}
           />
         ))}
       </div>
@@ -211,12 +230,14 @@ export default function LeadsBoard({
   onConvert,
   converting,
   onView,
+  onSchedule,
 }: {
   leads: Lead[];
   onMoveStage: (lead: Lead, stage: LeadStage) => void;
   onConvert: (lead: Lead) => void;
   converting: string | null;
   onView: (lead: Lead) => void;
+  onSchedule: (lead: Lead) => void;
 }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -248,6 +269,7 @@ export default function LeadsBoard({
             onConvert={onConvert}
             converting={converting}
             onView={onView}
+            onSchedule={onSchedule}
           />
         ))}
       </div>
@@ -259,6 +281,7 @@ export default function LeadsBoard({
               onConvert={() => {}}
               converting={false}
               onView={() => {}}
+              onSchedule={() => {}}
               dragging
             />
           </div>

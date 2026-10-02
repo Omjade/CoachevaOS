@@ -101,6 +101,7 @@ class ClientSelfProfileOut(BaseModel):
     billing_status: str = "not_set"
     coaching_start_date: date | None = None
     coaching_end_date: date | None = None
+    companion_consent_at: datetime | None = None
     # Coach-managed, client-visible-but-not-editable — the coach edits these
     # via PATCH /clients/{id}; the client should be able to SEE their own
     # niche/phone/status, not change them, so there's no matching field on

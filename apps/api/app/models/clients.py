@@ -83,6 +83,11 @@ class Client(Base, UUIDPk):
     # scheduled) before they've accepted their invite and gotten a linked
     # User row, so this can't just read off the shared account.
     timezone: Mapped[str | None] = mapped_column(String(64))
+    # Explicit, separate opt-in for the Client Companion's proactive messages
+    # (reminders, check-in prompts, nudges) — distinct from any other intake
+    # consent. Null means never asked/declined; the Companion's nightly send
+    # job must never message a client where this is unset.
+    companion_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     intake_response: Mapped["IntakeResponse | None"] = relationship(
         back_populates="client", uselist=False

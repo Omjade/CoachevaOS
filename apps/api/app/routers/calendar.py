@@ -102,6 +102,45 @@ async def list_meetings(
     return [_to_out(m, u.name, u.timezone) for m, u in result.all()]
 
 
+async def create_meeting_for_client(
+    db: AsyncSession,
+    coach: User,
+    client: Client,
+    user: User,
+    *,
+    starts_at: datetime,
+    ends_at: datetime,
+    topic: str | None = None,
+) -> Meeting:
+    """Shared by POST /meetings and the lead-scheduling endpoint
+    (routers/leads.py) — same conflict check, video-link creation, and
+    Meeting row every caller needs. Caller owns the commit."""
+    if await _conflict_exists(db, coach.id, starts_at, ends_at):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "You already have a session booked at that time."
+        )
+
+    provider, url, google_event_id = await create_video_call_link(
+        db,
+        coach.id,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        topic=topic or f"Session with {user.name}",
+    )
+    meeting = Meeting(
+        coach_id=coach.id,
+        client_id=client.id,
+        starts_at=starts_at,
+        ends_at=ends_at,
+        status=MeetingStatus.scheduled,
+        meeting_url=url,
+        meeting_provider=provider,
+        google_event_id=google_event_id,
+    )
+    db.add(meeting)
+    return meeting
+
+
 @router.post("/meetings", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)
 async def create_meeting(
     body: MeetingCreate,
@@ -115,29 +154,9 @@ async def create_meeting(
     user = await db.get(User, client.user_id)
     assert user is not None
 
-    if await _conflict_exists(db, coach.id, body.starts_at, body.ends_at):
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "You already have a session booked at that time."
-        )
-
-    provider, url, google_event_id = await create_video_call_link(
-        db,
-        coach.id,
-        starts_at=body.starts_at,
-        ends_at=body.ends_at,
-        topic=f"Session with {user.name}",
+    meeting = await create_meeting_for_client(
+        db, coach, client, user, starts_at=body.starts_at, ends_at=body.ends_at
     )
-    meeting = Meeting(
-        coach_id=coach.id,
-        client_id=body.client_id,
-        starts_at=body.starts_at,
-        ends_at=body.ends_at,
-        status=MeetingStatus.scheduled,
-        meeting_url=url,
-        meeting_provider=provider,
-        google_event_id=google_event_id,
-    )
-    db.add(meeting)
     await db.commit()
     await db.refresh(meeting)
     return _to_out(meeting, user.name)
